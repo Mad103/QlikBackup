@@ -1,0 +1,23 @@
+
+SHEETS
+{"qInfo":{"qId":"a12cf0a6-78e8-47de-a315-94a1c4ed23f7","qType":"sheet"},"qMeta":{"title":"My new sheet (1)","description":"","createdDate":"2024-09-26T08:07:18.530Z","modifiedDate":"2024-09-26T08:07:18.530Z","published":true,"publishTime":"2022-04-07T14:11:36.538Z","approved":true,"qSize":-1,"sourceObject":"","draftObject":"","_resourcetype":"app.object","_objecttype":"sheet","id":"a12cf0a6-78e8-47de-a315-94a1c4ed23f7","owner":"SHRU@lundbeck.com","ownerId":"63652410abd1b5bf2763579e","privileges":["read","publish","change_owner"]},"qData":[]}
+{"qInfo":{"qId":"dff82e2e-3cbf-44e4-ab36-3da0a0b5e024","qType":"sheet"},"qMeta":{"title":"My new sheet","description":"","createdDate":"2024-09-26T08:07:18.547Z","modifiedDate":"2024-09-26T08:07:18.547Z","published":true,"publishTime":"2020-02-07T18:38:12.339Z","approved":true,"qSize":-1,"sourceObject":"","draftObject":"","_resourcetype":"app.object","_objecttype":"sheet","id":"dff82e2e-3cbf-44e4-ab36-3da0a0b5e024","owner":"SHRU@lundbeck.com","ownerId":"63652410abd1b5bf2763579e","privileges":["read","publish","change_owner"]},"qData":[]}
+
+OBJECTS ON SHEETS
+{"name":"wfVLJEg","type":"table","col":0,"row":0,"colspan":19,"rowspan":10,"bounds":{"y":0,"x":0,"width":79.16666666666666,"height":83.33333333333334}}
+{"name":"AxAPUZs","type":"table","col":0,"row":0,"colspan":17,"rowspan":12,"bounds":{"y":0,"x":0,"width":70.83333333333334,"height":100}}
+
+DIMENSIONS
+
+MEASURES
+
+VARIABLES
+{"qName":"vQSBIE_ExtractQVD_Dimension","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/QlikSense BI Evolution\/QVDs\/Extract\/Dimensions","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"385b5b29-9ca8-4fdd-b262-3ab42591ff58","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vQSBIE_ExtractQVD_Fact","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/QlikSense BI Evolution\/QVDs\/Extract\/Facts","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"7ce9e6c0-02b5-40ac-99da-edcae9538c66","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vQSBIE_TransformQVD_Dimension","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/QlikSense BI Evolution\/QVDs\/Transform\/Dimensions","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"240a995e-b4b3-4ad6-a7ef-1132f8106f62","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vQSBIE_TransformQVD_Fact","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/QlikSense BI Evolution\/QVDs\/Transform\/Facts","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"8ead5873-491c-4cbc-9774-d134a7e49fc8","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vQSBIE_OfflineFiles","qDefinition":"lib:\/\/LuUS_DATA:LuUS_SharePoint\/Shared Documents\/Qlik Sense Data Files","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"69fc7eaf-d362-4e1e-85f6-ee43cc07172c","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vConfidentialMessage","qDefinition":"*Prescriber data acquired by the Lundbeck are to be treated as confidential information. Sales representatives (and other employees and agents) must not disclose those data to any party outside of the Company without the express permission of the Legal Division. In addition, sales representatives (and other employees and agents) cannot ask co-promotion colleagues to share prescriber data with them.","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"06d962c2-9815-47b1-8a64-19aa42a66f6d","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vSpace","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"80ec7356-a408-433e-93e1-8613f01c999d","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+
+FIELDS
