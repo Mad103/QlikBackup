@@ -1,0 +1,405 @@
+///$tab Main
+SET ThousandSep=',';
+SET DecimalSep='.';
+SET MoneyThousandSep=',';
+SET MoneyDecimalSep='.';
+SET NumFormat='';
+SET MoneyFormat='#.##0,00 kr.;-#.##0,00 kr.';
+SET TimeFormat='hh.mm.ss';
+SET DateFormat='MM/DD/YYYY';
+SET TimestampFormat='MM/DD/YYYY h:mm:ss[.fff] TT';
+SET FirstWeekDay=0;
+SET BrokenWeeks=0;
+SET ReferenceDay=4;
+SET FirstMonthOfYear=1;
+SET CollationLocale='en-US';
+SET CreateSearchIndexOnReload=1;
+SET MonthNames='Jan;Feb;Mar;Apr;May;Jun;Jul;Aug;Sep;Oct;Nov;Dec';
+SET LongMonthNames='January;February;March;April;May;June;July;August;September;October;November;December';
+SET DayNames='Mon;Tue;Wed;Thu;Fri;Sat;Sun';
+SET LongDayNames='Monday;Tuesday;Wednesday;Thursday;Friday;Saturday;Sunday';
+SET NumericalAbbreviation='3:k;6:M;9:G;12:T;15:P;18:E;21:Z;24:Y;-3:m;-6:μ;-9:n;-12:p;-15:f;-18:a;-21:z;-24:y';
+
+$(Must_Include='lib://LuUS_DATA:LuUS_SharePoint/Shared Documents/Qlik Sense Data Files/Include/Qlik Cloud/FolderConnections.txt');
+
+LIB CONNECT TO 'LuUS_DATA:SNOWFLAKE_LuUS_BI_Reader';
+
+
+
+///$tab Variable Declaration
+LET vToday=Date(Today(),'YYYYMMDD');
+
+LET vStartDate='20210601';   
+
+LET vSpace=if(upper(GetSysAttr('spaceType'))='SHARED' or GetSysAttr('spaceType')='','_DEV');
+
+LET vSF='_SF';
+
+Trace '$(vSpace)';
+
+NoConcatenate
+CALL_ACTIVITY_DATA_RANGE:
+SQL Select Max(CALL_DATE_KEY) as "MaxCallDate", Min(CALL_DATE_KEY) as "MinCallDate"
+FROM LUNDBECK_DW.ANALYTICS.CALL_ACTIVITY_LU_SF c 
+WHERE PRODUCT_GROUP_NAME='VYEPTI';
+
+
+Let vMaxCallDate=peek('MaxCallDate');
+Let vMinDate=peek('MinCallDate');
+
+drop table CALL_ACTIVITY_DATA_RANGE;
+
+Trace '$(vMaxCallDate)'&'$(vMinDate)';
+
+
+
+///$tab SF: Working Days
+NoConcatenate
+WORKING_DAYS_V1:
+LOAD Left(DATE_KEY,6)&'01' as CALL_DATE_KEY,
+    Sum(Elig)  as Completed_Working_Days
+FROM [$(vQSBIE_TransformQVD_Dimension)/LU Working Days$(vSpace)$(vSF).qvd](qvd)  
+where DATE_KEY<='$(vMaxCallDate)' and DATE_KEY>'$(vMinDate)'
+group by Left(DATE_KEY,6)&'01';
+
+left join(WORKING_DAYS_V1)
+SQL SELECT Distinct 
+    TERRITORY_ID as "Territory ID"
+FROM LUNDBECK_DW.COMMON.TERRITORY where SALESFORCE_NAME='MERIDIAN' 
+and CURRENT_IND='Y' and concat(FIRST_NAME,' ',LAST_NAME) is not null;
+
+NoConcatenate
+WORKING_DAYS_V2:
+Load Distinct floor(DATE#(CALL_DATE_KEY,'YYYYMMDD'))&"Territory ID" as MWF_Working_Day_ID,
+    "Territory ID" as MWF_Territory_ID,
+    CALL_DATE_KEY as MWF_Month_Key,
+    Sum(Completed_Working_Days) as Completed_Working_Days
+Resident WORKING_DAYS_V1
+group by floor(DATE#(CALL_DATE_KEY,'YYYYMMDD'))&"Territory ID",
+    "Territory ID",
+    CALL_DATE_KEY;
+
+Drop Table WORKING_DAYS_V1;
+
+Left Join(WORKING_DAYS_V2)
+SQL SELECT TERRITORY_ID  as CALL_TERRITORY_KEY,
+	 TERRITORY_ID as MWF_Territory_ID
+FROM LUNDBECK_DW.COMMON.TERRITORY where SALESFORCE_NAME='MERIDIAN';
+
+NoConcatenate
+WORKING_DAYS_TABLE:
+LOad Distinct floor(DATE#(MWF_Month_Key,'YYYYMMDD'))&CALL_TERRITORY_KEY as Working_Day_Key,
+	MWF_Working_Day_ID,
+	MWF_Territory_ID,
+    MWF_Month_Key,
+    Completed_Working_Days
+Resident WORKING_DAYS_V2;
+
+Drop Table WORKING_DAYS_V2;
+
+LEFT JOIN(WORKING_DAYS_TABLE)
+sql select
+Min(START_DATE_KEY) as "CP_Start_Date",
+Min(END_DATE_KEY) as "CP_End_Date"
+from LUNDBECK_DW.ANALYTICS.CALL_PLAN_LU_SF fcp
+inner join LUNDBECK_DW.COMMON.TERRITORY t on t.TERRITORY_ID=fcp.TERRITORY_ID
+where SALESFORCE_NAME='MERIDIAN' and t.CURRENT_IND='Y' and fcp.CURRENT_IND='Y';
+
+Store WORKING_DAYS_TABLE into [$(vQSBIE_TransformQVD_Dimension)/Meridian Working Day$(vSpace)$(vSF).qvd](qvd);
+
+
+
+///$tab SF: Customer to Territory Universe
+CPStart:
+Load Distinct
+	 CP_Start_Date,
+	 CP_End_Date
+Resident WORKING_DAYS_TABLE;
+
+Drop Table WORKING_DAYS_TABLE;
+
+let vCPStartDate = peek('CP_Start_Date');
+let vCPEndDate = peek('CP_End_Date');
+
+Trace '$(vCPStartDate)' & '$(vCPEndDate)';
+
+
+NoConcatenate
+FACT:
+sql select Distinct f.LUNDBECK_ID as CUSTOMER_KEY,
+	zt.TERRITORY_ID as TERRITORY_KEY,
+	cONCAT(f.LUNDBECK_ID, zt.TERRITORY_ID) AS TEMP_KEY,
+	'Y' as SEGMENT_MAPPING
+from LUNDBECK_DW.ANALYTICS.CUSTOMER_SEGMENTATION f 
+inner join LUNDBECK_DW.COMMON.CUSTOMERS c on c.LUNDBECK_ID=f.LUNDBECK_ID
+inner join LUNDBECK_DW.COMMON.ZIP_TO_TERRITORY zt on zt.ZIP=c.CUSTOMER_ZIP and zt.CURRENT_IND='Y'
+inner join LUNDBECK_DW.COMMON.TERRITORY t on t.TERRITORY_ID=zt.TERRITORY_ID and t.CURRENT_IND='Y' 
+	and t.SALESFORCE_NAME='MERIDIAN' and t.TERRITORY_NAME<>'UNASSIGNED' 
+	and t.TERRITORY_NAME<>'SPECIAL ASSIGNMENT – VS'
+where SEGMENT_TYPE in ('CORE TARGETS','ACCOUNT SEGMENT') and f.CURRENT_IND='Y';
+
+
+Concatenate(FACT)
+Load Distinct CUSTOMER_KEY,
+	TERRITORY_KEY,
+    TEMP_KEY1 as TEMP_KEY,
+    SEGMENT_MAPPING
+where not exists(TEMP_KEY, TEMP_KEY1);
+select distinct	LUNDBECK_ID as CUSTOMER_KEY,
+	t.TERRITORY_ID as TERRITORY_KEY,
+	cONCAT(fca.LUNDBECK_ID, t.TERRITORY_ID) AS TEMP_KEY1,
+	'N' as SEGMENT_MAPPING
+from LUNDBECK_DW.ANALYTICS.CALL_ACTIVITY_LU_SF fca
+inner join LUNDBECK_DW.COMMON.TERRITORY t on t.TERRITORY_ID=fca.TERRITORY_ID
+where t.SALESFORCE_NAME='MERIDIAN' and t.CURRENT_IND='Y' 
+	and t.TERRITORY_NAME<>'UNASSIGNED' and t.TERRITORY_NAME<>'SPECIAL ASSIGNMENT – VS'
+
+union all
+
+select distinct LUNDBECK_ID as CUSTOMER_KEY,
+	t.TERRITORY_ID as TERRITORY_KEY,
+	cONCAT(fcp.LUNDBECK_ID, t.TERRITORY_ID) AS TEMP_KEY1,
+	'N' as SEGMENT_MAPPING
+from LUNDBECK_DW.ANALYTICS.CALL_PLAN_LU_SF fcp
+inner join LUNDBECK_DW.COMMON.TERRITORY t on t.TERRITORY_ID=fcp.TERRITORY_ID
+where t.SALESFORCE_NAME='MERIDIAN' and t.CURRENT_IND='Y' and t.TERRITORY_NAME<>'UNASSIGNED' 
+and t.TERRITORY_NAME<>'SPECIAL ASSIGNMENT – VS' and fcp.CURRENT_IND='Y'
+
+UNION All
+
+select distinct HCO_LUNDBECK_ID AS CUSTOMER_KEY,
+	t.TERRITORY_ID as TERRITORY_KEY,
+	cONCAT(fca.HCO_LUNDBECK_ID, t.TERRITORY_ID) AS TEMP_KEY1,
+	'N' as SEGMENT_MAPPING
+from LUNDBECK_DW.ANALYTICS.CALL_ACTIVITY_LU_SF fca
+inner join LUNDBECK_DW.COMMON.TERRITORY t on t.TERRITORY_ID=fca.TERRITORY_ID      
+WHERE t.SALESFORCE_NAME='MERIDIAN' and t.CURRENT_IND='Y' 
+and t.TERRITORY_NAME<>'UNASSIGNED' and t.TERRITORY_NAME<>'SPECIAL ASSIGNMENT – VS';
+
+drop field TEMP_KEY;
+
+///$tab FACT
+NoConcatenate
+TEMP_FACT:
+  sql select
+  case when cl.SPLIT_WEEK_KEY>='$(vToday)' then fca.CALL_DATE_KEY else cl.SPLIT_WEEK_KEY end as DATE_KEY,
+  fca.LUNDBECK_ID as CUSTOMER_KEY,
+  fca.TERRITORY_ID as TERRITORY_KEY,
+  'Y' as "HERO",
+  1 AS "Terr_Indication",
+  REPORT_CALL_TYPE as "Call Type",
+  REPORT_PRESCRIBER_CATEGORY as "New Customer Type",
+  DETAIL_PRIORITY as "Detail Priority",
+  iq.HCP_MAX_CALL_DATE as "Max Call Date", 
+  CASE WHEN SPLIT_WEEK_KEY>='$(vCPStartDate)' THEN 'Y' END as "Reached",
+  Sum(PDE) as PDE
+  from LUNDBECK_DW.ANALYTICS.CALL_ACTIVITY_LU_SF fca
+  inner join LUNDBECK_DW.COMMON.CALENDAR cl on cl.DATE_KEY=fca.CALL_DATE_KEY
+  inner join LUNDBECK_DW.COMMON.CUSTOMERS c on c.LUNDBECK_ID = fca.LUNDBECK_ID
+  inner join LUNDBECK_DW.COMMON.TERRITORY t on t.TERRITORY_ID=fca.TERRITORY_ID
+  left join ( select max(CALL_DATE_KEY) as HCP_MAX_CALL_DATE from LUNDBECK_DW.ANALYTICS.CALL_ACTIVITY_LU_SF ffca 
+				inner join LUNDBECK_DW.COMMON.TERRITORY t2 on t2.TERRITORY_ID=ffca.TERRITORY_ID
+				where PDE>0 and PRODUCT_GROUP_NAME='VYEPTI' and t2.SALESFORCE_NAME='MERIDIAN' 
+				and t2.CURRENT_IND='Y' and t2.TERRITORY_NAME<>'UNASSIGNED' 
+				and t2.TERRITORY_NAME<>'SPECIAL ASSIGNMENT – VS') iq on iq.HCP_MAX_CALL_DATE=fca.CALL_DATE_KEY
+  where PRODUCT_GROUP_NAME='VYEPTI' and t.SALESFORCE_NAME='MERIDIAN' and t.CURRENT_IND='Y' 
+  and t.TERRITORY_NAME<>'UNASSIGNED' and t.TERRITORY_NAME<>'SPECIAL ASSIGNMENT – VS'
+  and c.CUSTOMER_TYPE in ('HCP','HCNP') and RECORD_TYPE_NAME <> 'Logistical TouchPoint' 
+  and CALL_DATE_KEY>='$(vStartDate)'
+  group by //shubham
+  case when cl.SPLIT_WEEK_KEY>='$(vToday)' then fca.CALL_DATE_KEY else cl.SPLIT_WEEK_KEY end,
+  fca.LUNDBECK_ID,
+  fca.TERRITORY_ID,
+  REPORT_CALL_TYPE,
+  REPORT_PRESCRIBER_CATEGORY,
+  DETAIL_PRIORITY,
+  HCP_MAX_CALL_DATE,
+  CASE WHEN SPLIT_WEEK_KEY>='$(vCPStartDate)' THEN 'Y' END
+  ;
+
+CONCATENATE(TEMP_FACT)
+
+select
+case when cl.SPLIT_WEEK_KEY>='$(vToday)' then fca.CALL_DATE_KEY else cl.SPLIT_WEEK_KEY end as DATE_KEY, //shubham
+fca.LUNDBECK_ID as CUSTOMER_KEY,
+fca.TERRITORY_ID as TERRITORY_KEY,
+1 AS "Terr_Indication",
+'N' as "HERO",
+REPORT_CALL_TYPE as "Call Type",
+REPORT_PRESCRIBER_CATEGORY as "New Customer Type",
+DETAIL_PRIORITY as "Detail Priority",
+iq.HCO_MAX_CALL_DATE as "Max Call Date",
+CASE WHEN SPLIT_WEEK_KEY>='$(vCPStartDate)' THEN 'Y' END as "Reached",
+Sum(PDE) as PDE
+from LUNDBECK_DW.ANALYTICS.CALL_ACTIVITY_LU_SF fca
+inner join LUNDBECK_DW.COMMON.CALENDAR cl on cl.DATE_KEY=fca.CALL_DATE_KEY
+inner join LUNDBECK_DW.COMMON.CUSTOMERS c on c.LUNDBECK_ID = fca.LUNDBECK_ID
+inner join LUNDBECK_DW.COMMON.TERRITORY t on t.TERRITORY_ID=fca.TERRITORY_ID
+  left join ( select max(CALL_DATE_KEY) as HCO_MAX_CALL_DATE from LUNDBECK_DW.ANALYTICS.CALL_ACTIVITY_LU_SF ffca 
+				inner join LUNDBECK_DW.COMMON.TERRITORY t2 on t2.TERRITORY_ID=ffca.TERRITORY_ID
+				where PDE>0 and PRODUCT_GROUP_NAME='VYEPTI' and t2.SALESFORCE_NAME='MERIDIAN' 
+				and t2.CURRENT_IND='Y' and t2.TERRITORY_NAME<>'UNASSIGNED' 
+				and t2.TERRITORY_NAME<>'SPECIAL ASSIGNMENT – VS') iq on iq.HCO_MAX_CALL_DATE=fca.CALL_DATE_KEY
+where PRODUCT_GROUP_NAME='VYEPTI' and t.SALESFORCE_NAME='MERIDIAN' and t.CURRENT_IND='Y' and t.TERRITORY_NAME<>'UNASSIGNED' and t.TERRITORY_NAME<>'SPECIAL ASSIGNMENT – VS'
+and c.CUSTOMER_TYPE in ('HCO') and RECORD_TYPE_NAME <> 'Logistical TouchPoint' and CALL_DATE_KEY>='$(vStartDate)'
+group by //shubham
+case when cl.SPLIT_WEEK_KEY>='$(vToday)' then fca.CALL_DATE_KEY else cl.SPLIT_WEEK_KEY end,
+fca.LUNDBECK_ID,
+fca.TERRITORY_ID,
+REPORT_CALL_TYPE,
+REPORT_PRESCRIBER_CATEGORY,
+DETAIL_PRIORITY,
+HCO_MAX_CALL_DATE,
+CASE WHEN SPLIT_WEEK_KEY>='$(vCPStartDate)' THEN 'Y' END
+  ;
+
+CONCATENATE(TEMP_FACT)
+
+select
+case when cl.SPLIT_WEEK_KEY>='$(vToday)' then fca.CALL_DATE_KEY else cl.SPLIT_WEEK_KEY end as DATE_KEY, 
+HCO_LUNDBECK_ID as CUSTOMER_KEY,
+fca.TERRITORY_ID as TERRITORY_KEY,
+1 AS "Terr_Indication",
+'X' as "HERO",
+REPORT_CALL_TYPE as "Call Type",
+REPORT_PRESCRIBER_CATEGORY as "New Customer Type",
+DETAIL_PRIORITY as "Detail Priority",
+iq.HCO_MAX_CALL_DATE as "Max Call Date",
+CASE WHEN SPLIT_WEEK_KEY>='$(vCPStartDate)' THEN 'Y' END as "Reached",
+Sum(PDE) as PDE
+from LUNDBECK_DW.ANALYTICS.CALL_ACTIVITY_LU_SF fca
+inner join LUNDBECK_DW.COMMON.CALENDAR cl on cl.DATE_KEY=fca.CALL_DATE_KEY
+inner join LUNDBECK_DW.COMMON.CUSTOMERS c on c.LUNDBECK_ID = fca.HCO_LUNDBECK_ID
+inner join LUNDBECK_DW.COMMON.TERRITORY t on t.TERRITORY_ID=fca.TERRITORY_ID
+  left join ( select max(CALL_DATE_KEY) as HCO_MAX_CALL_DATE from LUNDBECK_DW.ANALYTICS.CALL_ACTIVITY_LU_SF ffca 
+				inner join LUNDBECK_DW.COMMON.TERRITORY t2 on t2.TERRITORY_ID=ffca.TERRITORY_ID
+				where PDE>0 and PRODUCT_GROUP_NAME='VYEPTI' and t2.SALESFORCE_NAME='MERIDIAN' 
+				and t2.CURRENT_IND='Y' and t2.TERRITORY_NAME<>'UNASSIGNED' 
+				and t2.TERRITORY_NAME<>'SPECIAL ASSIGNMENT – VS') iq on iq.HCO_MAX_CALL_DATE=fca.CALL_DATE_KEY
+where PRODUCT_GROUP_NAME='VYEPTI' and t.SALESFORCE_NAME='MERIDIAN' and t.CURRENT_IND='Y' 
+and t.TERRITORY_NAME<>'UNASSIGNED' and t.TERRITORY_NAME<>'SPECIAL ASSIGNMENT – VS'
+and c.CUSTOMER_TYPE in ('HCO') and RECORD_TYPE_NAME <> 'Logistical TouchPoint' and CALL_DATE_KEY>='$(vStartDate)'
+group by //shubham
+case when cl.SPLIT_WEEK_KEY>='$(vToday)' then fca.CALL_DATE_KEY else cl.SPLIT_WEEK_KEY end,
+HCO_LUNDBECK_ID,
+fca.TERRITORY_ID,
+REPORT_CALL_TYPE,
+REPORT_PRESCRIBER_CATEGORY,
+DETAIL_PRIORITY,
+HCO_MAX_CALL_DATE,
+CASE WHEN SPLIT_WEEK_KEY>='$(vCPStartDate)' THEN 'Y' END;
+
+
+
+///$tab FACT 2
+Left Join(FACT)
+Load * 
+RESIDENT TEMP_FACT;
+
+Drop Table TEMP_FACT;
+
+Concatenate(FACT)
+sql select
+  case when cl.SPLIT_WEEK_KEY>='$(vToday)' then fca.CALL_DATE_KEY else cl.SPLIT_WEEK_KEY end as DATE_KEY,
+  fca.TERRITORY_ID as TERRITORY_KEY,
+ Count(Distinct fca.CALL_DATE_KEY) as "Weekly_Working_Days"
+  from LUNDBECK_DW.ANALYTICS.CALL_ACTIVITY_LU_SF fca
+  inner join LUNDBECK_DW.COMMON.CALENDAR cl on cl.DATE_KEY=fca.CALL_DATE_KEY
+  inner join LUNDBECK_DW.COMMON.CUSTOMERS c on c.LUNDBECK_ID = fca.LUNDBECK_ID
+  inner join LUNDBECK_DW.COMMON.TERRITORY t on t.TERRITORY_ID=fca.TERRITORY_ID
+  where PRODUCT_GROUP_NAME='VYEPTI' and t.SALESFORCE_NAME='MERIDIAN' and t.CURRENT_IND='Y' and 
+  t.TERRITORY_NAME<>'UNASSIGNED' and t.TERRITORY_NAME<>'SPECIAL ASSIGNMENT – VS'
+  and c.CUSTOMER_TYPE in ('HCP','HCNP') and RECORD_TYPE_NAME <> 'Logistical TouchPoint' 
+  and CALL_DATE_KEY>='$(vStartDate)' and DETAIL_PRIORITY=1 and FLAG_WEEKDAY='Y'
+  group by 
+  case when cl.SPLIT_WEEK_KEY>='$(vToday)' then fca.CALL_DATE_KEY else cl.SPLIT_WEEK_KEY end,
+  fca.TERRITORY_ID;
+  
+  
+  
+  //////////////End
+  
+//Added on 9/15/2022 to add call plan on HCP details sheet
+Concatenate(FACT)
+sql select
+LUNDBECK_ID as CUSTOMER_KEY,
+START_DATE_KEY as DATE_KEY,
+fcp.TERRITORY_ID as TERRITORY_KEY,
+'Call Plan' as TableFlag,
+Sum(PLANNED_CALLS) as PLANNED_CALLS
+from LUNDBECK_DW.ANALYTICS.CALL_PLAN_LU_SF fcp
+inner join LUNDBECK_DW.COMMON.TERRITORY t on t.TERRITORY_ID=fcp.TERRITORY_ID
+where fcp.CURRENT_IND='Y' and t.SALESFORCE_NAME='MERIDIAN' 
+and t.CURRENT_IND='Y' and t.TERRITORY_NAME<>'UNASSIGNED' 
+and t.TERRITORY_NAME<>'SPECIAL ASSIGNMENT – VS'
+group by CUSTOMER_KEY, fcp.TERRITORY_ID, DATE_KEY;
+
+
+
+left join(FACT)
+sql select
+LUNDBECK_ID as CUSTOMER_KEY,
+fcp.TERRITORY_ID as TERRITORY_KEY,
+'Y' as CALL_PLAN_FLAG
+from LUNDBECK_DW.ANALYTICS.CALL_PLAN_LU_SF fcp
+inner join LUNDBECK_DW.COMMON.TERRITORY t on t.TERRITORY_ID=fcp.TERRITORY_ID
+where fcp.CURRENT_IND='Y' and t.SALESFORCE_NAME='MERIDIAN' 
+and t.CURRENT_IND='Y' and t.TERRITORY_NAME<>'UNASSIGNED' 
+and t.TERRITORY_NAME<>'SPECIAL ASSIGNMENT – VS';
+
+
+
+left join(FACT)
+Load Distinct
+CUSTOMER_KEY, 
+TERRITORY_KEY,
+Reached as HCP_Reached
+Resident FACT
+where Reached='Y';
+
+
+
+///end
+FINAL_FACT_TABLE:
+Load *,
+floor(DATE#(DATE_KEY,'YYYYMMDD'))&TERRITORY_KEY as Working_Day_Key, 
+if(CALL_PLAN_FLAG='Y',CALL_PLAN_FLAG,'N') as "Call Plan Flag",
+floor(DATE#(DATE_KEY,'YYYYMMDD')) as "NUM_DATE_KEY"
+Resident FACT;
+
+drop table FACT;
+drop Field CALL_PLAN_FLAG;
+drop Field DATE_KEY from FINAL_FACT_TABLE;
+
+
+
+Store FINAL_FACT_TABLE into [$(vQSBIE_TransformQVD_Fact)/FACT_MERIDIAN_CPA$(vSpace)$(vSF).qvd](qvd);
+
+
+Drop Table FINAL_FACT_TABLE;
+
+///$tab Working Days by Territory
+NoConcatenate 
+[WD from FCA]:
+SQL
+select 
+  fca.TERRITORY_ID as TERRITORY_KEY, 
+  fca.TERRITORY_ID, 
+  CONCAT(LEFT(  fca.CALL_DATE_KEY,6) ,'01') AS MONTH_KEY, 
+  count(DISTINCT fca.CALL_DATE_KEY) AS NUMBER_WORKING_DAY,
+  '20210601' as TERR_EFF_DATE, 
+  '99991231' as TERR_EXP_DATE
+FROM LUNDBECK_DW.ANALYTICS.CALL_ACTIVITY_LU_SF fca
+inner join LUNDBECK_DW.COMMON.CALENDAR cal on fca.CALL_DATE_KEY = cal.DATE_KEY
+inner join LUNDBECK_DW.COMMON.TERRITORY t on fca.TERRITORY_ID= t.TERRITORY_ID
+where fca.DETAIL_PRIORITY =1
+and fca.PDE>0
+and cal.FLAG_WEEKDAY='Y'
+and t.SALESFORCE_NAME='MERIDIAN'
+and PRODUCT_GROUP_NAME IN ('VYEPTI')
+group by CONCAT(left( fca.CALL_DATE_KEY,6) ,'01'),
+fca.TERRITORY_ID;
+
+Store [WD from FCA] into [$(vQSBIE_TransformQVD_Fact)/FACT_MERIDIAN_FCA$(vSpace)$(vSF).qvd](qvd);
+
+Drop Table [WD from FCA];
