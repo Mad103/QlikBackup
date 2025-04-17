@@ -1,0 +1,23 @@
+
+SHEETS
+
+OBJECTS ON SHEETS
+
+DIMENSIONS
+
+MEASURES
+
+VARIABLES
+{"qName":"vGoalSFTrimester","qDefinition":"92","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"de302fe9-8745-4a6a-87c4-b175bf2061bc","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vStartingDateCalKey","qDefinition":"20231101","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"77b4aad7-f388-4d5e-af94-7a5a24a8f795","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vSpace","qDefinition":"_DEV","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"9c545a03-512b-4c0b-a27b-93c093a2042f","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vCompetitorWeekDate","qDefinition":"2025-04-18","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"862da5ba-6174-4229-a352-01626803fbb7","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vCurrentDataWeekCalKey","qDefinition":"20250418","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"f2ff0a39-8cc3-477e-a173-76b7400b67fe","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vCurrentSFYear","qDefinition":"2025","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"c1c06d6b-b627-4558-805d-ce6439551ace","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"QVDLocation","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"5db5fa7a-86f2-44e9-bacf-45cccaa3df01","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vCurrentDataWeek","qDefinition":"2025-04-18","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"46b75724-c5a0-4fe7-91d8-f54007f92222","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vSF","qDefinition":"_SF","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"f51cc40a-3636-49a3-91aa-500eec03b378","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vToday","qDefinition":"20250417","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"1d7ee88d-a4a1-4517-bb1a-e423275f5979","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vDW2RefreshDate","qDefinition":"20240514","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"c5200387-b86f-4c59-9503-7bb12e722aab","qType":"variable"},"qData":[]}
+
+FIELDS
