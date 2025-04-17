@@ -1,0 +1,151 @@
+
+SHEETS
+
+OBJECTS ON SHEETS
+
+DIMENSIONS
+
+MEASURES
+
+VARIABLES
+{"qName":"vQSBIE_TransformQVD_Fact","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/QlikSense BI Evolution\/QVDs\/Transform\/Facts","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"19305bd2-b786-49b7-9bb6-cc51b96f0927","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vRetailDateStart","qDefinition":"20240401","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"ce908f43-a302-4c97-83f9-c865a35e2a95","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vQSBIE_ExtractQVD_Fact","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/QlikSense BI Evolution\/QVDs\/Extract\/Facts","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"f8d1ad94-6511-427f-9e55-f60795571460","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vAllCustomerAlias_Daily","qDefinition":"ASD|CARDINAL|CURASCRIPT|MCKESSON|ORSINI|WALGREENS","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"bc4211ac-779c-4556-a879-e1fd314d1f5d","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vTodayKey","qDefinition":"20250417","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"b806f98c-5791-4cf0-b9ab-1092ddfd851c","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vTodayFormatted","qDefinition":"20250417","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"b8943c03-fb89-4536-95b7-0cec4b85a745","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vQSBIE_TransformQVD_Dimension","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/QlikSense BI Evolution\/QVDs\/Transform\/Dimensions","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"11bb0b8a-5f0e-4cf8-ae90-de7517738106","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vSpace","qDefinition":"_DEV","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"dcab165c-70b0-4506-9cf6-5f5048cbd948","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vAllCustomerAlias_Account","qDefinition":"ASD|CARDINAL|CURASCRIPT|MCKESSON|ORSINI|WALGREENS","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"1f021e60-06c8-407c-9112-109aa6a79aba","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vConfidentialMessage","qDefinition":"*Prescriber data acquired by the Lundbeck are to be treated as confidential information. Sales representatives (and other employees and agents) must not disclose those data to any party outside of the Company without the express permission of the Legal Division. In addition, sales representatives (and other employees and agents) cannot ask co-promotion colleagues to share prescriber data with them.","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"c2d86355-9b85-4ec9-97e1-b925e6ca686f","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vToday","qDefinition":"04\/17\/2025","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"329346b1-8931-43c4-b847-4062ac541f5c","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vQSBIE_OfflineFiles","qDefinition":"lib:\/\/LuUS_DATA:LuUS_SharePoint\/Shared Documents\/Qlik Sense Data Files","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"5d5073cc-2bce-4fcb-b0c9-9b11f57a7cc7","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vAccountDateStart","qDefinition":"20240301","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"0f4b3204-5aca-4c6b-817a-9a85f06643aa","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vPatientDateStart","qDefinition":"20240401","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"14ef7f34-8541-4223-b0de-5ace0ab825bc","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vReactiveCalls","qDefinition":"Reactive Call","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"0c84254e-7cc4-4e67-96b4-a9c0a6cea69b","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vStorePathDim","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/QlikSense BI Evolution\/QVDs\/Extract\/Dimensions\/Vyepti\/HQ","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"b314d17c-619d-4632-9ea4-6709b376dca7","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vQSBIE_ExtractQVD_Dimension","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/QlikSense BI Evolution\/QVDs\/Extract\/Dimensions","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"5faf62e8-2a19-41cf-b7c5-57dc6c59a8e3","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vStorePathFact","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/QlikSense BI Evolution\/QVDs\/Extract\/Facts\/Vyepti\/HQ","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"a7e22668-a048-4616-9a84-b9956e83cbcb","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vZeroFactPatientDateStart","qDefinition":"20230401","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"cc45171c-5ab1-4620-9dc8-e2e382ae63ad","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vWeekDay","qDefinition":"Thu","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"e7397def-f440-468a-abb8-73419f25592c","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vZeroFactAccountDateStart","qDefinition":"20230401","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"03ab090f-3855-4455-8adb-bf7ca0beff83","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vZeroFactRetailDateStart","qDefinition":"20230401","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"4abf3822-29c5-47ab-961e-8314876787a2","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vSF","qDefinition":"_SF","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"6ca0037f-937e-454e-85df-755990161e2a","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vOLDVINS","qDefinition":"'IVX HEALTH', 'OPTION CARE', 'PARAGON','VITAL CARE'","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"dedde0f3-0e04-4e46-b0a9-0b745f4457de","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vNEWVINS","qDefinition":"'TWELVESTONE', 'INFUSION FOR HEALTH', 'VIVO INFUSION' , 'SOLEO HEALTH'","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"1482bcff-f789-4bcc-8708-5003031b75a4","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vAllCustomerAlias","qDefinition":"ASD|ASD SPECIALTY HEALTHCARE, LLC.|ASD-BESSE MEDICAL|ASD-ONCOLOGY SUPPLY|MCKESSON|MCKESSON-MPB|MCKESSON-MSCD|ORSINI|WALGREENS","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"13ee3be8-6b40-4f90-abce-486bd1b5102b","qType":"variable"},"qData":[]}
+{"qName":"vAllCustomerAlias_Dailyinv","qDefinition":"ASD|MCKESSON|ORSINI|WALGREENS","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"c976a1ae-2e38-47ae-8e1a-3d24f138bcea","qType":"variable"},"qData":[]}
+{"qName":"VmaxDate","qDefinition":"20230929","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"652b1ebd-6e20-4f80-a5bd-ac3acfd77b00","qType":"variable"},"qData":[]}
+{"qName":"vCustomerAliasBody","qDefinition":"Hi Team,\\n Vyepti SD\/SP Customer Aliases are not as per the standard namimg convention, i.e. ASD,MCKESSON,ORSINI,WALGREENS. Affected Vyepti HQ Applications are Vyepti Daily Launch Tracker and Vyepti Account Performance Dashboard.","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"df934f73-db7d-49d1-9770-149f554721d2","qType":"variable"},"qData":[]}
+{"qName":"vCurrentDay","qDefinition":"20231009","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"1d28982b-d7fa-4c10-b839-6af92aadfc09","qType":"variable"},"qData":[]}
+{"qName":"vCustomerAliasSubject","qDefinition":"Incorrect Customer Aliases for Vyepti SD\/SP names in DIM_CUSTOMER","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"eab117ac-2549-44c6-b426-8e3c1bcb098d","qType":"variable"},"qData":[]}
+{"qName":"vMaxMedDate","qDefinition":"30-Jun-2023","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"1cb3e2dd-2afe-4dd3-a17d-b543a682b1be","qType":"variable"},"qData":[]}
+{"qName":"vMaxRxDate","qDefinition":"30-Jun-2023","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"42a9d557-78f4-4cb1-8dbc-10649c3fdd96","qType":"variable"},"qData":[]}
+{"qName":"vDateStart","qDefinition":"20190401","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"e9a9e62b-7019-4ed6-9a9f-d1348a073c22","qType":"variable"},"qData":[]}
+{"qName":"vAllCustomerAlias_Monthlyinv","qDefinition":"ASD|MCKESSON|ORSINI|WALGREENS","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"424aaea1-6f84-4f76-8574-26396259fa8d","qType":"variable"},"qData":[]}
+{"qName":"vStorePath","qDefinition":"lib:\/\/LuUS QVD\/QlikSense BI Evolution\/QVDs\/Extract\/Facts","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"ba91cf00-e722-4186-a202-d98d3d29ec73","qType":"variable"},"qData":[]}
+
+FIELDS
+{"qIsHidden":true,"qIsSystem":true,"qName":"$Field","qCardinal":97,"qTags":["$hidden","$system","$ascii","$text","$key"],"qSrcTables":[]}
+{"qIsHidden":true,"qIsSystem":true,"qName":"$Table","qCardinal":2,"qTags":["$hidden","$system","$ascii","$text","$key"],"qSrcTables":[]}
+{"qIsHidden":true,"qIsSystem":true,"qName":"$Rows","qCardinal":2,"qTags":["$hidden","$system","$numeric","$integer"],"qSrcTables":[]}
+{"qIsHidden":true,"qIsSystem":true,"qName":"$Fields","qCardinal":2,"qTags":["$hidden","$system","$numeric","$integer"],"qSrcTables":[]}
+{"qIsHidden":true,"qIsSystem":true,"qName":"$FieldNo","qCardinal":96,"qTags":["$hidden","$system","$numeric","$integer"],"qSrcTables":[]}
+{"qIsHidden":true,"qIsSystem":true,"qName":"$Info","qCardinal":1,"qTags":["$hidden","$system","$ascii","$text"],"qSrcTables":[]}
+{"qName":"CALL_TYPE","qCardinal":1,"qTags":["$ascii","$text"],"qSrcTables":["Sheet1"]}
+{"qName":"CUSTOMER_KEY","qCardinal":4654708,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"DEMAND_GENERATING_SITE","qCardinal":3,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"INFUSION_LOCATION","qCardinal":3,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"CUSTOMER_TYPE","qCardinal":4,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"LUNDBECK_ID","qCardinal":4654708,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"ORGANIZATION_NAME","qCardinal":488768,"qTags":["$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"CUSTOMER_FIRST_NAME","qCardinal":210484,"qTags":["$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"CUSTOMER_MIDDLE_NAME","qCardinal":182702,"qTags":["$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"CUSTOMER_LAST_NAME","qCardinal":582459,"qTags":["$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"CUSTOMER_NAME","qCardinal":3997893,"qTags":["$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"CUSTOMER_ALIAS","qCardinal":3482260,"qTags":["$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"CUSTOMER_ADDR1","qCardinal":1175252,"qTags":["$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"CUSTOMER_ADDR2","qCardinal":78212,"qTags":["$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"CUSTOMER_CITY","qCardinal":17735,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"CUSTOMER_STATE","qCardinal":118,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"CUSTOMER_STATE_ABBREV","qCardinal":63,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"CUSTOMER_ZIP","qCardinal":31708,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"CUSTOMER_ADDR_LATITUDE","qCardinal":1133772,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"CUSTOMER_ADDR_LONGITUDE","qCardinal":1161051,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"CUSTOMER_PHONE_TYPE","qCardinal":2,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"CUSTOMER_PHONE","qCardinal":1144698,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"CUSTOMER_PHONE_EXT","qCardinal":37,"qTags":["$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"CUSTOMER_STATUS","qCardinal":3,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"CUSTOMER_STATUS_REASON","qCardinal":8,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"CUSTOMER_SUB_TYPE_CD","qCardinal":74,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"CUSTOMER_SUB_TYPE_NAME","qCardinal":76,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"CUSTOMER_DETAIL_TYPE_CODE","qCardinal":328,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"CUSTOMER_DETAIL_TYPE","qCardinal":334,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"NPI","qCardinal":2742520,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"ME_ID","qCardinal":1681934,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"SPECIALTY","qCardinal":458,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"DATA_STEWARDSHIP_EXCLUSION_FLAG","qCardinal":2,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"LU_NO_CONTACT_FLAG","qCardinal":2,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"NO_CONTACT_FLAG","qCardinal":2,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"PDRP_IND","qCardinal":2,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"PSYCH_SPECIALTY_IND","qCardinal":2,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"NEURO_SPECIALTY_IND","qCardinal":2,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"CARDIO_SPECIALTY_IND","qCardinal":2,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"PRIMARY_CARE_SPECIALTY_IND","qCardinal":2,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"MID_LEVEL_PRACTITIONER_IND","qCardinal":2,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"ABILIFY_MAINTENA_EXCLUSION_IND","qCardinal":2,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"CARNEXIV_EXCLUSION_IND","qCardinal":2,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"NORTHERA_EXCLUSION_IND","qCardinal":2,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"ONFI_EXCLUSION_IND","qCardinal":2,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"REXULTI_EXCLUSION_IND","qCardinal":2,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"SABRIL_EXCLUSION_IND","qCardinal":2,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"TRINTELLIX_EXCLUSION_IND","qCardinal":2,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"XENAZINE_EXCLUSION_IND","qCardinal":2,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"VYEPTI_EXCLUSION_IND","qCardinal":2,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"ABILIFY_MAINTENA_RETAIL_HCO_EXCL_IND","qCardinal":2,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"REXULTI_RETAIL_HCO_EXCL_IND","qCardinal":2,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"TRINTELLIX_RETAIL_HCO_EXCL_IND","qCardinal":2,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"KEY_OPINION_LEADER_FLAG","qCardinal":2,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"HIN","qCardinal":114911,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"EPILEPSY_CENTER","qCardinal":2,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"HUNTINGTONS_STUDY_GROUP","qCardinal":2,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"LIS_TARGET","qCardinal":2,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"PCT_LIS_CLAIMS","qCardinal":93024,"qTags":["$numeric"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"INFUSION_CAPABLE","qCardinal":3,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"BUY_AND_BILL","qCardinal":3,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"VYEPTI_PREFERRED_ACCOUNT","qCardinal":2,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"MSA","qCardinal":343,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"CBSA","qCardinal":998,"qTags":["$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"VEEVA_CUSTOMER_ID","qCardinal":3297425,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"REXULTI_SALES_BI_VISIBILITY","qCardinal":2,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"ABILITY_TO_DETAIL","qCardinal":3,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"HOME_INFUSION","qCardinal":3,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"LEAD_GENERATED_DATE","qCardinal":79,"qTags":["$numeric","$integer","$timestamp","$date"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"LEAD_GENERATED","qCardinal":3,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"LEAD_STATUS_DATE","qCardinal":28,"qTags":["$numeric","$integer","$timestamp","$date"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"LEAD_STATUS","qCardinal":4,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"DMA","qCardinal":272,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"VYEPTI_ACCOUNT_TYPE","qCardinal":4,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"ASOC_GROUP","qCardinal":78,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"REXULTI_SCZ_EXCLUSION_IND","qCardinal":2,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"REXULTI_MDD_EXCLUSION_IND","qCardinal":2,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"REXULTI_AAD_EXCLUSION_IND","qCardinal":2,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"REXULTI_RETAIL_HCO_SCZ_EXCL_IND","qCardinal":2,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"REXULTI_RETAIL_HCO_AAD_EXCL_IND","qCardinal":2,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"REXULTI_RETAIL_HCO_MDD_EXCL_IND","qCardinal":2,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"ASIMTUFII_GREEN_ACCESS","qCardinal":609,"qTags":["$numeric"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"ASIMTUFII_YELLOW_ACCESS","qCardinal":400,"qTags":["$numeric"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"ASIMTUFII_RED_ACCESS","qCardinal":446,"qTags":["$numeric"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"aCGRP Decile","qCardinal":0,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"aCGRP Decile Value","qCardinal":0,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"Segment","qCardinal":0,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"HCP_PRIORITIZATION","qCardinal":0,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"HCP_CORE_TARGETS","qCardinal":0,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"Core Target","qCardinal":0,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"Territory Rank","qCardinal":0,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"aCGRP BOTOX Decile","qCardinal":0,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"aCGRP BOTOX Decile Value","qCardinal":0,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"Segment Flag","qCardinal":1,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"Share Segment","qCardinal":0,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"Vyepti Segment","qCardinal":4,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
+{"qName":"MERIDIAN_TARGET_FLAG","qCardinal":1,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CUSTOMER-3"]}
