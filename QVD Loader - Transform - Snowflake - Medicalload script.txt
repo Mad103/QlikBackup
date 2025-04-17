@@ -1,0 +1,345 @@
+///$tab Main
+SET ThousandSep=',';
+SET DecimalSep='.';
+SET MoneyThousandSep=',';
+SET MoneyDecimalSep='.';
+SET MoneyFormat='$ ###0.00;-$ ###0.00';
+SET TimeFormat='h:mm:ss TT';
+SET DateFormat='M/D/YYYY';
+SET TimestampFormat='M/D/YYYY h:mm:ss[.fff] TT';
+SET FirstWeekDay=6;
+SET BrokenWeeks=1;
+SET ReferenceDay=0;
+SET FirstMonthOfYear=1;
+SET CollationLocale='en-US';
+SET CreateSearchIndexOnReload=1;
+SET MonthNames='Jan;Feb;Mar;Apr;May;Jun;Jul;Aug;Sep;Oct;Nov;Dec';
+SET LongMonthNames='January;February;March;April;May;June;July;August;September;October;November;December';
+SET DayNames='Mon;Tue;Wed;Thu;Fri;Sat;Sun';
+SET LongDayNames='Monday;Tuesday;Wednesday;Thursday;Friday;Saturday;Sunday';
+SET NumericalAbbreviation='3:k;6:M;9:G;12:T;15:P;18:E;21:Z;24:Y;-3:m;-6:μ;-9:n;-12:p;-15:f;-18:a;-21:z;-24:y';
+
+LIB CONNECT TO 'LuUS_DATA:SNOWFLAKE_LuUS_BI_Reader';
+
+SET vQSBIE_ExtractQVD_Dimension = 'lib://LuUS_DATA:DataFiles/Production/QlikSense BI Evolution/QVDs/Extract/Dimensions';
+SET vQSBIE_ExtractQVD_Fact = 'lib://LuUS_DATA:DataFiles/Production/QlikSense BI Evolution/QVDs/Extract/Facts';
+SET vQSBIE_TransformQVD_Dimension = 'lib://LuUS_DATA:DataFiles/Production/QlikSense BI Evolution/QVDs/Transform/Dimensions';
+SET vQSBIE_TransformQVD_Fact = 'lib://LuUS_DATA:DataFiles/Production/QlikSense BI Evolution/QVDs/Transform/Facts';
+///$tab Mapping
+RecordTypeMap:
+Mapping
+LOAD
+    ID,
+    NAME
+FROM [$(vQSBIE_ExtractQVD_Dimension)/DIM_RECORDTYPE.qvd]
+(qvd);
+
+UserRoleMap:
+Mapping
+LOAD
+    ID,
+    NAME
+FROM [$(vQSBIE_ExtractQVD_Dimension)/DIM_USERROLE.qvd]
+(qvd);
+
+OwnerNameMap:
+Mapping
+LOAD
+    ID,
+    NAME
+FROM [$(vQSBIE_ExtractQVD_Dimension)/DIM_USER.qvd]
+(qvd);
+
+CallNameMap:
+Mapping
+LOAD
+	ID,
+	NAME
+FROM [$(vQSBIE_ExtractQVD_Fact)/CALL_ACTIVITY.qvd]
+(qvd);
+
+///$tab Accounts
+DIM_Account:
+LOAD
+    ID as %AccountId,
+    LU_ID_LUUS__C as [Account: LU ID],
+    NAME as [Account: Name],
+    NEW_KOL_VOD__C as [KOL?],
+    TOP_30_KOL_LUUS__C as [Top 30],
+    ACCOUNT_STATUS_LUUS__C
+FROM [$(vQSBIE_ExtractQVD_Dimension)/DIM_ACCOUNT.qvd]
+(qvd);
+
+left join (DIM_Account)
+DIM_Address:
+LOAD
+	ACCOUNT_VOD__C as %AccountId,
+    CITY_VOD__C as City,
+    STATE_VOD__C as State,
+    PRIMARY_VOD__C 
+FROM [$(vQSBIE_ExtractQVD_Dimension)/DIM_ADDRESS.qvd]
+(qvd)
+where match(PRIMARY_VOD__C, 'true')
+;
+
+left join(DIM_Account)
+DIM_TSF:
+LOAD 
+	ACCOUNT_VOD__C as %AccountId,
+    MY_KOL
+FROM [$(vQSBIE_ExtractQVD_Dimension)/DIM_TSF.qvd]
+(qvd)
+;
+
+store * from DIM_Account into '$(vQSBIE_TransformQVD_Dimension)/DIM_ACCOUNT.qvd';
+///$tab User / Territory
+DIM_User:
+LOAD
+    ID as %UserId,
+    NAME,
+    ApplyMap('UserRoleMap', USERROLEID) as [Owner Role],
+    ISACTIVE
+FROM [$(vQSBIE_ExtractQVD_Dimension)/DIM_USER.qvd]
+(qvd);
+
+left join(DIM_User)
+DIM_User_Terr_Assoc:
+LOAD 
+	TERRITORY2ID as %TerritoryId,
+	USERID as %UserId
+FROM [$(vQSBIE_ExtractQVD_Dimension)/DIM_User_Terr_Assoc.qvd]
+(qvd)
+;
+
+left join(DIM_User)
+DIM_Territory:
+LOAD
+	ID as %TerritoryId,
+    NAME as TerritoryName
+FROM [$(vQSBIE_ExtractQVD_Dimension)/DIM_Territory.qvd]
+(qvd)
+;
+
+store * from DIM_User into '$(vQSBIE_TransformQVD_Dimension)/DIM_USER.qvd';
+///$tab Call Activity
+CALL_ACTIVITY_Tmp:
+LOAD 
+	INTERACTION_VOD__C    
+FROM [$(vQSBIE_ExtractQVD_Fact)/MEDICAL_INSIGHT.qvd]
+(qvd);
+
+CALL_ACTIVITY:
+LOAD 
+	ID as [%CallId], 
+    ID as Call_Activity_ID,
+	ACCOUNT_VOD__C as [%AccountId], 
+	//ADD_KEY_MESSAGE_VOD__C, 
+	//ADDRESS_LINE_1_VOD__C, 
+	//ADDRESS_LINE_2_VOD__C, 
+	//ADDRESS_VOD__C, 
+// 	ATTENDEE_TYPE_VOD__C, 
+	//ATTENDEE_LIST_VOD__C, 
+	//ATTENDEES_VOD__C, 
+	AUDIENCE_TYPE_LUUS__C as [Audience Type], 
+	//CLM_VOD__C, 
+	date(CALL_DATE_VOD__C) as [%DATE_KEY], 
+	//CALL_DATETIME_VOD__C, 
+	NAME as [Call Name], 
+	//CALL_TYPE_VOD__C, 
+	//CITY_VOD__C, 
+	CREATEDBYID as [%UserId], 
+	//CREATEDDATE, 
+	//CREDENTIALS_VOD__C, 
+	//DETAILED_PRODUCTS_VOD__C, 
+	//DISBURSED_TO_VOD__C, 
+	//DURATION_VOD__C, 
+	//ENTITY_DISPLAY_NAME_VOD__C, 
+	//INTERACTION_TYPE_LUUS__C, 
+	INTERACTION_LENGTH_LUUS__C as [Interaction Length], 
+	//IS_PARENT_CALL_VOD__C, 
+	//IS_SAMPLED_CALL_VOD__C, 
+	//LASTACTIVITYDATE, 
+	//LASTMODIFIEDBYID, 
+	//LASTMODIFIEDDATE, 
+	//LAST_DEVICE_VOD__C, 
+	//LICENSE_VOD__C, 
+	//LOCATION_SERVICES_STATUS_VOD__C, 
+	MEETING_TYPE_LUUS__C as [Contact Type], 
+	//MOBILE_CREATED_DATETIME_VOD__C, 
+	//MOBILE_LAST_MODIFIED_DATETIME_VOD__C, 
+	//MSL_INTERACTION_TYPE_LUUS__C, 
+	//NEXT_CALL_NOTES_VOD__C, 
+    ApplyMap('OwnerNameMap', OWNERID, null()) as [Call: Owner Name],
+	//PARENT_ADDRESS_VOD__C, 
+	//PARENT_CALL_VOD__C, 
+	//RECORD_AS_STAFF_CALL_LUUS__C, 
+    ApplyMap('RecordTypeMap', RECORDTYPEID, null()) as [Call: Record Type],
+	//SALUTATION_VOD__C, 
+	//SAMPLE_CARD_REASON_VOD__C, 
+	//SAMPLE_CARD_VOD__C, 
+	//SIGNATURE_DATE_VOD__C, 
+	//SIGNATURE_LOCATION_LATITUDE_VOD__C, 
+	//SIGNATURE_LOCATION_LONGITUDE_VOD__C, 
+	//STATE_VOD__C, 
+    trim(left(STATUS_VOD__C, Index(STATUS_VOD__C,'_')-1)) as [Status],
+	//SUBMITTED_BY_MOBILE_VOD__C, 
+	//SYSTEMMODSTAMP, 
+	//TERRITORY_VOD__C, 
+	//USER_VOD__C, 
+	//ZIP_VOD__C, 
+	//ZIP_4_VOD__C, 
+	//LU_MIRF__C, 
+	//RESOLUTION_LUUS__C, 
+	//MIRF_FU_FIRST_ATTEMPT_DATE__C, 
+	//MIRF_FU_FIRST_ATTEMPT__C, 
+	//MIRF_FU_SECOND_ATTEMPT_DATE__C, 
+	//MIRF_FU_SECOND_ATTEMPT__C, 
+	//MIRF_FU_THIRD_ATTEMPT_DATE__C, 
+	//MIRF_FU_THIRD_ATTEMPT__C, 
+	//MEDICAL_INQUIRY_VOD__C, 
+	//RELATED_PRODUCTS__C, 
+	//RELATED_PRODUCTS_FORMULA_LUUS__C, 
+	//SIGNATURE_CAPTURED_REMOTELY_VOD__C, 
+	//REMOTE_SIGNATURE_ATTENDEE_NAME_VOD__C, 
+	//CALL_CHANNEL_VOD__C, 
+	//ADDITIONAL_ATTENDESS_LUUS__C,
+	PROACTIVE_REACTIVE_LBK__C, 
+	PRODUCT_LBK__C as [MIRF Product], 
+	INDICATION_LBK__C as [MIRF Indication]
+FROM [$(vQSBIE_ExtractQVD_Fact)/CALL_ACTIVITY.qvd]
+//FROM [lib://DataFiles/CALL_ACTIVITY.qvd]
+(qvd)
+where 
+// exists(INTERACTION_VOD__C, ID) and 
+exists(%AccountId, ACCOUNT_VOD__C)
+;
+
+
+drop table CALL_ACTIVITY_Tmp;
+///$tab Interactions
+join(CALL_ACTIVITY)
+MEDICAL_DISCUSSION:
+LOAD 
+// 	ACCOUNT_TACTIC_VOD__C, 
+// 	ACCOUNT_VOD__C as [%AccountId], 
+	//ATTENDEE_TYPE_VOD__C, 
+// 	CALL2_MOBILE_ID_VOD__C, 
+	//CALL_DATE_VOD__C as %DATE_KEY, 
+	//CONTACT_VOD__C, 
+// 	CREATEDBYID as [%UserId], 
+	date(CREATEDDATE) as [Created Date], 
+	//DETAIL_GROUP_VOD__C, 
+	DISCUSSION_DETAILS__C as [Discussion Details], 
+	//DISCUSSION_VOD__C, 
+	//ENTITY_REFERENCE_ID_VOD__C, 
+	ID as InteractionID, 
+    INTERACTION_VOD__C as [%CallId],
+	//ISDELETED, 
+	//ISLOCKED, 
+	//KEY_INSIGHT_QUESTION__C, 
+	//LASTMODIFIEDBYID, 
+	date(LASTMODIFIEDDATE) as [Last Modified Date], 
+	LBK_DISEASE_STATE__C as [Disease State], 
+	LBK_INDICATION__C as [Indication], 
+    trim(left(LBK_PRODUCT__C, Index(LBK_PRODUCT__C,'/')-1)) as [Product],
+	LBK_TOPICS__C as [Key Discussion Topic], 
+	LBK_UNSOLICITED__C as [Unsolicited], 
+	//MAYEDIT, 
+	//MEDICAL_EVENT_VOD__C, 
+	//MOBILE_ID_VOD__C, 
+	//NAME, 
+	//OVERRIDE_LOCK_VOD__C, 
+	//PRODUCT_STRATEGY_VOD__C, 
+	//PRODUCT_TACTIC_VOD__C, 
+	//PRODUCT_VOD__C, 
+    ApplyMap('RecordTypeMap', RECORDTYPEID, null()) as [Medicial Discussion: Record Type]//,
+
+	//SYSTEMMODSTAMP, 
+	//USER_VOD__C, 
+	//ZVOD_PRODUCT_MAP_VOD__C
+    
+FROM [$(vQSBIE_ExtractQVD_Fact)/MEDICAL_DISCUSSION.qvd]
+//FROM [lib://DataFiles/MEDICAL_DISCUSSION.qvd]
+(qvd)
+;
+
+
+
+
+
+///$tab Insights
+join(CALL_ACTIVITY)
+MEDICAL_INSIGHT:
+LOAD ACCOUNT_VOD__C as [%AccountId], 
+	CLINICAL_TRIAL_VOD__C as [Clinical Trial], 
+	CREATEDBYID as [%UserId], 
+// 	CREATEDDATE, 
+	DATE_VOD__C as [%DATE_KEY], 
+	purgechar(DESCRIPTION_VOD__C, '<p>') as [Description], 
+// 	ENTITY_REFERENCE_ID_VOD__C, 
+	ID as Medical_Insight_ID, 
+	ApplyMap('CallNameMap', INTERACTION_VOD__C) as [Interaction], 
+// 	ISDELETED, 
+// 	ISLOCKED, 
+// 	LASTMODIFIEDBYID, 
+// 	LASTMODIFIEDDATE, 
+// 	LASTREFERENCEDDATE, 
+// 	LASTVIEWEDDATE, 
+// 	MAYEDIT, 
+	MEDICAL_EVENT_VOD__C as [Medical Event], 
+// 	MOBILE_ID_VOD__C, 
+	NAME as [Medical Insight Name], 
+// 	OTHER_SOURCE_VOD__C, 
+// 	OVERRIDE_LOCK_VOD__C, 
+// 	OWNERID, 
+// 	PUBLICATION_VOD__C, 
+	ApplyMap('RecordTypeMap', RECORDTYPEID, null()) as [Medicial Insight: Record Type],
+    trim(left(STATUS_VOD__C, Index(STATUS_VOD__C,'_')-1)) as [Status], 
+	SUMMARY_VOD__C as [Summary], 
+// 	SYSTEMMODSTAMP, 
+// 	UNLOCK_VOD__C, 
+	KEY_INSIGHT_TOPIC_LUUS__C as [Key Insight Topic], 
+	KEY_INSIGHT_QUESTION_LUUS__C as [Key Insight Question], 
+	INDICATION_LUUS__C as [Indication], 
+//     replace(left(PRODUCT_LUUS__C, Index(PRODUCT_LUUS__C,'/'))-1, '  ', '') as [Product],
+	if(wildmatch(PRODUCT_LUUS__C, '*Abil*'), 'Abilify Maintena', 
+    	if(wildmatch( PRODUCT_LUUS__C, '*Northera*'), 'Northera', 
+        	if(wildmatch( PRODUCT_LUUS__C, '*Rexulti*'), 'Rexulti',
+            	if(wildmatch( PRODUCT_LUUS__C, '*Vyepti*'), 'Vyepti', 
+                	if(wildmatch( PRODUCT_LUUS__C, '*Sabril*'), 'Sabril'
+              ) ) ) ) )   
+        	 as Product,
+	UNSOLICITED_LUUS__C as [Unsolicited],
+    APPROVAL_STATUS_LUUS__C as [Approval Status], 
+	DISEASE_STATE_LUUS__C as [Disease State]
+    
+FROM [$(vQSBIE_ExtractQVD_Fact)/MEDICAL_INSIGHT.qvd]
+//FROM [lib://DataFiles/MEDICAL_INSIGHT.qvd]
+(qvd);
+
+store * from CALL_ACTIVITY into '$(vQSBIE_TransformQVD_Fact)/FACT_CALL_ACTIVITY.qvd'; 
+
+
+
+
+///$tab Drop Tables
+LET vNumTabels = NoOfTables();
+
+FOR j=0 to $(vNumTabels)-1
+
+ 
+
+LET vNumTabels = TableName(0);
+  
+  DROP Table [$(vNumTabels)];
+
+NEXT j;
+///$tab Exit Script
+Exit Script;
+///$tab Change Log
+/*
+Date 			User		Change
+20241024		MGOB		Updated logic for User/Territory
+20231122		MGOB		Added ISACTIVE field on USER table
+
+*/
