@@ -1,0 +1,2666 @@
+///$tab Main
+SET ThousandSep=',';
+SET DecimalSep='.';
+SET MoneyThousandSep=',';
+SET MoneyDecimalSep='.';
+SET NumFormat='';
+SET MoneyFormat='#.##0,00 kr.;-#.##0,00 kr.';
+SET TimeFormat='hh.mm.ss';
+SET DateFormat='MM/DD/YYYY';
+SET TimestampFormat='MM/DD/YYYY hh.mm.ss[.fff]';
+SET FirstWeekDay=0;
+SET BrokenWeeks=0;
+SET ReferenceDay=4;
+SET FirstMonthOfYear=1;
+SET CollationLocale='en-US';
+SET CreateSearchIndexOnReload=1;
+SET MonthNames='Jan;Feb;Mar;Apr;May;Jun;Jul;Aug;Sep;Oct;Nov;Dec';
+SET LongMonthNames='January;February;March;April;May;June;July;August;September;October;November;December'; 
+SET DayNames='Mon;Tue;Wed;Thu;Fri;Sat;Sun';
+SET LongDayNames='Monday;Tuesday;Wednesday;Thursday;Friday;Saturday;Sunday';
+SET NumericalAbbreviation='3:k;6:M;9:G;12:T;15:P;18:E;21:Z;24:Y;-3:m;-6:μ;-9:n;-12:p;-15:f;-18:a;-21:z;-24:y';
+
+
+  //LIB CONNECT TO 'LuUS_DATA:MSSQL_LuUS_DW_2.0';
+//LIB CONNECT TO 'LuUS_DATA:vAZ_MSSQL_LuUS_DW_2.0';
+
+LIB CONNECT TO 'LuUS_DATA:SNOWFLAKE_LuUS_BI_Reader';
+LET StartDate =Date(YearStart(Today(),-2),'YYYYMMDD');
+
+$(Must_Include='lib://LuUS_DATA:LuUS_SharePoint/Shared Documents/Qlik Sense Data Files/Include/Qlik Cloud/FolderConnections.txt');
+
+
+LET vSpace=if(upper(GetSysAttr('spaceType'))='SHARED' or (GetSysAttr('spaceType'))='','_DEV');
+
+Trace '$(vSpace)';
+
+Let vSF = '_SF';
+Trace '$(vSF)';
+
+LOAD
+    CALL_TYPE
+FROM [lib://LuUS_DATA:LuUS_SharePoint/Shared Documents/Qlik Sense Data Files/ExcelFiles/ReactiveCalls.xlsx]
+(ooxml, embedded labels, table is Sheet1);
+
+let vReactiveCalls = peek('CALL_TYPE');
+
+trace '$(vReactiveCalls)';
+///$tab SF: Aggregated Fact Call Activity
+AGGREGATED_FACT_CALL_ACTIVITY:
+Load AD_ID as "AD ID",  
+	PRODUCT_NAME,
+    DETAIL_PRIORITY,
+    replace(SF_TRIMESTER,'-',' - ') as SF_TRIMESTER,
+    CALL_DATE_KEY,
+    PDE,
+    1 as Geo_Level;
+SQL SELECT t.AD_ID as AD_ID,  
+	BRAND as PRODUCT_NAME,
+    DETAIL_PRIORITY,
+    SF_TRIMESTER,
+    CALL_DATE_KEY as CALL_DATE_KEY,
+    Sum(PDE) as PDE
+FROM "LUNDBECK_DW"."ANALYTICS"."CALL_ACTIVITY_LU_SF" CA
+Inner join"LUNDBECK_DW"."COMMON"."CALENDAR" C on CA.CALL_DATE_KEY=C.DATE_KEY
+INNER join "LUNDBECK_DW"."COMMON"."PRODUCTS" p on p.PRODUCT_GROUP_NAME=CA.PRODUCT_GROUP_NAME
+Inner Join "LUNDBECK_DW"."COMMON"."TERRITORY" t on t.TERRITORY_ID=CA.TERRITORY_ID 
+and p.BRAND in ('ABILIFY LAI FRANCHISE','REXULTI','TRINTELLIX') and RECORD_TYPE_NAME<>'Logistical Touchpoint'  and CA.LUNDBECK_ID<>'0'
+and call_date_key>=20210701  and CALL_TYPE <> '$(vReactiveCalls)'
+group by AD_ID, 
+	BRAND,
+    DETAIL_PRIORITY,
+    SF_TRIMESTER,
+    CALL_DATE_KEY;
+    
+
+
+Concatenate(AGGREGATED_FACT_CALL_ACTIVITY)
+Load AD_ID as "AD ID",  
+	PRODUCT_NAME,
+    DETAIL_PRIORITY,
+    replace(SF_TRIMESTER,'-',' - ') as SF_TRIMESTER,
+    CALL_DATE_KEY,
+    PDE,
+    2 as Geo_Level;
+SQL SELECT t.AREA_AD_ID as AD_ID,  
+	BRAND as PRODUCT_NAME,
+    DETAIL_PRIORITY,
+    SF_TRIMESTER,
+    CALL_DATE_KEY as CALL_DATE_KEY,
+    t.TERRITORY_ID,
+    Sum(PDE) as PDE
+FROM "LUNDBECK_DW"."ANALYTICS"."CALL_ACTIVITY_LU_SF" CA
+Inner join "LUNDBECK_DW"."COMMON"."CALENDAR" C on CA.CALL_DATE_KEY=C.DATE_KEY
+INNER join "LUNDBECK_DW"."COMMON"."PRODUCTS" p on p.PRODUCT_GROUP_NAME=CA.PRODUCT_GROUP_NAME
+Inner Join "LUNDBECK_DW"."COMMON"."TERRITORY" t on t.TERRITORY_ID=CA.TERRITORY_ID 
+and BRAND in ('ABILIFY LAI FRANCHISE','REXULTI','TRINTELLIX') and RECORD_TYPE_NAME<>'Logistical Touchpoint'  and CA.LUNDBECK_ID<>'0'
+and call_date_key>=20210701  and CALL_TYPE <> '$(vReactiveCalls)'
+group by t.AREA_AD_ID, 
+	BRAND,
+    DETAIL_PRIORITY,
+    SF_TRIMESTER,
+    CALL_DATE_KEY,
+    t.TERRITORY_ID;
+    
+Concatenate(AGGREGATED_FACT_CALL_ACTIVITY)
+Load AD_ID as "AD ID",  
+	PRODUCT_NAME,
+    DETAIL_PRIORITY,
+    replace(SF_TRIMESTER,'-',' - ') as SF_TRIMESTER,
+    CALL_DATE_KEY,
+    PDE,
+    3 as Geo_Level;
+SQL SELECT t.REGION_AD_ID as AD_ID,  
+	BRAND as PRODUCT_NAME,
+    DETAIL_PRIORITY,
+    SF_TRIMESTER,
+    CALL_DATE_KEY as CALL_DATE_KEY,
+    t.TERRITORY_ID,
+    Sum(PDE) as PDE
+FROM "LUNDBECK_DW"."ANALYTICS"."CALL_ACTIVITY_LU_SF" CA
+Inner join "LUNDBECK_DW"."COMMON"."CALENDAR" C on CA.CALL_DATE_KEY=C.DATE_KEY
+INNER join "LUNDBECK_DW"."COMMON"."PRODUCTS" p on p.PRODUCT_GROUP_NAME=CA.PRODUCT_GROUP_NAME
+Inner Join "LUNDBECK_DW"."COMMON"."TERRITORY" t on t.TERRITORY_ID=CA.TERRITORY_ID 
+and BRAND in ('ABILIFY LAI FRANCHISE','REXULTI','TRINTELLIX') and RECORD_TYPE_NAME<>'Logistical Touchpoint'  and CA.LUNDBECK_ID<>'0'
+and call_date_key>=20210701  and CALL_TYPE <> '$(vReactiveCalls)'
+group by t.REGION_AD_ID, 
+	BRAND,
+    DETAIL_PRIORITY,
+    SF_TRIMESTER,
+    CALL_DATE_KEY,
+    t.TERRITORY_ID;
+    
+store  AGGREGATED_FACT_CALL_ACTIVITY into [$(vQSBIE_ExtractQVD_Fact)/AGGREGATED_FACT_CALL_ACTIVITY$(vSpace)$(vSF).qvd](qvd);   
+
+
+DROP table AGGREGATED_FACT_CALL_ACTIVITY;    
+    
+
+///$tab SF: CALL_PLAN_DATE_RANGE
+NoConcatenate
+SubtitleDates:
+Select Distinct START_DATE_KEY as CALL_PLAN_START_DATE,
+		END_DATE_KEY as CALL_PLAN_END_DATE, 
+		T.SALESFORCE_NAME as  GROUP_NAMES 
+FROM"LUNDBECK_DW"."ANALYTICS"."CALL_PLAN_LU_SF" F
+INNER JOIN "LUNDBECK_DW"."COMMON"."TERRITORY" T on T.TERRITORY_ID = F.TERRITORY_ID
+where T.FRANCHISE='PSY' and F.CURRENT_IND='Y';
+
+Store SubtitleDates into [$(vQSBIE_ExtractQVD_Fact)/CALL_PLAN_DATE_RANGE$(vSpace)$(vSF).qvd](qvd);
+
+DROP Table SubtitleDates;
+///$tab SF: FACT CALL ACTIVITY
+FACT_CALL_ACTIVITY:
+SQL SELECT
+    '' as FACT_KEY,
+    CALL_DATE_KEY,
+    CALL_DATE_KEY AS ENTERED_DATE_KEY,
+    CALL_DATE_KEY as ENTERED_TIME_KEY,
+    LUNDBECK_ID as CUSTOMER_KEY,
+    HCO_LUNDBECK_ID as HCO_CUSTOMER_KEY,             
+    pg.PRODUCT_GROUP_CODE as    PRODUCT_GROUP_KEY,                  
+    TERRITORY_ID as TERRITORY_KEY,                     
+    DETAIL_PRIORITY,
+    PDE,
+    INTERACTION_TYPE,
+    STAFF_CALL,
+    RECORD_TYPE_NAME as RECORD_TYPE,                 
+    CALL_TYPE,
+    REPORT_CALL_TYPE,
+    REPORT_PRESCRIBER_CATEGORY,                                         
+    CALL_ID,                               
+    PARENT_CALL_ID,
+    CUSTOMER_ZIP,
+    CALL_ID as FACT_SOURCE_ID,
+    PRIMARY_MESSAGE,
+    SECONDARY_MESSAGE   
+FROM "LUNDBECK_DW"."ANALYTICS"."CALL_ACTIVITY_LU_SF" sa
+INNER JOIN LUNDBECK_DW.COMMON.PRODUCTS pg
+  ON pg.PRODUCT_GROUP_NAME = sa.PRODUCT_GROUP_NAME
+WHERE CALL_DATE_KEY >= '$(StartDate)'  and CALL_TYPE <> '$(vReactiveCalls)'
+
+union
+
+SELECT
+    'PlaceHolder' as FACT_KEY,	
+    CALL_DATE_KEY,
+    CALL_DATE_KEY AS ENTERED_DATE_KEY,
+    CALL_DATE_KEY as ENTERED_TIME_KEY,
+    LUNDBECK_ID as CUSTOMER_KEY,
+    HCO_LUNDBECK_ID as HCO_CUSTOMER_KEY,             
+    pg.PRODUCT_GROUP_CODE as    PRODUCT_GROUP_KEY,                  
+    TERRITORY_ID as TERRITORY_KEY,                     
+    DETAIL_PRIORITY,
+    PDE,
+    INTERACTION_TYPE,
+    'NULL' as STAFF_CALL,
+    RECORD_TYPE_NAME as RECORD_TYPE,                 
+    CALL_TYPE,
+    REPORT_CALL_TYPE,
+    'NULL' as REPORT_PRESCRIBER_CATEGORY,                                         
+    CALL_ID,                               
+    'NULL' as PARENT_CALL_ID,
+    CUSTOMER_ZIP,
+    CALL_ID as FACT_SOURCE_ID,
+    PRIMARY_MESSAGE,
+    SECONDARY_MESSAGE   
+FROM "LUNDBECK_DW"."ANALYTICS"."CALL_ACTIVITY_OTS_SF" sa
+INNER JOIN LUNDBECK_DW.COMMON.PRODUCTS pg
+  ON pg.PRODUCT_GROUP_NAME = sa.PRODUCT_GROUP_NAME
+WHERE CALL_DATE_KEY >= '$(StartDate)'  and CALL_TYPE <> '$(vReactiveCalls)'
+ 
+union all
+
+SELECT
+    'PlaceHolder' as FACT_KEY,
+    CALL_DATE_KEY,
+    CALL_DATE_KEY AS ENTERED_DATE_KEY,
+    CALL_DATE_KEY as ENTERED_TIME_KEY,
+    LUNDBECK_ID as CUSTOMER_KEY,
+    LUNDBECK_ID as HCO_CUSTOMER_KEY,    //HCO LU ID not available    - need to confirm     
+    pg.PRODUCT_GROUP_CODE as    PRODUCT_GROUP_KEY,                  
+    TERRITORY_ID as TERRITORY_KEY,                     
+    DETAIL_PRIORITY,
+    PDE,
+    INTERACTION_TYPE,
+    'NULL' as STAFF_CALL,
+    RECORD_TYPE_NAME as RECORD_TYPE,                 
+    CALL_TYPE,
+    REPORT_CALL_TYPE,
+    'NULL' as REPORT_PRESCRIBER_CATEGORY,                                      
+    CALL_ID,                               
+    'NULL' as PARENT_CALL_ID,
+    CUSTOMER_ZIP,
+    CALL_ID as FACT_SOURCE_ID,
+    'NULL' as PRIMARY_MESSAGE,
+    'NULL' as SECONDARY_MESSAGE   
+FROM "LUNDBECK_DW"."ANALYTICS"."CALL_ACTIVITY_TAK_SF" sa
+INNER JOIN LUNDBECK_DW.COMMON.PRODUCTS pg
+  ON pg.PRODUCT_GROUP_NAME = sa.PRODUCT_GROUP_NAME
+WHERE CALL_DATE_KEY >= '$(StartDate)'  and CALL_TYPE <> '$(vReactiveCalls)';
+
+STORE FACT_CALL_ACTIVITY INTO [$(vQSBIE_ExtractQVD_Fact)/FACT_CALL_ACTIVITY$(vSpace)$(vSF).qvd](qvd);
+
+DROP Table FACT_CALL_ACTIVITY;
+
+///$tab SF: NS1 FACT CALL ACTIVITY
+NoConcatenate
+Call_Activity:
+SELECT
+'PlaceHolder' as FACT_KEY,
+CALL_DATE_KEY,
+CALL_DATE,
+LUNDBECK_ID AS CUSTOMER_KEY,
+TERRITORY_ID AS TERRITORY_KEY,
+PRODUCT_GROUP_CODE AS PRODUCT_GROUP_KEY,
+CALL_TYPE,
+INTERACTION_TYPE,
+PRESCRIPTIVE_AUTHORITY_IND,
+PARENT_CALL_ID,
+CALL_ID,
+REPORTING_CALL_ID,
+REPORTING_CALL_TYPE ,
+CALL_PLAN_TARGET
+
+FROM  LUNDBECK_DW.ANALYTICS.CALL_ACTIVITY_LU_REPORTING RP
+INNER JOIN LUNDBECK_DW.COMMON.PRODUCTS pg
+  ON pg.PRODUCT_GROUP_NAME = RP.PRODUCT_GROUP_NAME
+WHERE CALL_DATE_KEY >= '20220101'  and CALL_TYPE <> '$(vReactiveCalls)';
+
+store Call_Activity into [lib://LuUS_DATA:DataFiles/Production/QlikSense BI Evolution/QVDs/Extract/Fact/NS1_Call_Activity$(vSF).qvd]
+(qvd);
+
+Drop table Call_Activity; 
+///$tab SF: Approved_Email_Tracker
+[FACT Sent Email]:
+Load
+    DATE_KEY,
+    CUSTOMER_KEY,
+    PRODUCT_GROUP_KEY,
+    TERRITORY_KEY,
+    EMAIL_TEMPLATE_KEY,
+    TEMPLATE_NAME,
+    UPPER(EMAIL_STATUS) as EMAIL_STATUS,
+    UPPER(DEVICE) as DEVICE,
+    UPPER(OPENED) as OPENED,
+    UNIQUE_OPENS,
+    UNIQUE_CLICKS,
+	TOTAL_OPENS,
+    NUMBER_OF_FRAGMENTS,
+	USER_ID,
+    SENT_EMAIL_ID,
+    SENT_EMAIL_NAME,
+	CALL_ID,
+    PRODUCT,
+    TEMPLATE_STATUS,
+    BRAND;
+SELECT 
+       FCSE.DATE_SENT_KEY as DATE_KEY,
+       FCSE.LUNDBECK_ID as CUSTOMER_KEY,
+       IFF(FCSE.PRODUCT_GROUP_NAME= 'UNBRANDED', 'UNK',pg.PRODUCT_GROUP_CODE) as PRODUCT_GROUP_KEY,
+       FCSE.TERRITORY_ID as TERRITORY_KEY,
+       FCSE.EMAIL_TEMPLATE_NAME as EMAIL_TEMPLATE_KEY,
+       FCSE.EMAIL_TEMPLATE_NAME as TEMPLATE_NAME,
+       FCSE.STATUS as EMAIL_STATUS,     
+       FCSE.LAST_DEVICE_USED as DEVICE,     
+       FCSE.OPENED,
+       FCSE.UNIQUE_OPENS,
+       FCSE.UNIQUE_CLICKS,
+       FCSE.TOTAL_OPENS,
+       FCSE.NUMBER_OF_FRAGMENTS,
+       FCSE.USER_ID,
+       FCSE.SENT_EMAIL_ID,
+       FCSE.SENT_EMAIL_NAME,
+       FCSE.CALL_ID,
+       FCSE.PRODUCT_GROUP_NAME as PRODUCT,
+       FCSE.TEMPLATE_STATUS,
+       IFNULL(BRAND,'UNBRANDED') AS BRAND
+FROM "LUNDBECK_DW"."ANALYTICS"."CRM_SENT_EMAIL" FCSE
+LEFT JOIN 
+"LUNDBECK_DW"."COMMON"."PRODUCTS" PG ON FCSE.PRODUCT_GROUP_NAME = PG.PRODUCT_GROUP_NAME
+WHERE (FCSE.DATE_SENT_KEY >= '20200401') AND FCSE.PRODUCT_GROUP_NAME IN ('ABILIFY LAI FRANCHISE','ABILIFY MAINTENA', 'REXULTI', 'TRINTELLIX', 'NORTHERA', 'UNBRANDED', 'VYEPTI');
+
+
+Store [FACT Sent Email] into [$(vQSBIE_ExtractQVD_Fact)/FACT_CRM_SENT_EMAIL$(vSpace)$(vSF).qvd](qvd);   
+
+DROP TABLE [FACT Sent Email];
+///$tab SF: CRM SENT FRAGMENT
+FACT_CRM_SENT_FRAGMENT:
+SELECT
+       FCSF.EMAIL_FRAGMENT_NAME as EMAIL_FRAGMENT_KEY, 
+       FCSF.EMAIL_FRAGMENT_NAME as FRAGMENT_NAME,
+       PRODUCT_GROUP_NAME as PRODUCT,
+       FCSF.FRAGMENT_STATUS as FRAGMENT_STATUS,          
+       FCSF.SENT_EMAIL_ID
+FROM LUNDBECK_DW.ANALYTICS.SENT_EMAIL_FRAGMENT FCSF;      
+
+
+
+Store FACT_CRM_SENT_FRAGMENT into [$(vQSBIE_ExtractQVD_Fact)/FACT_CRM_SENT_FRAGMENT$(vSpace)$(vSF).qvd](qvd);
+
+
+
+Drop Table FACT_CRM_SENT_FRAGMENT;
+///$tab SF: Alert Monitor
+FACT_ALERTS:
+SELECT cal.DATE_WEEK_END,
+       cal.CALENDAR_YEAR_MONTH*1 AS CALENDAR_YEAR_MONTH,
+       cal.CALENDAR_YEAR,
+       t.TERRITORY_NAME,
+       t.AREA_NAME,
+       t.REGION_NAME,
+       t.AD_ID as ACCT_MGR_AD_ID,   
+       concat(t.FIRST_NAME,' ',t.LAST_NAME) as ACCT_MGR_FULL_NAME,  
+       t.AREA_AD_ID as AREA_MGR_AD_ID,     
+       concat(t.AREA_FIRST_NAME,' ',t.AREA_LAST_NAME) as AREA_MGR_FULL_NAME,  
+       t.REGION_AD_ID as RGN_MGR_AD_ID,  
+       concat(t.REGION_FIRST_NAME,' ',t.REGION_LAST_NAME) as RGN_MGR_FULL_NAME,    
+       t.FRANCHISE,
+       t.SALESFORCE_NAME as SALESFORCE_GROUP_NAME,
+       pg.BRAND,
+       c.SPECIALTY,
+       c.LUNDBECK_ID,
+       c.CUSTOMER_NAME,
+       c.CUSTOMER_ADDR1,
+       c.CUSTOMER_ADDR2,
+       c.CUSTOMER_CITY,
+       c.CUSTOMER_STATE_ABBREV,
+       c.CUSTOMER_ZIP,
+       c.ABILIFY_MAINTENA_EXCLUSION_IND,
+       c.REXULTI_EXCLUSION_IND,
+       c.TRINTELLIX_EXCLUSION_IND,
+       c.NORTHERA_EXCLUSION_IND,
+       c.VYEPTI_EXCLUSION_IND,
+       c.LU_NO_CONTACT_FLAG,
+       FACT_ALERTS.ALERT_STATUS,
+       FACT_ALERTS.ALERT_STATUS_REASON,
+       FACT_ALERTS.ALERT_CATEGORY,
+       FACT_ALERTS.ALERT_SUBCATEGORY,
+       FACT_ALERTS.ALERT_COUNT,
+       FACT_ALERTS.ALERT_TYPE,
+       FACT_ALERTS.ALERT_RECIPIENT_ID,
+       FACT_ALERTS.ALERT_RECIPIENT_NAME,
+       FACT_ALERTS.EMAIL_TO,
+       FACT_ALERTS.EMAIL_CC,
+       FACT_ALERTS.DATE_KEY       
+FROM LUNDBECK_DW.ANALYTICS.ALERTS FACT_ALERTS                        //revisit
+     inner join "LUNDBECK_DW"."COMMON"."PRODUCTS" pg on FACT_ALERTS.PRODUCT_GROUP_CODE =  pg.PRODUCT_GROUP_CODE
+     inner join "LUNDBECK_DW"."COMMON"."CALENDAR" cal on FACT_ALERTS.DATE_KEY = cal.DATE_KEY
+     left join "LUNDBECK_DW"."COMMON"."TERRITORY" t on FACT_ALERTS.TERRITORY_ID = t.TERRITORY_ID
+     inner join "LUNDBECK_DW"."COMMON"."CUSTOMERS" c on FACT_ALERTS.LUNDBECK_ID = c.LUNDBECK_ID
+WHERE     
+           (    FACT_ALERTS.DATE_KEY >= '20180101'
+                AND FACT_ALERTS.ALERT_TYPE = 'COMPLIANCE')
+           AND pg.BRAND IN ('ABILIFY MAINTENA','ABILIFY LAI FRANCHISE',
+                                           'REXULTI',
+                                           'TRINTELLIX',
+                                           'UNK',
+                                           'VYEPTI');
+
+                                           
+                                           
+STORE FACT_ALERTS INTO [$(vQSBIE_ExtractQVD_Fact)/FACT_ALERTS$(vSpace)$(vSF).qvd](qvd);
+                                           
+drop table FACT_ALERTS;                                           
+                                          
+                                           
+///$tab EXIT Script
+Exit Script;   
+
+///$tab Aggregated Fact Call Activity
+// AGGREGATED_FACT_CALL_ACTIVITY:
+// Load AD_ID as "AD ID",  
+// 	PRODUCT_NAME,
+//     DETAIL_PRIORITY,
+//     replace(SF_TRIMESTER,'-',' - ') as SF_TRIMESTER,
+//     CALL_DATE_KEY,
+//     PDE,
+//     1 as Geo_Level;
+// SQL SELECT USER_ID as AD_ID,  
+// 	PRODUCT_NAME,
+//     DETAIL_PRIORITY,
+//     SF_TRIMESTER,
+//     CALL_DATE_KEY as CALL_DATE_KEY,
+//     Sum(PDE) as PDE
+// FROM LUINC.FACT_CALL_ACTIVITY CA
+// Inner join LUINC.DIM_CLNDR C on CA.CALL_DATE_KEY=C.DATE_KEY
+// INNER join LUINC.DIM_PRODUCT_GROUP p on p.PRODUCT_GROUP_KEY=CA.PRODUCT_GROUP_KEY
+// Inner Join LUINC.DIM_TERRITORY t on t.TERRITORY_KEY=CA.TERRITORY_KEY and ORGANIZATION='LU' 
+// and PRODUCT_NAME in ('ABILIFY MAINTENA','REXULTI','TRINTELLIX') and RECORD_TYPE<>'Logistical Touchpoint'  and CUSTOMER_KEY<>0
+// and call_date_key>=20210701
+// group by USER_ID, 
+// 	PRODUCT_NAME,
+//     DETAIL_PRIORITY,
+//     SF_TRIMESTER,
+//     CALL_DATE_KEY;
+    
+
+
+// Concatenate(AGGREGATED_FACT_CALL_ACTIVITY)
+// Load AD_ID as "AD ID",  
+// 	PRODUCT_NAME,
+//     DETAIL_PRIORITY,
+//     replace(SF_TRIMESTER,'-',' - ') as SF_TRIMESTER,
+//     CALL_DATE_KEY& '-' &TERRITORY_KEY as CALL_DATE_KEY,
+//     PDE,
+//     2 as Geo_Level;
+// SQL SELECT t.AREA_MGR_AD_ID as AD_ID,  
+// 	PRODUCT_NAME,
+//     DETAIL_PRIORITY,
+//     SF_TRIMESTER,
+//     CALL_DATE_KEY as CALL_DATE_KEY,
+//     t.TERRITORY_KEY,
+//     Sum(PDE) as PDE
+// FROM LUINC.FACT_CALL_ACTIVITY CA
+// Inner join LUINC.DIM_CLNDR C on CA.CALL_DATE_KEY=C.DATE_KEY
+// INNER join LUINC.DIM_PRODUCT_GROUP p on p.PRODUCT_GROUP_KEY=CA.PRODUCT_GROUP_KEY
+// Inner Join LUINC.DIM_TERRITORY t on t.TERRITORY_KEY=CA.TERRITORY_KEY and ORGANIZATION='LU' 
+// and PRODUCT_NAME in ('ABILIFY MAINTENA','REXULTI','TRINTELLIX') and RECORD_TYPE<>'Logistical Touchpoint'  and CUSTOMER_KEY<>0
+// and call_date_key>=20210701
+// group by t.AREA_MGR_AD_ID, 
+// 	PRODUCT_NAME,
+//     DETAIL_PRIORITY,
+//     SF_TRIMESTER,
+//     CALL_DATE_KEY,
+//     t.TERRITORY_KEY;
+    
+// Concatenate(AGGREGATED_FACT_CALL_ACTIVITY)
+// Load AD_ID as "AD ID",  
+// 	PRODUCT_NAME,
+//     DETAIL_PRIORITY,
+//     replace(SF_TRIMESTER,'-',' - ') as SF_TRIMESTER,
+//     CALL_DATE_KEY& '-' &TERRITORY_KEY as CALL_DATE_KEY,
+//     PDE,
+//     3 as Geo_Level;
+// SQL SELECT t.RGN_MGR_AD_ID as AD_ID,  
+// 	PRODUCT_NAME,
+//     DETAIL_PRIORITY,
+//     SF_TRIMESTER,
+//     CALL_DATE_KEY as CALL_DATE_KEY,
+//     t.TERRITORY_KEY,
+//     Sum(PDE) as PDE
+// FROM LUINC.FACT_CALL_ACTIVITY CA
+// Inner join LUINC.DIM_CLNDR C on CA.CALL_DATE_KEY=C.DATE_KEY
+// INNER join LUINC.DIM_PRODUCT_GROUP p on p.PRODUCT_GROUP_KEY=CA.PRODUCT_GROUP_KEY
+// Inner Join LUINC.DIM_TERRITORY t on t.TERRITORY_KEY=CA.TERRITORY_KEY and ORGANIZATION='LU' 
+// and PRODUCT_NAME in ('ABILIFY MAINTENA','REXULTI','TRINTELLIX') and RECORD_TYPE<>'Logistical Touchpoint'  and CUSTOMER_KEY<>0
+// and call_date_key>=20210701
+// group by t.RGN_MGR_AD_ID, 
+// 	PRODUCT_NAME,
+//     DETAIL_PRIORITY,
+//     SF_TRIMESTER,
+//     CALL_DATE_KEY,
+//     t.TERRITORY_KEY;
+    
+// store  AGGREGATED_FACT_CALL_ACTIVITY into [$(vQSBIE_ExtractQVD_Fact)/AGGREGATED_FACT_CALL_ACTIVITY$(vSpace).qvd](qvd);   
+
+
+// DROP table AGGREGATED_FACT_CALL_ACTIVITY;    
+    
+    
+///$tab Dynamic Roster Report
+// LIB CONNECT TO 'LuUS_DATA:MSSQL_LuUS_DW_2.0';
+// LIB CONNECT TO 'LuUS_DATA:vAZ_MSSQL_LuUS_DW_2.0';
+// Dynamic_Roster_Report:
+// select *
+  // from  INCW3255H.LU_STAGE.LUSEC.VW_DYNAMIC_ROSTER_REPORT;
+
+// store  Dynamic_Roster_Report into [$(vQSBIE_ExtractQVD_Fact)/DYNAMIC_ROSTER_REPORT$(vSpace).qvd](qvd);   
+
+
+// DROP table Dynamic_Roster_Report;
+///$tab SF: Dynamic Roster Report
+// LIB CONNECT TO 'LuUS_DATA:SNOWFLAKE_LuUS_HR_Reader';
+
+
+// Dynamic_Roster_Report:
+// select *
+// from DATA_STAGING.HR.DYNAMIC_ROSTER_REPORT ;        //revisit
+
+// store  Dynamic_Roster_Report into [$(vQSBIE_ExtractQVD_Fact)/DYNAMIC_ROSTER_REPORT$(vSpace)$(vSF).qvd](qvd);   
+
+
+// DROP table Dynamic_Roster_Report;
+
+// exit Script;
+///$tab FACT_DIGITAL_SALES_AID_ANALYTICS
+DATE:
+Load
+ENTERD_DATE AS MAX_CALL_DATE_KEY
+FROM [$(vQSBIE_ExtractQVD_Dimension)/DIM_MAX_CALL_ENTERD_DATE$(vSpace).qvd](qvd)
+Where Table_Flag='CLM Calls';
+
+Let vDataStartDate = date(date#(Peek('MAX_CALL_DATE_KEY'), 'YYYYMMDD')-365, 'YYYYMMDD');
+
+Trace '$(vDataStartDate)';
+
+Fact:
+LOAD *;
+SQL
+select 
+	    CALL_ID
+      , CALL_DATE_KEY
+	  , 'CALL_PRESENTATION_MESSAGE' as DATA_LEVEL
+      , DATE_WEEK_END_KEY as CALL_WEEK
+      , CALENDAR_YEAR_MONTH as CALL_MONTH
+      , case when T1.LUNDBECK_ID is null then 'None' else T1.LUNDBECK_ID end as LUNDBECK_ID
+      , CUSTOMER_NAME
+      , BRAND
+      , case when T2.ACCT_MGR_FULL_NAME is null then 'None' else T2.ACCT_MGR_FULL_NAME end as ACCT_MGR_FULL_NAME
+	  , case when T2.TERRITORY_ID is null then 'None' else T2.TERRITORY_ID end as TERRITORY_ID
+	  , case when T2.TERRITORY_NAME is null then 'None' else T2.TERRITORY_NAME end as TERRITORY_NAME
+	  , case when T2.AREA_NAME is null then 'None' else T2.AREA_NAME end as AREA_NAME
+	  , case when T2.REGION_NAME is null then 'None' else T2.REGION_NAME end as REGION_NAME
+	  , case when T2.SALESFORCE_GROUP_NAME is null then 'None' else T2.SALESFORCE_GROUP_NAME end as SALESFORCE_GROUP_NAME
+// 	  , case when T4.DIVISION is null then 'None' else T4.DIVISION end as DIVISION
+      , case when T3.SEGMENT_VALUE is null then 'None' else T3.SEGMENT_VALUE end as SEGMENT_VALUE
+      , SEGMENT_TYPE
+      , INTERACTION_TYPE
+      , PRESENTATION_NAME
+      //, case when PRESENTATION_NAME like '%VYEPTI SALES AID%' then 1 else 0 end as EDETAIL_FLAG
+      ,case when PRESENTATION_NAME like '%VYEPTI E-Detail Aid%' then 1 else 0 end as EDETAIL_FLAG
+      , KEY_MESSAGE_NAME
+      , ELEMENT_TYPE
+      , TAG_NAME
+      , DETAIL_PRIORITY
+      , ACTUAL_DISPLAY_ORDER
+      , case when DURATION > 60 then 60 else DURATION end as DURATION
+	  , 1 as KEY_MESS_COUNT
+
+from (
+	   select  
+              CALL_ID
+            , CALL_DATE_KEY
+            , TERRITORY_KEY
+            , CAL.DATE_WEEK_END_KEY
+            , CAL.CALENDAR_YEAR_MONTH
+            , C.LUNDBECK_ID
+            , C.CUSTOMER_NAME
+            , PG.BRAND
+            , IT.INTERACTION_TYPE
+            , PR.PRESENTATION_NAME
+            , KM.KEY_MESSAGE_NAME
+            , ELEMENT_TYPE
+            , TAG_NAME
+            , DETAIL_PRIORITY
+            , ACTUAL_DISPLAY_ORDER
+            , DURATION / 60 as DURATION
+            , AD_ID
+      FROM LUINC.FACT_CLM_CALLS F
+      JOIN LUINC.DIM_PRODUCT_GROUP PG ON PG.PRODUCT_GROUP_KEY = F.PRODUCT_GROUP_KEY
+      JOIN LUINC.DIM_CUSTOMER C ON C.CUSTOMER_KEY = F.CUSTOMER_KEY
+      JOIN LUINC.DIM_INTERACTION_TYPE IT ON IT.INTERACTION_TYPE_KEY = F.INTERACTION_TYPE_KEY
+      JOIN LUINC.DIM_PRESENTATION PR ON PR.PRESENTATION_KEY = F.PRESENTATION_KEY
+      JOIN LUINC.DIM_KEY_MESSAGE KM ON KM.KEY_MESSAGE_KEY = F.KEY_MESSAGE_KEY
+      JOIN LUINC.DIM_CLNDR CAL ON CALL_DATE_KEY = CAL.DATE_KEY
+      WHERE F.CALL_DATE_KEY >= '$(vDataStartDate)'
+	 )T1
+left outer join (
+				  SELECT   
+                          T1.TERRITORY_ID
+                        , T1.TERRITORY_KEY
+                        , T1.TERRITORY_NAME
+                        , T1.AREA_NAME
+                        , T1.REGION_NAME
+                        , T1.SALESFORCE_GROUP_NAME
+                        , T1.ACCT_MGR_FULL_NAME
+                  from LUINC.DIM_TERRITORY T1
+                  where TERR_CURRENT_IND = 'Y'
+				)T2 on T1.TERRITORY_KEY = T2.TERRITORY_KEY
+left outer join (
+				  SELECT   
+                        T1.CUSTOMER_KEY
+                      , C.LUNDBECK_ID
+                      , T1.PRODUCT_GROUP_KEY
+                      , T1.SEGMENT_DESC
+                      , T1.SEGMENT_VALUE
+                      , T1.SEGMENT_TYPE
+                      , T1.SELECTION_ORDER
+                      , C.SPECIALTY
+                  from (
+                  		 SELECT   
+                                T1.CUSTOMER_KEY
+                              , T1.PRODUCT_GROUP_KEY
+                              , T1.SEGMENT_DESC
+                              , T1.SEGMENT_VALUE
+                              , T1.SEGMENT_TYPE
+                              , T1.SELECTION_ORDER
+                         from (select * from LUINC.FACT_CUSTOMER_SEGMENTATION where CURRENT_IND = 'Y' and SEGMENT_TYPE in ('ACGRP BOTOX DECILE', 'HCP ACCOUNT SEGMENT')) T1
+                         where PRODUCT_GROUP_KEY = 3049 or PRODUCT_GROUP_KEY = 3242
+                  	   )T1
+                  inner join LUINC.DIM_CUSTOMER C on T1.CUSTOMER_KEY = C.CUSTOMER_KEY
+				) T3 on T1.LUNDBECK_ID = T3.LUNDBECK_ID
+
+where BRAND = 'VYEPTI'
+;
+// LIB CONNECT TO 'INCW2304H';
+LIB CONNECT TO 'LuUS_DATA:MSSQL_LuUS_MDM';
+NoConcatenate
+TABLE2:
+LOAD 
+IF(IsNull(TERRITORY_ID), 'None', TERRITORY_ID) AS TERRITORY_ID,
+IF(IsNull(DIVISION), 'None', DIVISION) AS DIVISION,
+IF(IsNull(ACCT_MGR_FULL_NAME), 'None', ACCT_MGR_FULL_NAME) AS ACCT_MGR_FULL_NAME
+;
+SQL
+
+				   select distinct
+                          TERRITORY_NUMBER as TERRITORY_ID
+                        , DIVISION
+                        , upper(FULL_NAME) as ACCT_MGR_FULL_NAME
+                   FROM "LU_STAGE".LUINC."STG_LU_CRM_USER" U
+                   LEFT OUTER JOIN "LU_STAGE".LUINC."STG_LU_CRM_USER_TERRITORY" UT ON UT.USER_ID = U.SFDC_ID
+                   LEFT OUTER JOIN "LU_STAGE".LUINC."STG_LU_CRM_TERRITORY" T ON T.SFDC_ID = UT.TERRITORY_ID;
+LEFT JOIN(Fact)
+LOAD *
+RESIDENT TABLE2;
+
+Store Fact into [$(vQSBIE_ExtractQVD_Fact)/FACT_DIGITAL_SALES_AID_ANALYTICS$(vSpace).qvd](qvd);
+
+DROP TABLES TABLE2,Fact;
+
+
+///$tab SF: FACT_DIGITAL_SALES_AID_ANALYTICS
+//without changes
+// DATE:
+// Load
+// ENTERD_DATE AS MAX_CALL_DATE_KEY
+// FROM [$(vQSBIE_ExtractQVD_Dimension)/DIM_MAX_CALL_ENTERD_DATE$(vSpace)$(vSF).qvd](qvd)
+// Where Table_Flag='CLM Calls';
+
+// Let vDataStartDate = date(date#(Peek('MAX_CALL_DATE_KEY'), 'YYYYMMDD')-365, 'YYYYMMDD');
+
+// Trace '$(vDataStartDate)';
+
+// Fact:
+// LOAD *;
+// SQL
+// select 
+// 	    CALL_ID
+//       , CALL_DATE_KEY
+// 	  , 'CALL_PRESENTATION_MESSAGE' as DATA_LEVEL
+//       , DATE_WEEK_END_KEY as CALL_WEEK
+//       , CALENDAR_YEAR_MONTH as CALL_MONTH
+//       , case when T1.LUNDBECK_ID is null then 'None' else T1.LUNDBECK_ID end as LUNDBECK_ID
+//       , CUSTOMER_NAME
+//       , BRAND
+//       , case when T2.ACCT_MGR_FULL_NAME is null then 'None' else T2.ACCT_MGR_FULL_NAME end as ACCT_MGR_FULL_NAME
+// 	  , case when T2.TERRITORY_ID is null then 'None' else T2.TERRITORY_ID end as TERRITORY_ID
+// 	  , case when T2.TERRITORY_NAME is null then 'None' else T2.TERRITORY_NAME end as TERRITORY_NAME
+// 	  , case when T2.AREA_NAME is null then 'None' else T2.AREA_NAME end as AREA_NAME
+// 	  , case when T2.REGION_NAME is null then 'None' else T2.REGION_NAME end as REGION_NAME
+// 	  , case when T2.SALESFORCE_GROUP_NAME is null then 'None' else T2.SALESFORCE_GROUP_NAME end as SALESFORCE_GROUP_NAME
+// // 	  , case when T4.DIVISION is null then 'None' else T4.DIVISION end as DIVISION
+//       , case when T3.SEGMENT_VALUE is null then 'None' else T3.SEGMENT_VALUE end as SEGMENT_VALUE
+//       , SEGMENT_TYPE
+//       , INTERACTION_TYPE
+//       , PRESENTATION_NAME
+//       //, case when PRESENTATION_NAME like '%VYEPTI SALES AID%' then 1 else 0 end as EDETAIL_FLAG
+//       ,case when PRESENTATION_NAME like '%VYEPTI E-Detail Aid%' then 1 else 0 end as EDETAIL_FLAG
+//       , KEY_MESSAGE_NAME
+//       , ELEMENT_TYPE
+//       , TAG_NAME
+//       , DETAIL_PRIORITY
+//       , ACTUAL_DISPLAY_ORDER
+//       , case when DURATION > 60 then 60 else DURATION end as DURATION
+// 	  , 1 as KEY_MESS_COUNT
+
+// from (
+// 	   select  
+//               CALL_ID
+//             , CALL_DATE_KEY
+//             , TERRITORY_KEY
+//             , CAL.DATE_WEEK_END_KEY
+//             , CAL.CALENDAR_YEAR_MONTH
+//             , C.LUNDBECK_ID
+//             , C.CUSTOMER_NAME
+//             , PG.BRAND
+//             , IT.INTERACTION_TYPE
+//             , PR.PRESENTATION_NAME
+//             , KM.KEY_MESSAGE_NAME
+//             , ELEMENT_TYPE
+//             , TAG_NAME
+//             , DETAIL_PRIORITY
+//             , ACTUAL_DISPLAY_ORDER
+//             , DURATION / 60 as DURATION
+//             , AD_ID
+//       FROM LUINC.FACT_CLM_CALLS F                                      //revisit
+//       JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" PG ON PG.PRODUCT_GROUP_KEY = F.PRODUCT_GROUP_KEY
+//       JOIN "LUNDBECK_DW"."COMMON"."CUSTOMERS" C ON C.LUNDBECK_ID = F.LUNDBECK_ID
+//       JOIN LUINC.DIM_INTERACTION_TYPE IT ON IT.INTERACTION_TYPE_KEY = F.INTERACTION_TYPE_KEY        //revisit
+//       JOIN LUINC.DIM_PRESENTATION PR ON PR.PRESENTATION_KEY = F.PRESENTATION_KEY                  //revisit
+//       JOIN LUINC.DIM_KEY_MESSAGE KM ON KM.KEY_MESSAGE_KEY = F.KEY_MESSAGE_KEY                     //revisit
+//       JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" CAL ON CALL_DATE_KEY = CAL.DATE_KEY
+//       WHERE F.CALL_DATE_KEY >= '$(vDataStartDate)'
+// 	 )T1
+// left outer join (
+// 				  SELECT   
+//                           T1.TERRITORY_ID
+//                         , T1.TERRITORY_ID as TERRITORY_KEY
+//                         , T1.TERRITORY_NAME
+//                         , T1.AREA_NAME
+//                         , T1.REGION_NAME
+//                         , T1.SALESFORCE_NAME as SALESFORCE_GROUP_NAME
+//                         , concat(FIRST_NAME,' ',LAST_NAME) as ACCT_MGR_FULL_NAME,
+//                   from "LUNDBECK_DW"."COMMON"."TERRITORY" T1
+//                   where CURRENT_IND = 'Y'
+// 				)T2 on T1.TERRITORY_KEY = T2.TERRITORY_KEY
+// left outer join (
+// 				  SELECT   
+//                         T1.LUNDBECK_ID as CUSTOMER_KEY
+//                       , C.LUNDBECK_ID
+//                       , T1.PRODUCT_GROUP_KEY
+//                       , T1.SEGMENT_DESC
+//                       , T1.SEGMENT_DESC as SEGMENT_VALUE
+//                       , T1.SEGMENT_TYPE
+//                       , T1.SELECTION_ORDER
+//                       , C.SPECIALTY
+//                   from (
+//                   		 SELECT   
+//                                 T1.CUSTOMER_KEY
+//                               , T1.PRODUCT_GROUP_KEY
+//                               , T1.SEGMENT_DESC
+//                               , T1.SEGMENT_VALUE
+//                               , T1.SEGMENT_TYPE
+//                               , T1.SELECTION_ORDER
+//                          from (select * from LUNDBECK_DW.ANALYTICS.CUSTOMER_SEGMENTATION where CURRENT_IND = 'Y' and SEGMENT_TYPE in ('ACGRP BOTOX DECILE', 'HCP ACCOUNT SEGMENT')) T1
+//                          where PRODUCT_GROUP_KEY = 3049 or PRODUCT_GROUP_KEY = 3242
+//                   	   )T1
+//                   inner join LUINC.DIM_CUSTOMER C on T1.CUSTOMER_KEY = C.CUSTOMER_KEY
+// 				) T3 on T1.LUNDBECK_ID = T3.LUNDBECK_ID
+
+// where BRAND = 'VYEPTI'
+// ;
+// LIB CONNECT TO 'INCW2304H';
+// LIB CONNECT TO 'LuUS_DATA:MSSQL_LuUS_MDM';
+// NoConcatenate
+// TABLE2:
+// LOAD 
+// IF(IsNull(TERRITORY_ID), 'None', TERRITORY_ID) AS TERRITORY_ID,
+// IF(IsNull(DIVISION), 'None', DIVISION) AS DIVISION,
+// IF(IsNull(ACCT_MGR_FULL_NAME), 'None', ACCT_MGR_FULL_NAME) AS ACCT_MGR_FULL_NAME
+// ;
+// SQL
+
+// 				   select distinct
+//                           TERRITORY_NUMBER as TERRITORY_ID
+//                         , DIVISION
+//                         , upper(FULL_NAME) as ACCT_MGR_FULL_NAME
+//                    FROM "LU_STAGE".LUINC."STG_LU_CRM_USER" U                 //revisit
+//                    LEFT OUTER JOIN "LU_STAGE".LUINC."STG_LU_CRM_USER_TERRITORY" UT ON UT.USER_ID = U.SFDC_ID       //revisit
+//                    LEFT OUTER JOIN "LU_STAGE".LUINC."STG_LU_CRM_TERRITORY" T ON T.SFDC_ID = UT.TERRITORY_ID;       //revist
+// LEFT JOIN(Fact)
+// LOAD *
+// RESIDENT TABLE2;
+
+// Store Fact into [$(vQSBIE_ExtractQVD_Fact)/FACT_DIGITAL_SALES_AID_ANALYTICS$(vSpace)$(vSF).qvd](qvd);
+
+// DROP TABLES TABLE2,Fact;
+
+
+///$tab Alert Monitor
+FACT_ALERTS:
+// LIB CONNECT TO 'LuUS_DATA:MSSQL_LuUS_DW_2.0';
+LIB CONNECT TO 'LuUS_DATA:vAZ_MSSQL_LuUS_DW_2.0';
+SELECT DIM_CLNDR.DATE_WEEK_END,
+       DIM_CLNDR.CALENDAR_YEAR_MONTH,
+       DIM_CLNDR.CALENDAR_YEAR,
+       DIM_TERRITORY.TERRITORY_NAME,
+       DIM_TERRITORY.AREA_NAME,
+       DIM_TERRITORY.REGION_NAME,
+       DIM_TERRITORY.ACCT_MGR_AD_ID,
+       DIM_TERRITORY.ACCT_MGR_FULL_NAME,
+       DIM_TERRITORY.AREA_MGR_AD_ID,
+       DIM_TERRITORY.AREA_MGR_FULL_NAME,
+       DIM_TERRITORY.RGN_MGR_AD_ID,
+       DIM_TERRITORY.RGN_MGR_FULL_NAME,
+       DIM_TERRITORY.FRANCHISE,
+       DIM_TERRITORY.SALESFORCE_GROUP_NAME,
+       DIM_PRODUCT_GROUP.BRAND,
+       DIM_CUSTOMER.SPECIALTY,
+       DIM_CUSTOMER.LUNDBECK_ID,
+       DIM_CUSTOMER.CUSTOMER_NAME,
+       DIM_CUSTOMER.CUSTOMER_ADDR1,
+       DIM_CUSTOMER.CUSTOMER_ADDR2,
+       DIM_CUSTOMER.CUSTOMER_CITY,
+       DIM_CUSTOMER.CUSTOMER_STATE_ABBREV,
+       DIM_CUSTOMER.CUSTOMER_ZIP,
+       DIM_CUSTOMER.ABILIFY_MAINTENA_EXCLUSION_IND,
+       DIM_CUSTOMER.REXULTI_EXCLUSION_IND,
+       DIM_CUSTOMER.TRINTELLIX_EXCLUSION_IND,
+       DIM_CUSTOMER.NORTHERA_EXCLUSION_IND,
+       DIM_CUSTOMER.VYEPTI_EXCLUSION_IND,
+       DIM_CUSTOMER.LU_NO_CONTACT_FLAG,
+       FACT_ALERTS.FACT_KEY,
+       FACT_ALERTS.ALERT_STATUS,
+       FACT_ALERTS.ALERT_STATUS_REASON,
+       FACT_ALERTS.ALERT_CATEGORY,
+       FACT_ALERTS.ALERT_SUBCATEGORY,
+       FACT_ALERTS.ALERT_COUNT,
+       FACT_ALERTS.ALERT_TYPE,
+       FACT_ALERTS.ALERT_RECIPIENT_ID,
+       FACT_ALERTS.ALERT_RECIPIENT_NAME,
+       FACT_ALERTS.EMAIL_TO,
+       FACT_ALERTS.EMAIL_CC,
+       FACT_ALERTS.DATE_KEY       
+FROM LU_DW.LUINC.FACT_ALERTS FACT_ALERTS,
+     LU_DW.LUINC.DIM_PRODUCT_GROUP DIM_PRODUCT_GROUP,
+     LU_DW.LUINC.DIM_CLNDR DIM_CLNDR,
+     LU_DW.LUINC.DIM_TERRITORY DIM_TERRITORY,
+     LU_DW.LUINC.DIM_CUSTOMER DIM_CUSTOMER
+WHERE     (FACT_ALERTS.PRODUCT_GROUP_KEY =
+           DIM_PRODUCT_GROUP.PRODUCT_GROUP_KEY)
+      AND (FACT_ALERTS.DATE_KEY = DIM_CLNDR.DATE_KEY)
+      AND (FACT_ALERTS.TERRITORY_KEY = DIM_TERRITORY.TERRITORY_KEY)
+      AND (FACT_ALERTS.CUSTOMER_KEY = DIM_CUSTOMER.CUSTOMER_KEY)
+      AND (    (    FACT_ALERTS.DATE_KEY >= 20180101
+                AND FACT_ALERTS.ALERT_TYPE = 'COMPLIANCE')
+           AND DIM_PRODUCT_GROUP.BRAND IN ('ABILIFY MAINTENA',
+                                           'REXULTI',
+                                           'TRINTELLIX',
+                                           'UNKNOWN',
+                                           'VYEPTI'));
+                                           
+                                           
+STORE FACT_ALERTS INTO [$(vQSBIE_ExtractQVD_Fact)/FACT_ALERTS$(vSpace).qvd](qvd);
+                                           
+                                           
+                                           
+                                           
+///$tab Developer Note
+/*
+
+Version Control: V1.0
+Date: 26/03/2019
+Franchise: Pshychiatry
+Summary: Creating Extractor for forecasting fact tables.
+Developer: Shwetha Aruna
+
+*/
+
+/*
+
+Version Control: V1.0
+Date: 26/03/2019
+Franchise: Pshychiatry
+Summary: Removed FACT_PATIENT_SNAPSHOT and FACT_PATIENT_SALES from daily run and included FACT_RETAIL_SUMMARY_WKLY.
+Developer: Shwetha Aruna
+
+*/
+
+
+
+///$tab 1: FACT CALL ACTIVITY
+FACT_CALL_ACTIVITY:
+SQL 
+ //,'$(vDW2RefreshDate)' as FactDW2RefreshDate
+ 
+
+SELECT
+    FACT_KEY,
+    CALL_DATE_KEY,
+    ENTERED_DATE_KEY,
+    ENTERED_TIME_KEY,
+    CUSTOMER_KEY,
+    HCO_CUSTOMER_KEY,
+    BRAND_KEY,
+    PRODUCT_GROUP_KEY,
+    CALL_PRODUCT_KEY,
+    TERRITORY_KEY,
+    SF1_TERRITORY_KEY,
+    SF2_TERRITORY_KEY,
+    SF3_TERRITORY_KEY,
+    SF4_TERRITORY_KEY,
+    SF5_TERRITORY_KEY,
+    SF6_TERRITORY_KEY,
+    MSL_AREA_KEY,
+    DETAIL_PRIORITY,
+    PDE,
+    INTERACTION_TYPE,
+    STAFF_CALL,
+    RECORD_TYPE,
+    ATTAINMENT_CATEGORY,
+    ATTAINMENT,
+    UNADJUSTED_ATTAINMENT,
+    CALL_TYPE,
+    REPORT_CALL_TYPE,
+    REPORT_PRESCRIBER_CATEGORY,
+    SYNC_DATE_KEY,
+    USER_ID,
+    MSL_INTERACTION_TYPE,
+    MSL_INTERACTION_LENGTH,
+    MSL_MEETING_TYPE,
+    AUDIENCE_TYPE,
+    MIRF_RESOLUTION,
+    FIRST_ATTEMPT_MTG_TYPE,
+    FIRST_ATTEMPT_DATE_KEY,
+    SECOND_ATTEMPT_MTG_TYPE,
+    SECOND_ATTEMPT_DATE_KEY,
+    THIRD_ATTEMPT_MTG_TYPE,
+    THIRD_ATTEMPT_DATE_KEY,
+    MIRF_CLOSED_DATE_KEY,
+    CLM_IND,
+    TOP_20_IND,
+    CALL_ID,
+    PARENT_CALL_ID,
+    CUSTOMER_ZIP,
+    FACT_SOURCE_ID,
+    PRIMARY_MESSAGE,
+    SECONDARY_MESSAGE
+    
+  FROM 
+LUINC.FACT_CALL_ACTIVITY
+WHERE CALL_DATE_KEY >= '$(StartDate)';
+
+STORE FACT_CALL_ACTIVITY INTO [$(vQSBIE_ExtractQVD_Fact)/FACT_CALL_ACTIVITY$(vSpace).qvd](qvd);
+
+DROP Table FACT_CALL_ACTIVITY;
+
+
+
+
+
+///$tab SF: 1: FACT CALL ACTIVITY
+// FACT_CALL_ACTIVITY:
+// SQL 
+// // ,'$(vDW2RefreshDate)' as FactDW2RefreshDate
+ 
+
+// SELECT
+//     'PlaceHolder' as FACT_KEY,
+//     CALL_DATE_KEY,
+//     CALL_DATE_KEY AS ENTERED_DATE_KEY,
+//     CALL_DATE_KEY as ENTERED_TIME_KEY,
+//     LUNDBECK_ID as CUSTOMER_KEY,
+//     HCO_LUNDBECK_ID as HCO_CUSTOMER_KEY,
+// //     BRAND_KEY,                  
+// //     PRODUCT_GROUP_KEY,         
+// //     CALL_PRODUCT_KEY,            
+//     TERRITORY_ID as TERRITORY_KEY,
+// //     SF1_TERRITORY_KEY,                
+// //     SF2_TERRITORY_KEY,
+// //     SF3_TERRITORY_KEY,
+// //     SF4_TERRITORY_KEY,
+// //     SF5_TERRITORY_KEY,
+// //     SF6_TERRITORY_KEY,
+// //     MSL_AREA_KEY,                      
+//     DETAIL_PRIORITY,
+//     PDE,
+//     INTERACTION_TYPE,
+//     STAFF_CALL,
+//     RECORD_TYPE_NAME as RECORD_TYPE,
+// //     ATTAINMENT_CATEGORY,                 
+// //     ATTAINMENT,                          
+// //     UNADJUSTED_ATTAINMENT,                    
+//     CALL_TYPE,
+//     REPORT_CALL_TYPE,
+// //     REPORT_PRESCRIBER_CATEGORY,         //revisit
+// //     SYNC_DATE_KEY,                        
+// //     USER_ID,                              
+// //     MSL_INTERACTION_TYPE,                       
+// //     MSL_INTERACTION_LENGTH,                     
+// //     MSL_MEETING_TYPE,                
+// //     AUDIENCE_TYPE,                       
+// //     MIRF_RESOLUTION,                         
+// //     FIRST_ATTEMPT_MTG_TYPE,                      
+// //     FIRST_ATTEMPT_DATE_KEY,                          
+// //     SECOND_ATTEMPT_MTG_TYPE,                                 
+// //     SECOND_ATTEMPT_DATE_KEY,                                        
+// //     THIRD_ATTEMPT_MTG_TYPE,                        
+// //     THIRD_ATTEMPT_DATE_KEY,                            
+// //     MIRF_CLOSED_DATE_KEY,                                      
+// //     CLM_IND,                                      
+// //     TOP_20_IND,                                    
+//     CALL_ID,                               
+//     PARENT_CALL_ID,
+//     CUSTOMER_ZIP,
+//     CALL_ID as FACT_SOURCE_ID,
+//     PRIMARY_MESSAGE,
+//     SECONDARY_MESSAGE
+    
+//   FROM 
+// "LUNDBECK_DW"."ANALYTICS"."CALL_ACTIVITY_LU_SF"
+// WHERE CALL_DATE_KEY >= '$(StartDate)';
+
+// STORE FACT_CALL_ACTIVITY INTO [$(vQSBIE_ExtractQVD_Fact)/FACT_CALL_ACTIVITY$(vSpace)$(vSF).qvd](qvd);
+
+// DROP Table FACT_CALL_ACTIVITY;
+
+
+
+
+
+///$tab 2: FACT_RETAIL_SUMMARY_WKLY
+FACT_RETAIL_SUMMARY_WKLY:
+
+SQL SELECT 
+FACT_KEY
+,DATE_KEY
+,CUSTOMER_KEY
+,BRAND_KEY
+,PRODUCT_GROUP_KEY
+,SF1_TERRITORY_KEY
+,SF2_TERRITORY_KEY
+,SF3_TERRITORY_KEY
+,NEW_WRITERS
+,TOTAL_WRITERS
+,TRX
+,NRX
+,T_QTY
+,N_QTY
+,DAYS_OF_THERAPY
+,NORMALIZED_TRX
+,NORMALIZED_NRX
+//,'$(vDW2RefreshDate)' as FactDW2RefreshDate
+FROM 
+LUINC.FACT_RETAIL_SUMMARY_WKLY
+where PRODUCT_GROUP_KEY in (
+       select PRODUCT_GROUP_KEY from LUINC.DIM_MB_ABILIFY_MAINTENA_SA
+              
+              union
+              
+              select PRODUCT_GROUP_KEY from LUINC.DIM_MB_REXULTI_SA
+              
+              union
+              
+              select PRODUCT_GROUP_KEY from LUINC.DIM_MB_TRINTELLIX_SA
+              union 
+               select PRODUCT_GROUP_KEY from LUINC.DIM_MB_ABILIFY_MAINTENA_IC
+              
+              union
+              
+              select PRODUCT_GROUP_KEY from LUINC.DIM_MB_REXULTI_IC
+              
+              union
+              
+              select PRODUCT_GROUP_KEY from LUINC.DIM_MB_TRINTELLIX_IC
+              union
+               select PRODUCT_GROUP_KEY from LUINC.DIM_MB_ABILIFY_MAINTENA_MAI
+              
+              union
+              
+              select PRODUCT_GROUP_KEY from LUINC.DIM_MB_REXULTI_MAI
+              
+              union
+              
+              select PRODUCT_GROUP_KEY from LUINC.DIM_MB_TRINTELLIX_MAI
+              union
+              
+              select PRODUCT_GROUP_KEY from LUINC.DIM_MB_NORTHERA_SA
+              
+              union
+              
+              select PRODUCT_GROUP_KEY from LUINC.DIM_MB_NORTHERA_OH
+              union
+              
+              select PRODUCT_GROUP_KEY from LUINC.DIM_MB_NORTHERA_PD
+              )
+              
+      and DATE_KEY>= '$(StartDate)' 
+  ;
+
+STORE FACT_RETAIL_SUMMARY_WKLY INTO [$(vQSBIE_ExtractQVD_Fact)/FACT_RETAIL_SUMMARY_WKLY$(vSpace).qvd] (qvd);
+DROP Table FACT_RETAIL_SUMMARY_WKLY;
+
+
+///$tab SF: 2: FACT_RETAIL_SUMMARY_WKLY
+// FACT_RETAIL_SUMMARY_WKLY:
+
+// SQL SELECT 
+// 'PlaceHolder' as FACT_KEY
+// ,DATE_KEY                                 //revisit
+// ,CUSTOMER_KEY
+// ,BRAND_KEY
+// ,PRODUCT_GROUP_KEY
+// ,SF1_TERRITORY_KEY
+// ,SF2_TERRITORY_KEY
+// ,SF3_TERRITORY_KEY
+// ,NEW_WRITERS
+// ,TOTAL_WRITERS
+// ,TRX
+// ,NRX
+// ,T_QTY
+// ,N_QTY
+// ,DAYS_OF_THERAPY
+// ,NORMALIZED_TRX
+// ,NORMALIZED_NRX
+// //,'$(vDW2RefreshDate)' as FactDW2RefreshDate
+// FROM 
+// LUINC.FACT_RETAIL_SUMMARY_WKLY                      //revisit
+// where PRODUCT_GROUP_KEY in (
+//        select PRODUCT_GROUP_KEY from "LUNDBECK_DW"."COMMON"."MB_ABILIFY_MAINTENA_SA"
+              
+//               union
+              
+//               select PRODUCT_GROUP_KEY from "LUNDBECK_DW"."COMMON"."MB_REXULTI_SA"
+              
+//               union
+              
+//               select PRODUCT_GROUP_KEY from "LUNDBECK_DW"."COMMON"."MB_TRINTELLIX_SA"
+//               union 
+//                select PRODUCT_GROUP_KEY from "LUNDBECK_DW"."COMMON"."MB_ABILIFY_MAINTENA_IC"
+              
+//               union
+              
+//               select PRODUCT_GROUP_KEY from "LUNDBECK_DW"."COMMON"."MB_REXULTI_IC"
+              
+//               union
+              
+//               select PRODUCT_GROUP_KEY from "LUNDBECK_DW"."COMMON"."MB_TRINTELLIX_IC"
+//               union
+//                select PRODUCT_GROUP_KEY from "LUNDBECK_DW"."COMMON"."MB_ABILIFY_MAINTENA_MAI"
+              
+//               union
+              
+//               select PRODUCT_GROUP_KEY from "LUNDBECK_DW"."COMMON"."MB_REXULTI_MAI"
+              
+//               union
+              
+//               select PRODUCT_GROUP_KEY from "LUNDBECK_DW"."COMMON"."MB_TRINTELLIX_MAI"
+//               union
+              
+//               select PRODUCT_GROUP_KEY from LUINC.DIM_MB_NORTHERA_SA         //revisit
+              
+//               union
+              
+//               select PRODUCT_GROUP_KEY from LUINC.DIM_MB_NORTHERA_OH        //revisit
+//               union
+              
+//               select PRODUCT_GROUP_KEY from LUINC.DIM_MB_NORTHERA_PD         //revisit
+//               )
+              
+//       and DATE_KEY>= '$(StartDate)' 
+//   ;
+
+// STORE FACT_RETAIL_SUMMARY_WKLY INTO [$(vQSBIE_ExtractQVD_Fact)/FACT_RETAIL_SUMMARY_WKLY$(vSpace)$(vSF).qvd] (qvd);
+// DROP Table FACT_RETAIL_SUMMARY_WKLY;
+
+
+///$tab 3:Patient_Snapshot
+FACT_PATIENT_SNAPSHOT:
+SQL SELECT *
+ //,'$(vDW2RefreshDate)' as FactDW2RefreshDate
+ FROM 
+LUINC.FACT_PATIENT_SNAPSHOT;
+
+STORE FACT_PATIENT_SNAPSHOT INTO [$(vQSBIE_ExtractQVD_Fact)/FACT_PATIENT_SNAPSHOT$(vSpace).qvd](qvd);
+
+DROP Table FACT_PATIENT_SNAPSHOT;
+
+///$tab SF: 3:Patient_Snapshot
+// FACT_PATIENT_SNAPSHOT:
+// SQL SELECT *
+//  //,'$(vDW2RefreshDate)' as FactDW2RefreshDate
+//  FROM 
+// LUINC.FACT_PATIENT_SNAPSHOT;            //revisit
+
+// STORE FACT_PATIENT_SNAPSHOT INTO [$(vQSBIE_ExtractQVD_Fact)/FACT_PATIENT_SNAPSHOT$(vSpace)$(vSF).qvd](qvd);
+
+// DROP Table FACT_PATIENT_SNAPSHOT;
+///$tab DataRefreshDate
+// NoConcatenate
+// IntegrityCheck:
+// Load ExtractDimDate,
+//   ExtractFactSelfServeDate,
+//   ExtractFactDailyDate,
+//   ExtractFactCommonDate,
+//   ExtractFactRetailSalesDate
+// From [$(vQSBIE_ExtractQVD_Dimension)/LastDataRefreshDetails$(vSpace).qvd](qvd);
+
+
+// Let vExtractDimDate=Date(Peek('ExtractDimDate'));
+// Let vExtractFactSelfServeDate=Peek('ExtractFactSelfServeDate');
+// Let vExtractFactDailyDate=Peek('ExtractFactDailyDate');
+// Let vExtractFactCommonDate=Peek('ExtractFactCommonDate');
+// Let vExtractFactRetailSalesDate=Peek('ExtractFactRetailSalesDate');
+
+// Drop Table IntegrityCheck;
+
+// Trace '$(vExtractDimDate)';
+
+// If '$(vExtractDimDate)'<>Today()  then
+     
+//      Trace 'Dimension is not updated. First run Extract Dimension';
+     
+//      Call ForceScriptError; 
+     
+// end if
+
+// NoConcatenate
+// DataReloadDate:
+// Load ExtractDimDate,
+//   ExtractFactSelfServeDate,
+//   Num(Today()) as ExtractFactDailyDate,
+//   ExtractFactCommonDate,
+//   ExtractFactRetailSalesDate
+// From [$(vQSBIE_ExtractQVD_Dimension)/LastDataRefreshDetails$(vSpace).qvd](qvd);
+
+// Store DataReloadDate into [$(vQSBIE_ExtractQVD_Dimension)/LastDataRefreshDetails$(vSpace).qvd](qvd);
+
+// Drop Table DataReloadDate;
+///$tab FACT_FPAD_HQ
+[Last Full Week]:
+LOAD *
+FROM [$(vQSBIE_ExtractQVD_Dimension)/LOAD_SUMMARY_FPAD$(vSpace).qvd](qvd);
+
+Let VmaxDate=Date(Date#(peek('LAST_FULL_WEEK_END_DATE'),'YYYY-MM-DD'),'YYYYMMDD');
+
+Trace '$(VmaxDate)';
+
+// LIB CONNECT TO 'LuUS_DATA:MSSQL_LuUS_DW_2.0';
+LIB CONNECT TO 'LuUS_DATA:vAZ_MSSQL_LuUS_DW_2.0';
+NoConcatenate
+[WD from FCA]:
+SQL
+select 
+	  fca.TERRITORY_KEY,
+      '20191226' as TERR_EFF_DATE,
+      '99991231' as TERR_EXP_DATE,
+      fca.CALL_DATE_KEY as DATE_KEY,
+      'BD_FACTOR' as RECORD_TYPE,
+      'BD_FACTOR' as CALL_TYPE,
+      'BD_FACTOR' as INTERACTION_TYPE,
+	1 as BD_FACTOR
+FROM LUINC.FACT_CALL_ACTIVITY fca
+join LUINC.DIM_TERRITORY t on fca.TERRITORY_KEY= t.TERRITORY_KEY
+join LUINC.DIM_PRODUCT_GROUP pg On pg.PRODUCT_GROUP_KEY = fca.PRODUCT_GROUP_KEY
+Join LUINC.DIM_CLNDR C on C.DATE_KEY=fca.CALL_DATE_KEY 
+where// t.SALESFORCE_GROUP_NAME not in ('VERTEX','ZENITH') and 
+(fca.CALL_DATE_KEY >= 20191226)	AND fca.CALL_DATE_KEY<='$(VmaxDate)' and FLAG_WEEKDAY='Y'
+and DETAIL_PRIORITY=1
+and PDE>0
+group by fca.TERRITORY_KEY, fca.CALL_DATE_KEY;
+
+NoConcatenate
+[FACT Call Activity]:
+Load *
+Resident [WD from FCA]
+where Floor(date#(TERR_EFF_DATE,'YYYYMMDD'))<=Floor(date#(DATE_KEY,'YYYYMMDD')) and Floor(date#(TERR_EXP_DATE,'YYYYMMDD'))>=Floor(date#(DATE_KEY,'YYYYMMDD'));
+
+Drop fields TERR_EFF_DATE,TERR_EXP_DATE;
+
+drop table [WD from FCA];
+
+
+ Concatenate([FACT Call Activity])
+/*** Append call activity.  Use sum of BD_FACTOR above for denominator of calls per day calculations ***/
+Load *,
+	 If(LOGISTICAL_TOUCHPOINT_FLAG='N','Other Calls','Logistical TouchPoint') as Calls_Logistical;
+     //Num(Floor(Date#(DATE_KEY,'YYYYMMDD'))) as NUMBER_DATE_KEY
+  SELECT 		  FCA.CALL_DATE_KEY as DATE_KEY,
+  				  FCA.ENTERED_DATE_KEY,
+                  FCA.CUSTOMER_KEY,
+                  C.LUNDBECK_ID as "Customer Lundbeck ID",
+                  FCA.HCO_CUSTOMER_KEY,
+                  FCA.PRODUCT_GROUP_KEY,
+                  FCA.TERRITORY_KEY,
+                  FCA.DETAIL_PRIORITY,
+                  FCA.PDE,
+                  FCA.INTERACTION_TYPE,
+                  FCA.RECORD_TYPE,
+                  FCA.CALL_TYPE,
+                  /*CASE
+                      WHEN RECORD_TYPE like '%ENGAGE%' or Lower(INTERACTION_TYPE) like '%remote%' THEN 'REMOTE'
+                      WHEN INTERACTION_TYPE like '%PHONE%' THEN 'PHONE'
+                      WHEN INTERACTION_TYPE like '%OFFICE%' or INTERACTION_TYPE like 'Lunch and Learn' THEN 'FACE TO FACE'
+                      ELSE 'OTHER'
+                      END AS REPORT_CALL_TYPE,*/
+                  REPORT_CALL_TYPE,
+                  CASE
+                  	  WHEN RECORD_TYPE like '%LOGISTICAL%' THEN 'Y'
+                      ELSE 'N'
+                      END AS LOGISTICAL_TOUCHPOINT_FLAG,
+                  FCA.FACT_SOURCE_ID,
+                  FCA.USER_ID as CALL_USER_ID,
+                  CASE 
+                      WHEN PG.PRODUCT_GROUP = 'REXULTI AADAD' THEN 'REXULTI AADAD'
+                       	  WHEN (PG.PRODUCT_NAME = 'REXULTI' AND PG.PRODUCT_GROUP <> 'REXULTI AADAD') THEN 'REXULTI INLINE'
+                          ELSE PG.BRAND END AS BRAND,
+//                   PG.BRAND,
+                  FCA.PARENT_CALL_ID,
+                  FCA.CALL_ID
+  FROM LU_DW.LUINC.FACT_CALL_ACTIVITY FCA,
+       LU_DW.LUINC.DIM_TERRITORY DT,
+       LU_DW.LUINC.DIM_PRODUCT_GROUP PG,
+       LU_DW.LUINC.DIM_CUSTOMER C
+  WHERE     (FCA.CALL_DATE_KEY >= 20191226)	AND FCA.CALL_DATE_KEY<='$(VmaxDate)'		/* Pull in only activity from January 2019 */
+        AND (DT.ORGANIZATION = 'LU')					/* Pull in Lundbeck organizational data only */
+        AND (DT.SALESFORCE_GROUP_NAME is not null)	/* Do not pull in any data not associated with a team */
+        AND (FCA.RECORD_TYPE is not null)				/* Do not pull in any <null> RECORD_TYPE */
+        //AND (FCA.PRODUCT_GROUP_KEY <> 0)				/* Do not pull in records not related to a brand */
+        AND (FCA.TERRITORY_KEY = DT.TERRITORY_KEY)
+        AND (PG.PRODUCT_GROUP_KEY = FCA.PRODUCT_GROUP_KEY)
+        and (C.CUSTOMER_KEY=FCA.CUSTOMER_KEY);
+        
+ Concatenate([FACT Call Activity])
+/*** Append call activity.  Use sum of BD_FACTOR above for denominator of calls per day calculations ***/
+Load *,
+	 If(LOGISTICAL_TOUCHPOINT_FLAG='N','Other Calls','Logistical TouchPoint') as Calls_Logistical;
+     //Num(Floor(Date#(DATE_KEY,'YYYYMMDD'))) as NUMBER_DATE_KEY
+  SELECT 		  FCA.CALL_DATE_KEY as DATE_KEY,
+  				  FCA.ENTERED_DATE_KEY,
+                  FCA.CUSTOMER_KEY,
+                  C.LUNDBECK_ID as "Customer Lundbeck ID",
+                  FCA.CUSTOMER_KEY as HCO_CUSTOMER_KEY,
+                  FCA.PRODUCT_GROUP_KEY,
+                  FCA.TERRITORY_KEY,
+                  FCA.DETAIL_PRIORITY,
+                  FCA.PDE,
+                  FCA.INTERACTION_TYPE,
+                  FCA.RECORD_TYPE,
+                  FCA.CALL_TYPE,
+                  REPORT_CALL_TYPE,
+                  CASE
+                  	  WHEN RECORD_TYPE like '%LOGISTICAL%' THEN 'Y'
+                      ELSE 'N'
+                      END AS LOGISTICAL_TOUCHPOINT_FLAG,
+                  FCA.FACT_SOURCE_ID,
+                  FCA.USER_ID as CALL_USER_ID,
+                  CASE 
+                      WHEN PG.PRODUCT_GROUP = 'REXULTI AADAD' THEN 'REXULTI AADAD'
+                      WHEN (PG.PRODUCT_NAME = 'REXULTI' AND PG.PRODUCT_GROUP <> 'REXULTI AADAD') THEN 'REXULTI INLINE'
+                          ELSE PG.BRAND END AS BRAND,
+                  //PG.BRAND,
+                  FCA.PARENT_CALL_ID,
+                  FCA.CALL_ID
+  FROM LU_DW.LUINC.FACT_CALL_ACTIVITY FCA,
+       LU_DW.LUINC.DIM_TERRITORY DT,
+       LU_DW.LUINC.DIM_PRODUCT_GROUP PG,
+       LU_DW.LUINC.DIM_CUSTOMER C
+  WHERE     (FCA.CALL_DATE_KEY >= 20191226)	AND FCA.CALL_DATE_KEY<='$(VmaxDate)'		/* Pull in only activity from January 2019 */
+        AND (DT.ORGANIZATION = 'LU')					/* Pull in Lundbeck organizational data only */
+        AND (DT.SALESFORCE_GROUP_NAME is not null)	/* Do not pull in any data not associated with a team */
+        AND (FCA.RECORD_TYPE is not null)				/* Do not pull in any <null> RECORD_TYPE */
+        //AND (FCA.PRODUCT_GROUP_KEY <> 0)				/* Do not pull in records not related to a brand */
+        AND (FCA.TERRITORY_KEY = DT.TERRITORY_KEY)
+        AND (PG.PRODUCT_GROUP_KEY = FCA.PRODUCT_GROUP_KEY)
+        and (C.CUSTOMER_KEY=FCA.CUSTOMER_KEY) and CUSTOMER_TYPE='HCO';
+        
+
+ left join([FACT Call Activity])    
+ LOAD FACT_SOURCE_ID, COUNT(DETAIL_PRIORITY) AS TOTAL_CALL_COUNT
+ GROUP BY FACT_SOURCE_ID;
+ SELECT 	     DISTINCT
+                  FCA.FACT_SOURCE_ID,
+                  FCA.DETAIL_PRIORITY
+  FROM LU_DW.LUINC.FACT_CALL_ACTIVITY FCA,
+       LU_DW.LUINC.DIM_TERRITORY DT,
+       LU_DW.LUINC.DIM_PRODUCT_GROUP PG,
+       LU_DW.LUINC.DIM_CUSTOMER C
+  WHERE     (FCA.CALL_DATE_KEY >= 20191226)	//AND FCA.CALL_DATE_KEY<='$(VmaxDate)'		/* Pull in only activity from January 2019 */
+        AND (DT.ORGANIZATION = 'LU')					/* Pull in Lundbeck organizational data only */
+        AND (DT.SALESFORCE_GROUP_NAME is not null)	/* Do not pull in any data not associated with a team */
+        AND (FCA.RECORD_TYPE is not null)				/* Do not pull in any <null> RECORD_TYPE */
+        //AND (FCA.PRODUCT_GROUP_KEY <> 0)				/* Do not pull in records not related to a brand */
+        AND (FCA.TERRITORY_KEY = DT.TERRITORY_KEY)
+        AND (PG.PRODUCT_GROUP_KEY = FCA.PRODUCT_GROUP_KEY)
+        and (C.CUSTOMER_KEY=FCA.CUSTOMER_KEY) AND PDE>0;
+        
+        
+Store [FACT Call Activity] into [$(vQSBIE_ExtractQVD_Fact)/FACT_FPAD_HQ$(vSpace).qvd](qvd);   
+
+DROP TABLE [FACT Call Activity];
+
+
+
+///$tab SF: FACT_FPAD_HQ
+// [Last Full Week]:
+// LOAD *
+// FROM [$(vQSBIE_ExtractQVD_Dimension)/LOAD_SUMMARY_FPAD$(vSpace)$(vSF).qvd](qvd);
+
+// Let VmaxDate=Date(Date#(peek('LAST_FULL_WEEK_END_DATE'),'YYYY-MM-DD'),'YYYYMMDD');
+
+// Trace '$(VmaxDate)';
+
+// // LIB CONNECT TO 'LuUS_DATA:MSSQL_LuUS_DW_2.0';
+// LIB CONNECT TO 'LuUS_DATA:vAZ_MSSQL_LuUS_DW_2.0';
+// NoConcatenate
+// [WD from FCA]:
+// SQL
+// select 
+// 	  fca.TERRITORY_ID as TERRITORY_KEY,
+//       '20191226' as TERR_EFF_DATE,
+//       '99991231' as TERR_EXP_DATE,
+//       fca.CALL_DATE_KEY as DATE_KEY,
+//       'BD_FACTOR' as RECORD_TYPE,
+//       'BD_FACTOR' as CALL_TYPE,
+//       'BD_FACTOR' as INTERACTION_TYPE,
+// 	  1 as BD_FACTOR
+// FROM "LUNDBECK_DW"."ANALYTICS"."CALL_ACTIVITY_LU_SF" fca
+// join "LUNDBECK_DW"."COMMON"."TERRITORY" t on fca.TERRITORY_ID = t.TERRITORY_ID
+// join "LUNDBECK_DW"."COMMON"."PRODUCTS" pg On pg.BRAND = fca.PRODUCT_GROUP_NAME
+// Join "LUNDBECK_DW"."COMMON"."CALENDAR" C on C.DATE_KEY=fca.CALL_DATE_KEY 
+// where// t.SALESFORCE_GROUP_NAME not in ('VERTEX','ZENITH') and 
+// (fca.CALL_DATE_KEY >= 20191226)	AND fca.CALL_DATE_KEY<='$(VmaxDate)' and FLAG_WEEKDAY='Y'
+// and DETAIL_PRIORITY=1 and CALL_TYPE <> '$(vReactiveCalls)'
+// and PDE>0
+// group by fca.TERRITORY_ID, fca.CALL_DATE_KEY;
+
+// NoConcatenate
+// [FACT Call Activity]:
+// Load *
+// Resident [WD from FCA]
+// where Floor(date#(TERR_EFF_DATE,'YYYYMMDD'))<=Floor(date#(DATE_KEY,'YYYYMMDD')) and Floor(date#(TERR_EXP_DATE,'YYYYMMDD'))>=Floor(date#(DATE_KEY,'YYYYMMDD'));
+
+// Drop fields TERR_EFF_DATE,TERR_EXP_DATE;
+
+// drop table [WD from FCA];
+
+
+//  Concatenate([FACT Call Activity])
+// /*** Append call activity.  Use sum of BD_FACTOR above for denominator of calls per day calculations ***/
+// Load *,
+// 	 If(LOGISTICAL_TOUCHPOINT_FLAG='N','Other Calls','Logistical TouchPoint') as Calls_Logistical;
+     //Num(Floor(Date#(DATE_KEY,'YYYYMMDD'))) as NUMBER_DATE_KEY
+//   SELECT 		  FCA.CALL_DATE_KEY as DATE_KEY,
+//   				  FCA.CALL_DATE_KEY as ENTERED_DATE_KEY,
+//                   FCA.LUNDBECK_ID as CUSTOMER_KEY,
+//                   C.LUNDBECK_ID as "Customer Lundbeck ID",
+//                   FCA.HCO_LUNDBECK_ID as HCO_CUSTOMER_KEY,
+//                   pg.PRODUCT_GROUP_CODE as PRODUCT_GROUP_KEY,
+//                   FCA.TERRITORY_ID as TERRITORY_KEY,
+//                   FCA.DETAIL_PRIORITY,
+//                   FCA.PDE,
+//                   FCA.INTERACTION_TYPE,
+//                   FCA.RECORD_TYPE_NAME as RECORD_TYPE,
+//                   FCA.CALL_TYPE,
+//                   /*CASE
+//                       WHEN RECORD_TYPE like '%ENGAGE%' or Lower(INTERACTION_TYPE) like '%remote%' THEN 'REMOTE'
+//                       WHEN INTERACTION_TYPE like '%PHONE%' THEN 'PHONE'
+//                       WHEN INTERACTION_TYPE like '%OFFICE%' or INTERACTION_TYPE like 'Lunch and Learn' THEN 'FACE TO FACE'
+//                       ELSE 'OTHER'
+//                       END AS REPORT_CALL_TYPE,*/
+//                   REPORT_CALL_TYPE,
+//                   CASE
+//                   	  WHEN RECORD_TYPE_NAME like '%LOGISTICAL%' THEN 'Y'
+//                       ELSE 'N'
+//                       END AS LOGISTICAL_TOUCHPOINT_FLAG,
+//                   FCA.CALL_ID as FACT_SOURCE_ID,
+//                   FCA.USER_ID as CALL_USER_ID,
+//                   CASE 
+//                       WHEN PG.PRODUCT_GROUP_NAME = 'REXULTI AADAD' THEN 'REXULTI AADAD'
+//                        	  WHEN (PG.BRAND = 'REXULTI' AND PG.PRODUCT_GROUP_NAME <> 'REXULTI AADAD') THEN 'REXULTI INLINE'
+//                           ELSE PG.BRAND END AS BRAND,
+// //                   PG.BRAND,
+//                   FCA.PARENT_CALL_ID,
+//                   FCA.CALL_ID
+//   FROM "LUNDBECK_DW"."ANALYTICS"."CALL_ACTIVITY_LU_SF" FCA,
+//        "LUNDBECK_DW"."COMMON"."TERRITORY" DT,
+//        "LUNDBECK_DW"."COMMON"."PRODUCTS" PG,
+//        "LUNDBECK_DW"."COMMON"."CUSTOMERS" C
+//   WHERE     (FCA.CALL_DATE_KEY >= 20191226)	AND FCA.CALL_DATE_KEY<='$(VmaxDate)'		/* Pull in only activity from January 2019 */
+// //         AND (DT.ORGANIZATION = 'LU')					/* Pull in Lundbeck organizational data only */
+//         AND (DT.SALESFORCE_NAME is not null)	/* Do not pull in any data not associated with a team */
+//         AND (FCA.RECORD_TYPE_NAME is not null)				/* Do not pull in any <null> RECORD_TYPE */
+//         //AND (FCA.PRODUCT_GROUP_KEY <> 0)				/* Do not pull in records not related to a brand */
+//         AND (FCA.TERRITORY_ID = DT.TERRITORY_ID)
+//         AND (PG.BRAND = FCA.PRODUCT_GROUP_NAME) and CALL_TYPE <> '$(vReactiveCalls)'
+//         and (C.LUNDBECK_ID=FCA.LUNDBECK_ID);
+        
+//  Concatenate([FACT Call Activity])
+// /*** Append call activity.  Use sum of BD_FACTOR above for denominator of calls per day calculations ***/
+// Load *,
+// 	 If(LOGISTICAL_TOUCHPOINT_FLAG='N','Other Calls','Logistical TouchPoint') as Calls_Logistical;
+     //Num(Floor(Date#(DATE_KEY,'YYYYMMDD'))) as NUMBER_DATE_KEY
+//   SELECT 		  FCA.CALL_DATE_KEY as DATE_KEY,
+//   				  FCA.CALL_DATE_KEY as ENTERED_DATE_KEY,
+//                   FCA.LUNDBECK_ID as CUSTOMER_KEY,
+//                   C.LUNDBECK_ID as "Customer Lundbeck ID",
+//                   FCA.HCO_LUNDBECK_ID as HCO_CUSTOMER_KEY,
+//                   pg.PRODUCT_GROUP_CODE as PRODUCT_GROUP_KEY,
+//                   FCA.TERRITORY_ID as TERRITORY_KEY,
+//                   FCA.DETAIL_PRIORITY,
+//                   FCA.PDE,
+//                   FCA.INTERACTION_TYPE,
+//                   FCA.RECORD_TYPE_NAME as RECORD_TYPE,
+//                   FCA.CALL_TYPE,
+//                   REPORT_CALL_TYPE,
+//                   CASE
+//                   	  WHEN RECORD_TYPE_NAME like '%LOGISTICAL%' THEN 'Y'
+//                       ELSE 'N'
+//                       END AS LOGISTICAL_TOUCHPOINT_FLAG,
+//                   FCA.CALL_ID as FACT_SOURCE_ID,
+//                   FCA.USER_ID as CALL_USER_ID,
+//                   CASE 
+//                       WHEN PG.PRODUCT_GROUP_NAME = 'REXULTI AADAD' THEN 'REXULTI AADAD'
+//                       WHEN (PG.BRAND = 'REXULTI' AND PG.PRODUCT_GROUP_NAME <> 'REXULTI AADAD') THEN 'REXULTI INLINE'
+//                           ELSE PG.BRAND END AS BRAND,
+//                   //PG.BRAND,
+//                   FCA.PARENT_CALL_ID,
+//                   FCA.CALL_ID
+//   FROM"LUNDBECK_DW"."ANALYTICS"."CALL_ACTIVITY_LU_SF" FCA,
+//        "LUNDBECK_DW"."COMMON"."TERRITORY" DT,
+//        "LUNDBECK_DW"."COMMON"."PRODUCTS" PG,
+//        "LUNDBECK_DW"."COMMON"."CUSTOMERS" C
+//   WHERE     (FCA.CALL_DATE_KEY >= 20191226)	AND FCA.CALL_DATE_KEY<='$(VmaxDate)'		/* Pull in only activity from January 2019 */
+// //         AND (DT.ORGANIZATION = 'LU')					/* Pull in Lundbeck organizational data only */
+//         AND (DT.SALESFORCE_NAME is not null)	/* Do not pull in any data not associated with a team */
+//         AND (FCA.RECORD_TYPE_NAME is not null)				/* Do not pull in any <null> RECORD_TYPE */
+//         //AND (FCA.PRODUCT_GROUP_KEY <> 0)				/* Do not pull in records not related to a brand */
+//         AND (FCA.TERRITORY_ID = DT.TERRITORY_ID)
+//         AND (PG.BRAND = FCA.PRODUCT_GROUP_NAME) and CALL_TYPE <> '$(vReactiveCalls)'
+//         and (C.LUNDBECK_ID=FCA.LUNDBECK_ID) and C.CUSTOMER_TYPE='HCO';
+        
+
+//  left join([FACT Call Activity])    
+//  LOAD FACT_SOURCE_ID, COUNT(DETAIL_PRIORITY) AS TOTAL_CALL_COUNT
+//  GROUP BY FACT_SOURCE_ID;
+//  SELECT 	     DISTINCT
+//                   FCA.CALL_ID as FACT_SOURCE_ID,
+//                   FCA.DETAIL_PRIORITY
+//   FROM "LUNDBECK_DW"."ANALYTICS"."CALL_ACTIVITY_LU_SF" FCA,
+//        "LUNDBECK_DW"."COMMON"."TERRITORY" DT,
+//        "LUNDBECK_DW"."COMMON"."PRODUCTS" PG,
+//        "LUNDBECK_DW"."COMMON"."CUSTOMERS" C
+//   WHERE     (FCA.CALL_DATE_KEY >= 20191226)	//AND FCA.CALL_DATE_KEY<='$(VmaxDate)'		/* Pull in only activity from January 2019 */
+// //         AND (DT.ORGANIZATION = 'LU')					/* Pull in Lundbeck organizational data only */
+//         AND (DT.SALESFORCE_NAME is not null)	/* Do not pull in any data not associated with a team */
+//         AND (FCA.RECORD_TYPE_NAME is not null)				/* Do not pull in any <null> RECORD_TYPE */
+//         //AND (FCA.PRODUCT_GROUP_KEY <> 0)				/* Do not pull in records not related to a brand */
+//         AND (FCA.TERRITORY_ID = DT.TERRITORY_ID)
+//         AND (PG.BRAND = FCA.PRODUCT_GROUP_NAME) and CALL_TYPE <> '$(vReactiveCalls)'
+//         and (C.LUNDBECK_ID=FCA.LUNDBECK_ID) AND PDE>0;
+        
+        
+// Store [FACT Call Activity] into [$(vQSBIE_ExtractQVD_Fact)/FACT_FPAD_HQ$(vSpace)$(vSF).qvd](qvd);   
+
+// DROP TABLE [FACT Call Activity];
+
+
+
+///$tab FACT_FPAD_FIELD
+[Last Full Week]:
+LOAD *
+FROM [$(vQSBIE_ExtractQVD_Dimension)/LOAD_SUMMARY_FPAD$(vSpace).qvd](qvd);
+
+Let VmaxDate=Date(Date#(peek('LAST_FULL_WEEK_END_DATE'),'YYYY-MM-DD'),'YYYYMMDD');
+
+Trace '$(VmaxDate)';
+
+// LIB CONNECT TO 'LuUS_DATA:MSSQL_LuUS_DW_2.0';
+LIB CONNECT TO 'LuUS_DATA:vAZ_MSSQL_LuUS_DW_2.0';
+NoConcatenate
+[WD from FCA]:
+SQL
+select 
+	  fca.TERRITORY_KEY,
+      '20191226' as TERR_EFF_DATE,
+      '99991231' as TERR_EXP_DATE,
+      fca.CALL_DATE_KEY as DATE_KEY,
+      'BD_FACTOR' as RECORD_TYPE,
+      'BD_FACTOR' as CALL_TYPE,
+      'BD_FACTOR' as INTERACTION_TYPE,
+	1 as BD_FACTOR
+FROM LUINC.FACT_CALL_ACTIVITY fca
+join LUINC.DIM_TERRITORY t on fca.TERRITORY_KEY= t.TERRITORY_KEY
+join LUINC.DIM_PRODUCT_GROUP pg On pg.PRODUCT_GROUP_KEY = fca.PRODUCT_GROUP_KEY
+Join LUINC.DIM_CLNDR C on C.DATE_KEY=fca.CALL_DATE_KEY 
+where// t.SALESFORCE_GROUP_NAME not in ('VERTEX','ZENITH') and 
+(fca.CALL_DATE_KEY >= 20191226)	AND fca.CALL_DATE_KEY<='$(VmaxDate)' and FLAG_WEEKDAY='Y'
+and DETAIL_PRIORITY=1
+and PDE>0
+group by fca.TERRITORY_KEY, fca.CALL_DATE_KEY;
+
+NoConcatenate
+[FACT Call Activity]:
+Load *
+Resident [WD from FCA]
+where Floor(date#(TERR_EFF_DATE,'YYYYMMDD'))<=Floor(date#(DATE_KEY,'YYYYMMDD')) and Floor(date#(TERR_EXP_DATE,'YYYYMMDD'))>=Floor(date#(DATE_KEY,'YYYYMMDD'));
+
+Drop fields TERR_EFF_DATE,TERR_EXP_DATE;
+
+drop table [WD from FCA];
+
+
+ Concatenate([FACT Call Activity])
+/*** Append call activity.  Use sum of BD_FACTOR above for denominator of calls per day calculations ***/
+Load *,
+	 If(LOGISTICAL_TOUCHPOINT_FLAG='N','Other Calls','Logistical TouchPoint') as Calls_Logistical;
+     //Num(Floor(Date#(DATE_KEY,'YYYYMMDD'))) as NUMBER_DATE_KEY
+  SELECT 		  FCA.CALL_DATE_KEY as DATE_KEY,
+  				  FCA.ENTERED_DATE_KEY,
+                  Case when C.PDRP_IND='Y' and fca.REPORT_PRESCRIBER_CATEGORY<>'LICENSED/PRESCRIBER' then -1 
+                  when C.PDRP_IND='Y' and fca.REPORT_PRESCRIBER_CATEGORY='LICENSED/PRESCRIBER' then -2
+                  else FCA.CUSTOMER_KEY end as CUSTOMER_KEY,
+                  C.LUNDBECK_ID as "Customer Lundbeck ID",
+                  FCA.HCO_CUSTOMER_KEY,
+                  FCA.PRODUCT_GROUP_KEY,
+                  FCA.TERRITORY_KEY,
+                  FCA.DETAIL_PRIORITY,
+                  FCA.PDE,
+                  FCA.INTERACTION_TYPE,
+                  FCA.RECORD_TYPE,
+                  FCA.CALL_TYPE,
+                  /*CASE
+                      WHEN RECORD_TYPE like '%ENGAGE%' or Lower(INTERACTION_TYPE) like '%remote%' THEN 'REMOTE'
+                      WHEN INTERACTION_TYPE like '%PHONE%' THEN 'PHONE'
+                      WHEN INTERACTION_TYPE like '%OFFICE%' or INTERACTION_TYPE like 'Lunch and Learn' THEN 'FACE TO FACE'
+                      ELSE 'OTHER'
+                      END AS REPORT_CALL_TYPE,*/
+                  REPORT_CALL_TYPE,
+                  CASE
+                  	  WHEN RECORD_TYPE like '%LOGISTICAL%' THEN 'Y'
+                      ELSE 'N'
+                      END AS LOGISTICAL_TOUCHPOINT_FLAG,
+                  FCA.FACT_SOURCE_ID,
+                  FCA.USER_ID as CALL_USER_ID,
+                  CASE 
+                      WHEN PG.PRODUCT_GROUP = 'REXULTI AADAD' THEN 'REXULTI AADAD'
+                      WHEN (PG.PRODUCT_NAME = 'REXULTI' AND PG.PRODUCT_GROUP <> 'REXULTI AADAD') THEN 'REXULTI INLINE'
+                          ELSE PG.BRAND END AS BRAND,
+                  //PG.BRAND,
+                  FCA.PARENT_CALL_ID,
+                  FCA.CALL_ID
+  FROM LU_DW.LUINC.FACT_CALL_ACTIVITY FCA,
+       LU_DW.LUINC.DIM_TERRITORY DT,
+       LU_DW.LUINC.DIM_PRODUCT_GROUP PG,
+       LU_DW.LUINC.DIM_CUSTOMER C
+  WHERE     (FCA.CALL_DATE_KEY >= 20191226)	AND FCA.CALL_DATE_KEY<='$(VmaxDate)'		/* Pull in only activity from January 2019 */
+        AND (DT.ORGANIZATION = 'LU')					/* Pull in Lundbeck organizational data only */
+        AND (DT.SALESFORCE_GROUP_NAME is not null)	/* Do not pull in any data not associated with a team */
+        AND (FCA.RECORD_TYPE is not null)				/* Do not pull in any <null> RECORD_TYPE */
+        //AND (FCA.PRODUCT_GROUP_KEY <> 0)				/* Do not pull in records not related to a brand */
+        AND (FCA.TERRITORY_KEY = DT.TERRITORY_KEY)
+        AND (PG.PRODUCT_GROUP_KEY = FCA.PRODUCT_GROUP_KEY)
+        and (C.CUSTOMER_KEY=FCA.CUSTOMER_KEY);
+        
+ Concatenate([FACT Call Activity])
+/*** Append call activity.  Use sum of BD_FACTOR above for denominator of calls per day calculations ***/
+Load *,
+	 If(LOGISTICAL_TOUCHPOINT_FLAG='N','Other Calls','Logistical TouchPoint') as Calls_Logistical;
+     //Num(Floor(Date#(DATE_KEY,'YYYYMMDD'))) as NUMBER_DATE_KEY
+  SELECT 		  FCA.CALL_DATE_KEY as DATE_KEY,
+  				  FCA.ENTERED_DATE_KEY,
+                  Case when C.PDRP_IND='Y' and fca.REPORT_PRESCRIBER_CATEGORY<>'LICENSED/PRESCRIBER' then -1 
+                  when C.PDRP_IND='Y' and fca.REPORT_PRESCRIBER_CATEGORY='LICENSED/PRESCRIBER' then -2
+                  else FCA.CUSTOMER_KEY end as CUSTOMER_KEY,
+                  C.LUNDBECK_ID as "Customer Lundbeck ID",
+                  FCA.CUSTOMER_KEY as HCO_CUSTOMER_KEY,
+                  FCA.PRODUCT_GROUP_KEY,
+                  FCA.TERRITORY_KEY,
+                  FCA.DETAIL_PRIORITY,
+                  FCA.PDE,
+                  FCA.INTERACTION_TYPE,
+                  FCA.RECORD_TYPE,
+                  FCA.CALL_TYPE,
+                  /*CASE
+                      WHEN RECORD_TYPE like '%ENGAGE%' or Lower(INTERACTION_TYPE) like '%remote%' THEN 'REMOTE'
+                      WHEN INTERACTION_TYPE like '%PHONE%' THEN 'PHONE'
+                      WHEN INTERACTION_TYPE like '%OFFICE%' or INTERACTION_TYPE like 'Lunch and Learn' THEN 'FACE TO FACE'
+                      ELSE 'OTHER'
+                      END AS REPORT_CALL_TYPE,*/
+                  REPORT_CALL_TYPE,
+                  CASE
+                  	  WHEN RECORD_TYPE like '%LOGISTICAL%' THEN 'Y'
+                      ELSE 'N'
+                      END AS LOGISTICAL_TOUCHPOINT_FLAG,
+                  FCA.FACT_SOURCE_ID,
+                  FCA.USER_ID as CALL_USER_ID,
+                  CASE 
+                      WHEN PG.PRODUCT_GROUP = 'REXULTI AADAD' THEN 'REXULTI AADAD'
+                      WHEN (PG.PRODUCT_NAME = 'REXULTI' AND PG.PRODUCT_GROUP <> 'REXULTI AADAD') THEN 'REXULTI INLINE'
+                          ELSE PG.BRAND END AS BRAND,
+                  //PG.BRAND,
+                  FCA.PARENT_CALL_ID,
+                  FCA.CALL_ID
+  FROM LU_DW.LUINC.FACT_CALL_ACTIVITY FCA,
+       LU_DW.LUINC.DIM_TERRITORY DT,
+       LU_DW.LUINC.DIM_PRODUCT_GROUP PG,
+       LU_DW.LUINC.DIM_CUSTOMER C
+  WHERE     (FCA.CALL_DATE_KEY >= 20191226)	AND FCA.CALL_DATE_KEY<='$(VmaxDate)'		/* Pull in only activity from January 2019 */
+        AND (DT.ORGANIZATION = 'LU')					/* Pull in Lundbeck organizational data only */
+        AND (DT.SALESFORCE_GROUP_NAME is not null)	/* Do not pull in any data not associated with a team */
+        AND (FCA.RECORD_TYPE is not null)				/* Do not pull in any <null> RECORD_TYPE */
+        //AND (FCA.PRODUCT_GROUP_KEY <> 0)				/* Do not pull in records not related to a brand */
+        AND (FCA.TERRITORY_KEY = DT.TERRITORY_KEY)
+        AND (PG.PRODUCT_GROUP_KEY = FCA.PRODUCT_GROUP_KEY)
+        and (C.CUSTOMER_KEY=FCA.CUSTOMER_KEY) and CUSTOMER_TYPE='HCO';
+        
+
+ left join([FACT Call Activity])    
+ LOAD FACT_SOURCE_ID, COUNT(DETAIL_PRIORITY) AS TOTAL_CALL_COUNT
+ GROUP BY FACT_SOURCE_ID;
+ SELECT 	     DISTINCT
+                  FCA.FACT_SOURCE_ID,
+                  FCA.DETAIL_PRIORITY
+  FROM LU_DW.LUINC.FACT_CALL_ACTIVITY FCA,
+       LU_DW.LUINC.DIM_TERRITORY DT,
+       LU_DW.LUINC.DIM_PRODUCT_GROUP PG,
+       LU_DW.LUINC.DIM_CUSTOMER C
+  WHERE     (FCA.CALL_DATE_KEY >= 20191226)	//AND FCA.CALL_DATE_KEY<='$(VmaxDate)'		/* Pull in only activity from January 2019 */
+        AND (DT.ORGANIZATION = 'LU')					/* Pull in Lundbeck organizational data only */
+        AND (DT.SALESFORCE_GROUP_NAME is not null)	/* Do not pull in any data not associated with a team */
+        AND (FCA.RECORD_TYPE is not null)				/* Do not pull in any <null> RECORD_TYPE */
+        //AND (FCA.PRODUCT_GROUP_KEY <> 0)				/* Do not pull in records not related to a brand */
+        AND (FCA.TERRITORY_KEY = DT.TERRITORY_KEY)
+        AND (PG.PRODUCT_GROUP_KEY = FCA.PRODUCT_GROUP_KEY)
+        and (C.CUSTOMER_KEY=FCA.CUSTOMER_KEY) AND PDE>0;
+        
+Store [FACT Call Activity] into [$(vQSBIE_ExtractQVD_Fact)/FACT_FPAD_FIELD$(vSpace).qvd](qvd);   
+
+DROP TABLE [FACT Call Activity];        
+///$tab SF: FACT_FPAD_FIELD
+// [Last Full Week]:
+// LOAD *
+// FROM [$(vQSBIE_ExtractQVD_Dimension)/LOAD_SUMMARY_FPAD$(vSpace)$(vSF).qvd](qvd);
+
+// Let VmaxDate=Date(Date#(peek('LAST_FULL_WEEK_END_DATE'),'YYYY-MM-DD'),'YYYYMMDD');
+
+// Trace '$(VmaxDate)';
+
+// // LIB CONNECT TO 'LuUS_DATA:MSSQL_LuUS_DW_2.0';
+// LIB CONNECT TO 'LuUS_DATA:vAZ_MSSQL_LuUS_DW_2.0';
+// NoConcatenate
+// [WD from FCA]:
+// SQL
+// select 
+// 	  fca.TERRITORY_ID as TERRITORY_KEY,
+//       '20191226' as TERR_EFF_DATE,
+//       '99991231' as TERR_EXP_DATE,
+//       fca.CALL_DATE_KEY as DATE_KEY,
+//       'BD_FACTOR' as RECORD_TYPE,
+//       'BD_FACTOR' as CALL_TYPE,
+//       'BD_FACTOR' as INTERACTION_TYPE,
+// 	1 as BD_FACTOR
+// FROM "LUNDBECK_DW"."ANALYTICS"."CALL_ACTIVITY_LU_SF" fca
+// join "LUNDBECK_DW"."COMMON"."TERRITORY" t on fca.TERRITORY_ID= t.TERRITORY_ID
+// join "LUNDBECK_DW"."COMMON"."PRODUCTS" pg On pg.BRAND = fca.PRODUCT_GROUP_NAME
+// Join "LUNDBECK_DW"."COMMON"."CALENDAR" C on C.DATE_KEY=fca.CALL_DATE_KEY 
+// where// t.SALESFORCE_GROUP_NAME not in ('VERTEX','ZENITH') and 
+// (fca.CALL_DATE_KEY >= 20191226)	AND fca.CALL_DATE_KEY<='$(VmaxDate)' and C.FLAG_WEEKDAY='Y'
+// and DETAIL_PRIORITY=1 and CALL_TYPE <> '$(vReactiveCalls)'
+// and PDE>0
+// group by fca.TERRITORY_ID, fca.CALL_DATE_KEY;
+
+// NoConcatenate
+// [FACT Call Activity]:
+// Load *
+// Resident [WD from FCA]
+// where Floor(date#(TERR_EFF_DATE,'YYYYMMDD'))<=Floor(date#(DATE_KEY,'YYYYMMDD')) and Floor(date#(TERR_EXP_DATE,'YYYYMMDD'))>=Floor(date#(DATE_KEY,'YYYYMMDD'));
+
+// Drop fields TERR_EFF_DATE,TERR_EXP_DATE;
+
+// drop table [WD from FCA];
+
+
+//  Concatenate([FACT Call Activity])
+// /*** Append call activity.  Use sum of BD_FACTOR above for denominator of calls per day calculations ***/
+// Load *,
+// 	 If(LOGISTICAL_TOUCHPOINT_FLAG='N','Other Calls','Logistical TouchPoint') as Calls_Logistical;
+     //Num(Floor(Date#(DATE_KEY,'YYYYMMDD'))) as NUMBER_DATE_KEY
+//   SELECT 		  FCA.CALL_DATE_KEY as DATE_KEY,
+//   				  FCA.CALL_DATE_KEY as ENTERED_DATE_KEY,
+// //                   Case when C.PDRP_IND='Y'
+// //                   and fca.REPORT_PRESCRIBER_CATEGORY<>'LICENSED/PRESCRIBER'              //revisit
+// //                   then -1 
+// //                   when C.PDRP_IND='Y' 
+// //                   and fca.REPORT_PRESCRIBER_CATEGORY='LICENSED/PRESCRIBER'              //revisit
+// //                   then -2
+// //                   else FCA.LUNDBECK_ID end as CUSTOMER_KEY,
+//                   C.LUNDBECK_ID as "Customer Lundbeck ID",
+//                   FCA.HCO_LUNDBECK_ID as HCO_CUSTOMER_KEY,
+//                   pg.PRODUCT_GROUP_CODE as PRODUCT_GROUP_KEY,
+//                   FCA.TERRITORY_ID as TERRITORY_KEY,
+//                   FCA.DETAIL_PRIORITY,
+//                   FCA.PDE,
+//                   FCA.INTERACTION_TYPE,
+//                   FCA.RECORD_TYPE_NAME as RECORD_TYPE,
+//                   FCA.CALL_TYPE,
+//                   /*CASE
+//                       WHEN RECORD_TYPE like '%ENGAGE%' or Lower(INTERACTION_TYPE) like '%remote%' THEN 'REMOTE'
+//                       WHEN INTERACTION_TYPE like '%PHONE%' THEN 'PHONE'
+//                       WHEN INTERACTION_TYPE like '%OFFICE%' or INTERACTION_TYPE like 'Lunch and Learn' THEN 'FACE TO FACE'
+//                       ELSE 'OTHER'
+//                       END AS REPORT_CALL_TYPE,*/
+//                   REPORT_CALL_TYPE,
+//                   CASE
+//                   	  WHEN RECORD_TYPE_NAME like '%LOGISTICAL%' THEN 'Y'
+//                       ELSE 'N'
+//                       END AS LOGISTICAL_TOUCHPOINT_FLAG,
+//                   FCA.CALL_ID as FACT_SOURCE_ID,
+//                   FCA.USER_ID as CALL_USER_ID,
+//                   CASE 
+//                       WHEN PG.PRODUCT_GROUP_NAME = 'REXULTI AADAD' THEN 'REXULTI AADAD'
+//                       WHEN (PG.BRAND = 'REXULTI' AND PG.PRODUCT_GROUP_NAME <> 'REXULTI AADAD') THEN 'REXULTI INLINE'
+//                           ELSE PG.BRAND END AS BRAND,
+//                   //PG.BRAND,
+//                   FCA.PARENT_CALL_ID,
+//                   FCA.CALL_ID
+//   FROM "LUNDBECK_DW"."ANALYTICS"."CALL_ACTIVITY_LU_SF" FCA,
+//        "LUNDBECK_DW"."COMMON"."TERRITORY" DT,
+//        "LUNDBECK_DW"."COMMON"."PRODUCTS" PG,
+//        "LUNDBECK_DW"."COMMON"."CUSTOMERS" C
+//   WHERE     (FCA.CALL_DATE_KEY >= 20191226)	AND FCA.CALL_DATE_KEY<='$(VmaxDate)'		/* Pull in only activity from January 2019 */
+// //         AND (DT.ORGANIZATION = 'LU')					/* Pull in Lundbeck organizational data only */
+//         AND (DT.SALESFORCE_NAME is not null)	/* Do not pull in any data not associated with a team */
+//         AND (FCA.RECORD_TYPE_NAME is not null)				/* Do not pull in any <null> RECORD_TYPE */
+//         //AND (FCA.PRODUCT_GROUP_KEY <> 0)				/* Do not pull in records not related to a brand */
+//         AND (FCA.TERRITORY_ID = DT.TERRITORY_ID)
+//         AND (PG.BRAND = FCA.PRODUCT_GROUP_NAME) and CALL_TYPE <> '$(vReactiveCalls)'
+//         and (C.LUNDBECK_ID=FCA.LUNDBECK_ID);
+        
+//  Concatenate([FACT Call Activity])
+// /*** Append call activity.  Use sum of BD_FACTOR above for denominator of calls per day calculations ***/
+// Load *,
+// 	 If(LOGISTICAL_TOUCHPOINT_FLAG='N','Other Calls','Logistical TouchPoint') as Calls_Logistical;
+     //Num(Floor(Date#(DATE_KEY,'YYYYMMDD'))) as NUMBER_DATE_KEY
+//   SELECT 		  FCA.CALL_DATE_KEY as DATE_KEY,
+//   				  FCA.CALL_DATE_KEY as ENTERED_DATE_KEY,
+// //                   Case when C.PDRP_IND='Y' 
+// //                   and fca.REPORT_PRESCRIBER_CATEGORY<>'LICENSED/PRESCRIBER'                 //revisit
+// //                   then -1 
+// //                   when C.PDRP_IND='Y' and 
+// //                   fca.REPORT_PRESCRIBER_CATEGORY='LICENSED/PRESCRIBER'                     //revisit
+// //                   then -2
+// //                   else FCA.LUNDBECK_ID end as CUSTOMER_KEY,
+//                   C.LUNDBECK_ID as "Customer Lundbeck ID",
+//                   FCA.HCO_LUNDBECK_ID as HCO_CUSTOMER_KEY,
+//                   pg.PRODUCT_GROUP_CODE as PRODUCT_GROUP_KEY,
+//                   FCA.TERRITORY_ID as TERRITORY_KEY,
+//                   FCA.DETAIL_PRIORITY,
+//                   FCA.PDE,
+//                   FCA.INTERACTION_TYPE,
+//                   FCA.RECORD_TYPE_NAME as RECORD_TYPE,
+//                   FCA.CALL_TYPE,
+//                   /*CASE
+//                       WHEN RECORD_TYPE like '%ENGAGE%' or Lower(INTERACTION_TYPE) like '%remote%' THEN 'REMOTE'
+//                       WHEN INTERACTION_TYPE like '%PHONE%' THEN 'PHONE'
+//                       WHEN INTERACTION_TYPE like '%OFFICE%' or INTERACTION_TYPE like 'Lunch and Learn' THEN 'FACE TO FACE'
+//                       ELSE 'OTHER'
+//                       END AS REPORT_CALL_TYPE,*/
+//                   REPORT_CALL_TYPE,
+//                   CASE
+//                   	  WHEN RECORD_TYPE_NAME like '%LOGISTICAL%' THEN 'Y'
+//                       ELSE 'N'
+//                       END AS LOGISTICAL_TOUCHPOINT_FLAG,
+//                   FCA.CALL_ID as FACT_SOURCE_ID,
+//                   FCA.USER_ID as CALL_USER_ID,
+//                   CASE 
+//                       WHEN PG.PRODUCT_GROUP_NAME = 'REXULTI AADAD' THEN 'REXULTI AADAD'
+//                       WHEN (PG.BRAND = 'REXULTI' AND PG.PRODUCT_GROUP_NAME <> 'REXULTI AADAD') THEN 'REXULTI INLINE'
+//                           ELSE PG.BRAND END AS BRAND,
+//                   //PG.BRAND,
+//                   FCA.PARENT_CALL_ID,
+//                   FCA.CALL_ID
+//   FROM "LUNDBECK_DW"."ANALYTICS"."CALL_ACTIVITY_LU_SF" FCA,
+//        "LUNDBECK_DW"."COMMON"."TERRITORY" DT,
+//        "LUNDBECK_DW"."COMMON"."PRODUCTS" PG,
+//        "LUNDBECK_DW"."COMMON"."CUSTOMERS" C
+//   WHERE     (FCA.CALL_DATE_KEY >= 20191226)	AND FCA.CALL_DATE_KEY<='$(VmaxDate)'		/* Pull in only activity from January 2019 */
+// //         AND (DT.ORGANIZATION = 'LU')					/* Pull in Lundbeck organizational data only */
+//         AND (DT.SALESFORCE_NAME is not null)	/* Do not pull in any data not associated with a team */
+//         AND (FCA.RECORD_TYPE_NAME is not null)				/* Do not pull in any <null> RECORD_TYPE */
+//         //AND (FCA.PRODUCT_GROUP_KEY <> 0)				/* Do not pull in records not related to a brand */
+//         AND (FCA.TERRITORY_ID = DT.TERRITORY_ID)
+//         AND (PG.BRAND = FCA.PRODUCT_GROUP_NAME) and CALL_TYPE <> '$(vReactiveCalls)'
+//         and (C.LUNDBECK_ID=FCA.LUNDBECK_ID) and C.CUSTOMER_TYPE='HCO';
+        
+
+//  left join([FACT Call Activity])    
+//  LOAD FACT_SOURCE_ID, COUNT(DETAIL_PRIORITY) AS TOTAL_CALL_COUNT
+//  GROUP BY FACT_SOURCE_ID;
+//  SELECT 	     DISTINCT
+//                   FCA.CALL_ID as FACT_SOURCE_ID,
+//                   FCA.DETAIL_PRIORITY
+//   FROM "LUNDBECK_DW"."ANALYTICS"."CALL_ACTIVITY_LU_SF" FCA,
+//        "LUNDBECK_DW"."COMMON"."TERRITORY" DT,
+//        "LUNDBECK_DW"."COMMON"."PRODUCTS" PG,
+//        "LUNDBECK_DW"."COMMON"."CUSTOMERS" C
+//   WHERE     (FCA.CALL_DATE_KEY >= 20191226)	//AND FCA.CALL_DATE_KEY<='$(VmaxDate)'		/* Pull in only activity from January 2019 */
+// //         AND (DT.ORGANIZATION = 'LU')					/* Pull in Lundbeck organizational data only */
+//         AND (DT.SALESFORCE_NAME is not null)	/* Do not pull in any data not associated with a team */
+//         AND (FCA.RECORD_TYPE_NAME is not null)				/* Do not pull in any <null> RECORD_TYPE */
+//         //AND (FCA.PRODUCT_GROUP_KEY <> 0)				/* Do not pull in records not related to a brand */
+//         AND (FCA.TERRITORY_ID = DT.TERRITORY_ID)
+//         AND (PG.BRAND = FCA.PRODUCT_GROUP_NAME) and CALL_TYPE <> '$(vReactiveCalls)'
+//         and (C.LUNDBECK_ID=FCA.LUNDBECK_ID) AND PDE>0;
+        
+// Store [FACT Call Activity] into [$(vQSBIE_ExtractQVD_Fact)/FACT_FPAD_FIELD$(vSpace)$(vSF).qvd](qvd);   
+
+// DROP TABLE [FACT Call Activity];        
+///$tab Approved_Email_Tracker
+[FACT Sent Email]:
+Load
+	FACT_KEY,
+    DATE_KEY,
+    CUSTOMER_KEY,
+    PRODUCT_GROUP_KEY,
+    TERRITORY_KEY,
+    EMAIL_TEMPLATE_KEY,
+    UPPER(EMAIL_STATUS) as EMAIL_STATUS,
+    UPPER(DEVICE) as DEVICE,
+    UPPER(OPENED) as OPENED,
+    UNIQUE_OPENS,
+    UNIQUE_CLICKS,
+	TOTAL_OPENS,
+    NUMBER_OF_FRAGMENTS,
+	USER_ID,
+    SENT_EMAIL_ID,
+    SENT_EMAIL_NAME,
+	CALL_ID,
+	CUSTOMER_SOURCE_ID,
+    FACT_SOURCE_ID,
+    BRAND;
+SELECT 
+	   FCSE.FACT_KEY,
+       FCSE.DATE_SENT_KEY as DATE_KEY,
+       FCSE.CUSTOMER_KEY,
+       FCSE.PRODUCT_GROUP_KEY,
+       FCSE.TERRITORY_KEY,
+       FCSE.EMAIL_TEMPLATE_KEY,
+       FCSE.EMAIL_STATUS,
+       FCSE.DEVICE,
+       FCSE.OPENED,
+       FCSE.UNIQUE_OPENS,
+       FCSE.UNIQUE_CLICKS,
+       FCSE.TOTAL_OPENS,
+       FCSE.NUMBER_OF_FRAGMENTS,
+       FCSE.USER_ID,
+       FCSE.SENT_EMAIL_ID,
+       FCSE.SENT_EMAIL_NAME,
+       FCSE.CALL_ID,
+       FCSE.CUSTOMER_SOURCE_ID,
+       FCSE.FACT_SOURCE_ID,
+       BRAND
+FROM LU_DW.LUINC.FACT_CRM_SENT_EMAIL FCSE
+LEFT JOIN 
+LUINC.DIM_PRODUCT_GROUP PG ON FCSE.PRODUCT_GROUP_KEY = PG.PRODUCT_GROUP_KEY
+WHERE (FCSE.DATE_SENT_KEY >= '20200401') AND PG.BRAND IN ('ABILIFY MAINTENA', 'REXULTI', 'TRINTELLIX', 'NORTHERA', 'UNKNOWN', 'VYEPTI');
+
+
+Store [FACT Sent Email] into [$(vQSBIE_ExtractQVD_Fact)/FACT_CRM_SENT_EMAIL$(vSpace).qvd](qvd);   
+
+DROP TABLE [FACT Sent Email];
+///$tab CRM SENT FRAGMENT
+FACT_CRM_SENT_FRAGMENT:
+SELECT
+       FCSF.EMAIL_FRAGMENT_KEY,
+       FCSF.FRAGMENT_SEQUENCE_NUMBER,
+       FCSF.SENT_EMAIL_ID
+       
+FROM LU_DW.LUINC.FACT_CRM_SENT_FRAGMENT FCSF;
+
+
+
+Store FACT_CRM_SENT_FRAGMENT into [$(vQSBIE_ExtractQVD_Fact)/FACT_CRM_SENT_FRAGMENT$(vSpace).qvd](qvd);
+
+
+
+Drop Table FACT_CRM_SENT_FRAGMENT;
+///$tab CALL_PLAN_DATE_RANGE
+// NoConcatenate
+// SubtitleDates:
+// Select Distinct DATE_KEY as CALL_PLAN_START_DATE, DATE_TO_KEY as CALL_PLAN_END_DATE, T.SALESFORCE_GROUP_NAME as  GROUP_NAMES FROM LUINC.FACT_CALL_PLAN F
+// INNER JOIN LUINC.DIM_TERRITORY T on T.TERRITORY_KEY = F.TERRITORY_KEY
+// where T.FRANCHISE='PSY' and F.CURRENT_IND='Y';
+
+// Store SubtitleDates into [$(vQSBIE_ExtractQVD_Fact)/CALL_PLAN_DATE_RANGE$(vSpace).qvd](qvd);
+
+// DROP Table SubtitleDates;
+///$tab MEDISPAN_DATA
+[Medispan Data]:
+SELECT FACT_PRICING_NDC.PRICE_TYPE,
+       FACT_PRICING_NDC.UNIT_PRICE,
+       FACT_PRICING_NDC.PACKAGE_PRICE,
+       FACT_PRICING_NDC.PRIOR_UNIT_PRICE,
+       FACT_PRICING_NDC.PRIOR_PACKAGE_PRICE,
+       FACT_PRICING_NDC.CURRENT_PRICE_IND,
+       DIM_PRODUCT_NDC.NDC_UPC_HRI_FORMATTED,
+       DIM_PRODUCT_NDC.DRUG_NAME,
+       DIM_PRODUCT_NDC.NDC_STATUS,
+       DIM_PRODUCT_NDC.PRODUCT_NAME,
+       DIM_PRODUCT_NDC.OLD_NDC_UPC_HRI,
+       DIM_PRODUCT_NDC.GENERIC_PRODUCT_ID,
+       DIM_PRODUCT_NDC.GPI_STRENGTH_UOM,
+       DIM_PRODUCT_NDC.DRUG_NAME_AND_DOSE,
+       DIM_PRODUCT_NDC.DRUG_NAME_AND_EXT,
+       DIM_PRODUCT_NDC.DRUG_BASE_NAME,
+       DIM_PRODUCT_NDC.DRUG_SUBCLASS,
+       DIM_PRODUCT_NDC.DRUG_CLASS,
+       DIM_PRODUCT_NDC.DRUG_GROUP,
+       DIM_PRODUCT_NDC.THERAPEUTIC_CLASS,
+       DIM_PRODUCT_NDC.RX_OTC,
+       DIM_PRODUCT_NDC.RX_OTC_DESC,
+       DIM_PRODUCT_NDC.DDID,
+       DIM_PRODUCT_NDC.ADMINISTRATION_ROUTE,
+       DIM_PRODUCT_NDC.FORM,
+       DIM_PRODUCT_NDC.FORM_DESC,
+       DIM_PRODUCT_NDC.STRENGTH,
+       DIM_PRODUCT_NDC.STRENGTH_UOM,
+       DIM_PRODUCT_NDC.STRENGTH_DESC,
+       DIM_PRODUCT_NDC.BRAND_GENERIC_DESC,
+       DIM_PRODUCT_NDC.FORM_TYPE,
+       DIM_PRODUCT_NDC.MFR_PROMOTION_TYPE,
+       DIM_PRODUCT_NDC.MFR_NAME,
+       DIM_PRODUCT_NDC.MFR_NAME_ABBR,
+       DIM_PRODUCT_NDC.MFR_PROMOTION_TYPE_CODE,
+       DIM_PRODUCT_PACKAGING.GPPC,
+       DIM_PRODUCT_PACKAGING.PACKAGE_SIZE,
+       DIM_PRODUCT_PACKAGING.PACKAGE_SIZE_UOM,
+       DIM_PRODUCT_PACKAGING.PACKAGE_QTY,
+       DIM_PRODUCT_PACKAGING.PACKAGE_TYPE,
+       DIM_PRODUCT_PACKAGING.PACKAGE_CODE,
+       DIM_PRODUCT_PACKAGING.PACKAGE_DESC,
+       FACT_PRICING_NDC.PRODUCT_PACKAGING_KEY,
+       FACT_PRICING_NDC.DATE_FROM_KEY,
+       FACT_PRICING_NDC.DATE_TO_KEY
+FROM (LU_DW.LUINC.FACT_PRICING_NDC FACT_PRICING_NDC
+      INNER JOIN LU_DW.LUINC.DIM_PRODUCT_NDC DIM_PRODUCT_NDC
+         ON (FACT_PRICING_NDC.PRODUCT_NDC_KEY =
+             DIM_PRODUCT_NDC.PRODUCT_NDC_KEY))
+      INNER JOIN LU_DW.LUINC.DIM_PRODUCT_PACKAGING DIM_PRODUCT_PACKAGING
+        ON (FACT_PRICING_NDC.PRODUCT_PACKAGING_KEY =
+            DIM_PRODUCT_PACKAGING.PRODUCT_PACKAGING_KEY);
+            
+Store [Medispan Data] into [$(vQSBIE_ExtractQVD_Fact)/MEDISPAN_DATA$(vSpace).qvd](qvd);   
+
+Drop Table [Medispan Data]; 
+///$tab SF: MEDISPAN_DATA
+// [Medispan Data]:
+// SELECT FACT_PRICING_NDC.PRICE_TYPE,                    /revisit
+//        FACT_PRICING_NDC.UNIT_PRICE,
+//        FACT_PRICING_NDC.PACKAGE_PRICE,
+//        FACT_PRICING_NDC.PRIOR_UNIT_PRICE,
+//        FACT_PRICING_NDC.PRIOR_PACKAGE_PRICE,
+//        FACT_PRICING_NDC.CURRENT_PRICE_IND,
+//        DIM_PRODUCT_NDC.NDC_UPC_HRI_FORMATTED,
+//        DIM_PRODUCT_NDC.DRUG_NAME,
+//        DIM_PRODUCT_NDC.NDC_STATUS,
+//        DIM_PRODUCT_NDC.PRODUCT_NAME,
+//        DIM_PRODUCT_NDC.OLD_NDC_UPC_HRI,
+//        DIM_PRODUCT_NDC.GENERIC_PRODUCT_ID,
+//        DIM_PRODUCT_NDC.GPI_STRENGTH_UOM,
+//        DIM_PRODUCT_NDC.DRUG_NAME_AND_DOSE,
+//        DIM_PRODUCT_NDC.DRUG_NAME_AND_EXT,
+//        DIM_PRODUCT_NDC.DRUG_BASE_NAME,
+//        DIM_PRODUCT_NDC.DRUG_SUBCLASS,
+//        DIM_PRODUCT_NDC.DRUG_CLASS,
+//        DIM_PRODUCT_NDC.DRUG_GROUP,
+//        DIM_PRODUCT_NDC.THERAPEUTIC_CLASS,
+//        DIM_PRODUCT_NDC.RX_OTC,
+//        DIM_PRODUCT_NDC.RX_OTC_DESC,
+//        DIM_PRODUCT_NDC.DDID,
+//        DIM_PRODUCT_NDC.ADMINISTRATION_ROUTE,
+//        DIM_PRODUCT_NDC.FORM,
+//        DIM_PRODUCT_NDC.FORM_DESC,
+//        DIM_PRODUCT_NDC.STRENGTH,
+//        DIM_PRODUCT_NDC.STRENGTH_UOM,
+//        DIM_PRODUCT_NDC.STRENGTH_DESC,
+//        DIM_PRODUCT_NDC.BRAND_GENERIC_DESC,
+//        DIM_PRODUCT_NDC.FORM_TYPE,
+//        DIM_PRODUCT_NDC.MFR_PROMOTION_TYPE,
+//        DIM_PRODUCT_NDC.MFR_NAME,
+//        DIM_PRODUCT_NDC.MFR_NAME_ABBR,
+//        DIM_PRODUCT_NDC.MFR_PROMOTION_TYPE_CODE,
+//        DIM_PRODUCT_PACKAGING.GPPC,
+//        DIM_PRODUCT_PACKAGING.PACKAGE_SIZE,
+//        DIM_PRODUCT_PACKAGING.PACKAGE_SIZE_UOM,
+//        DIM_PRODUCT_PACKAGING.PACKAGE_QTY,
+//        DIM_PRODUCT_PACKAGING.PACKAGE_TYPE,
+//        DIM_PRODUCT_PACKAGING.PACKAGE_CODE,
+//        DIM_PRODUCT_PACKAGING.PACKAGE_DESC,
+//        FACT_PRICING_NDC.PRODUCT_PACKAGING_KEY,
+//        FACT_PRICING_NDC.DATE_FROM_KEY,
+//        FACT_PRICING_NDC.DATE_TO_KEY
+// FROM (LU_DW.LUINC.FACT_PRICING_NDC FACT_PRICING_NDC      //revisit
+//       INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS_NDC" DIM_PRODUCT_NDC
+//          ON (FACT_PRICING_NDC.PRODUCT_NDC_KEY =
+//              DIM_PRODUCT_NDC.PRODUCT_NDC_KEY))
+//       INNER JOIN LU_DW.LUINC.DIM_PRODUCT_PACKAGING DIM_PRODUCT_PACKAGING               //revisit
+//         ON (FACT_PRICING_NDC.PRODUCT_PACKAGING_KEY =
+//             DIM_PRODUCT_PACKAGING.PRODUCT_PACKAGING_KEY);
+            
+// Store [Medispan Data] into [$(vQSBIE_ExtractQVD_Fact)/MEDISPAN_DATA$(vSpace)$(vSF).qvd](qvd);   
+
+// Drop Table [Medispan Data]; 
+///$tab Zip To City Reference
+[ZIP to City XREF]:
+LIB CONNECT TO 'LuUS_DATA:MSSQL_LuUS_MDM';
+
+
+sql SELECT ZIP.ZIP
+,	    COUNTY_NAME as County
+ ,      upper(zip.STATE) as STATE
+ ,      upper(zip.CITY) as CITY
+FROM   mds.mdm.VW_LKP_ZIP_CODE zip
+INNER JOIN  mds.mdm.VW_LKP_ZIP_COUNTY c on c.FIPS = zip.County_FIPS AND c.EXP_DATE IS NULL
+WHERE    zip.exp_date IS NULL
+AND     zip.Last_Line = 'L'
+;
+
+store  [ZIP to City XREF] into [$(vQSBIE_TransformQVD_Fact)/ZIP_TO_CITY_REFERENCE$(vSpace).qvd](qvd);   
+
+Drop Table [ZIP to City XREF]; 
+///$tab SF: Zip To City Reference
+// [ZIP to City XREF]:
+// LIB CONNECT TO 'LuUS_DATA:MSSQL_LuUS_MDM';
+
+
+// sql SELECT ZIP.ZIP
+// ,	    COUNTY_NAME as County
+//  ,      upper(zip.STATE) as STATE
+//  ,      upper(zip.CITY) as CITY
+// FROM   mds.mdm.VW_LKP_ZIP_CODE zip                 //revisit
+// INNER JOIN  mds.mdm.VW_LKP_ZIP_COUNTY c on c.FIPS = zip.County_FIPS AND c.EXP_DATE IS NULL
+// WHERE    zip.exp_date IS NULL
+// AND     zip.Last_Line = 'L'
+// ;
+
+// store  [ZIP to City XREF] into [$(vQSBIE_TransformQVD_Fact)/ZIP_TO_CITY_REFERENCE$(vSpace)$(vSF).qvd](qvd);   
+
+// Drop Table [ZIP to City XREF]; 
+///$tab Zip To Territory Reference
+// LIB CONNECT TO 'LuUS_DATA:MSSQL_LuUS_DW_2.0';
+LIB CONNECT TO 'LuUS_DATA:vAZ_MSSQL_LuUS_DW_2.0';
+[ZIP to Terr]:
+
+sql 
+SELECT *
+FROM LU_DW.LUINC.FACT_ZIP_TO_TERRITORY ztt
+WHERE CURRENT_IND = 'Y';
+
+store  [ZIP to Terr] into [$(vQSBIE_ExtractQVD_Fact)/ZIP_TO_TERRITORY_REFERENCE$(vSpace).qvd](qvd);   
+
+
+DROP table [ZIP to Terr];
+///$tab SF: Zip To Territory Reference
+// // LIB CONNECT TO 'LuUS_DATA:MSSQL_LuUS_DW_2.0';
+// LIB CONNECT TO 'LuUS_DATA:vAZ_MSSQL_LuUS_DW_2.0';
+// [ZIP to Terr]:
+
+// sql 
+// SELECT *
+// FROM "LUNDBECK_DW"."COMMON"."ZIP_TO_TERRITORY" ztt
+// WHERE CURRENT_IND = 'Y';
+
+// store  [ZIP to Terr] into [$(vQSBIE_ExtractQVD_Fact)/ZIP_TO_TERRITORY_REFERENCE$(vSpace)$(vSF).qvd](qvd);   
+
+
+// DROP table [ZIP to Terr];
+///$tab MCKESSON SALES
+STG_MCKESSON_NRO_PHARMACY_SALES:
+SELECT sales.[DATE_CREATED]
+      ,sales.[SHIP_TO_HASHKEY]
+      ,sales.[PRODUCT_NDC_NUMBER]
+      ,sales.[PRODUCT_BUYING_DESCRIPTION]
+      ,sales.[UNITS]
+      ,sales.[SOURCE_ID]
+      ,ph.[PARENT_CUSTOMER_DEA_NUMBER]
+      ,ph.[PARENT_CUSTOMER_NAME]
+      ,ph.[SHIP_TO_HIN_NUM]
+      ,ph.[SHIP_TO_ADDRESS]
+      ,ph.[SHIP_TO_CITY]
+      ,ph.[SHIP_TO_STATE]
+      ,ph.[SHIP_TO_ZIP_CODE]
+      ,ph.[SHIP_TO_TELEPHONE]
+      ,ph.[CUSTOMER_CLASSIFICATION]
+  FROM DW1_DB.[LU_STAGE].[LUINC].[STG_MCKESSON_NRO_PHARMACY_SALES] sales
+  LEFT OUTER JOIN DW1_DB.[LU_STAGE].[LUINC].[STG_MCKESSON_NRO_PHARMACY] ph
+    ON ph.SHIP_TO_HASHKEY = sales.SHIP_TO_HASHKEY 
+    AND ph.DW_CURRENT_FLAG = 'Y'
+;
+
+
+
+Store STG_MCKESSON_NRO_PHARMACY_SALES into [$(vQSBIE_ExtractQVD_Fact)/STG_MCKESSON_NRO_PHARMACY_SALES$(vSpace).qvd](Qvd);
+
+Drop Table STG_MCKESSON_NRO_PHARMACY_SALES;
+///$tab KAISER SALES
+STG_KAISER_NRO_PHARMACY_SALES:
+SELECT sales.[PHY_HASHBYTES]
+      ,sales.[TRANSACTION_TYPE]
+      ,sales.[TRANSACTION_DATE]
+      ,sales.[TRANSACTION_NUMBER]
+      ,sales.[SHIPMENT_NUMBER]
+      ,sales.[TOTAL_NET_AMOUNT]
+      ,sales.[SHIPPED_QTY]
+      ,sales.[ITEM_NUMBER]
+      ,sales.[CUSTOMER_NUMBER]
+      ,sales.[ORG_CODE]
+      ,sales.[ORDER_NUMBER]
+      ,sales.[ITEM_DESCRIPTION]
+      ,sales.[NET_PRICE]
+      ,sales.[BO_QTY]
+      ,sales.[REASON_CODE]
+      ,sales.[SELL_UOM]
+      ,sales.[CUSTOMER_NAME]
+      ,sales.[CUST_GROUP]
+      ,sales.[SA_CUSTOMER]
+      ,sales.[CUST_ADDRESS1]
+      ,sales.[CUST_ADDRESS2]
+      ,sales.[CUST_ADDRESS3]
+      ,sales.[CUST_CITY]
+      ,sales.[CUST_STATE]
+      ,sales.[CUST_ZIP]
+      ,sales.[CUST_ZIP_PLUS_FOUR]
+      ,sales.[CUST_PO_NUMBER]
+      ,ph.[SHIP_TO_NUMBER]
+      ,ph.[SHIP_TO_NAME]
+      ,ph.[SHIP_TO_SA_CUSTOMER]
+      ,ph.[SHIP_TO_ADDRESS1]
+      ,ph.[SHIP_TO_ADDRESS2]
+      ,ph.[SHIP_TO_ADDRESS3]
+      ,ph.[SHIP_TO_CITY]
+      ,ph.[SHIP_TO_ZIP_CODE]
+      ,ph.[SHIP_TO_STATE]
+  FROM DW1_DB.[LU_STAGE].[LUINC].[STG_KAISER_NRO_PHARMACY_SALES] sales
+  LEFT OUTER JOIN DW1_DB.[LU_STAGE].[LUINC].[STG_KAISER_NRO_PHARMACY] ph
+    ON ph.[HASHBYTES] = sales.[PHY_HASHBYTES]
+	AND ph.DW_CURRENT_FLAG = 'Y'
+	;
+    
+store STG_KAISER_NRO_PHARMACY_SALES into [lib://LuUS_DATA:DataFiles/QlikCloudExtractFiles/STG_KAISER_NRO_PHARMACY_SALES$(vSpace).qvd](qvd);
+
+Drop Table STG_KAISER_NRO_PHARMACY_SALES;
+///$tab Fact Dispense
+[Product Group Map]:
+MAPPING LOAD *
+INLINE [
+Product NDC, Product Name
+67386011101, SABRIL 500MG TABLETS
+67386021165, SABRIL POWDER 500 MG PACKETS 1'S	
+67386042101, XENAZINE	
+];
+
+
+[Product Name Map]:
+MAPPING  LOAD *
+INLINE [
+Product NDC, Product Name
+67386011101, SABRIL
+67386021165, SABRIL
+67386042101, XENAZINE
+];
+
+
+FACT_DISPENSE:
+
+//STG_THR_NRO_SAB_DS (Sabril)
+Load  ORDER_TRANS_NUMBER as [Transaction Number]
+,     ApplyMap('Product Group Map', product_ndc, product_name) as [Product Group]
+,     ApplyMap('Product Name Map', product_ndc, product_name) as [Product Name]
+//,     product_name as [Product Name]
+,     product_ndc as [Product NDC]
+,     thr_sp_name as [SP Name]
+,     THR_SP_ID as [SP ID]
+,     quant_dispensed as [Quantity Dispensed]
+,     MG_DISPENSED as [MG Dispensed]
+,      DATE(shipped_date, 'MM/DD/YYYY') as [Shipped Date]
+,     FIRST_NAME as [First Name]
+,     LAST_NAME as [Last Name]
+,     LUNDBECK_ID as [Lundbeck ID]
+,     STREET_ADDRESS_1 as [Address 1]
+,     STREET_ADDRESS_2 as [Address 2]
+,     STREET_ADDRESS_3 as [Address 3]
+,     CITY as [City]
+,     STATE as [State]
+,     ZIP_CODE as [ZIP]
+,     LOC2_STREET_ADDRESS_1 as [LOC2 Address 1]
+,     LOC2_STREET_ADDRESS_2 as [LOC2 Address 2]
+,     LOC2_STREET_ADDRESS_3 as [LOC2 Address 3]
+,     LOC2_CITY as [LOC2 City]
+,     LOC2_STATE as [LOC2 State]
+,     LOC2_ZIP_CODE as [LOC2 ZIP]
+,     SOURCE as [Source]
+;
+
+
+SELECT dsp.ORDER_TRANS_NUMBER
+,      dsp.product_name
+,      dsp.product_ndc
+,      dsp.thr_sp_name
+,      dsp.THR_SP_ID
+,      dsp.quant_dispensed
+,      dsp.MG_DISPENSED
+,      dsp.shipped_date
+,      dr.FIRST_NAME
+,      dr.LAST_NAME
+,      dr.LUNDBECK_ID
+,      dr.STREET_ADDRESS_1
+,      dr.STREET_ADDRESS_2
+,      dr.STREET_ADDRESS_3
+,      dr.CITY
+,      dr.STATE
+,      dr.ZIP_CODE
+,      dr.LOC2_STREET_ADDRESS_1
+,      dr.LOC2_STREET_ADDRESS_2
+,      dr.LOC2_STREET_ADDRESS_3
+,      dr.LOC2_CITY
+,      dr.LOC2_STATE
+,      dr.LOC2_ZIP_CODE
+,      'STG_THR_NRO_SAB_DSP' as SOURCE
+FROM   DW1_DB.LU_STAGE.LUSEC.STG_THR_NRO_SAB_DSP dsp
+LEFT OUTER JOIN DW1_DB.LU_STAGE.[LUSEC].[STG_THR_NRO_SAB_PHY] dr
+  On dr.THR_PHY_ID = dsp.THR_PHY_ID
+  AND  dr.DW_CURRENT_FLAG = 'Y'
+ORDER BY  dsp.ORDER_TRANS_NUMBER
+;
+
+
+//STG_WALGREEN_SAB_REMS_DSP (Sabril REMS)
+Load  ORDER_TRANS_NUMBER as [Transaction Number]
+,     ApplyMap('Product Group Map', product_ndc, product_name) as [Product Group]
+,     ApplyMap('Product Name Map', product_ndc, product_name) as [Product Name]
+,     product_ndc as [Product NDC]
+,     thr_sp_name as [SP Name]
+,     THR_SP_ID as [SP ID]
+,     quant_dispensed as [Quantity Dispensed]
+,     MG_DISPENSED as [MG Dispensed]
+,     DATE(DATE#(shipped_date, 'YYYYMMDD'), 'MM/DD/YYYY')  as [Shipped Date]
+,     FIRST_NAME as [First Name]
+,     LAST_NAME as [Last Name]
+,     LUNDBECK_ID as [Lundbeck ID]
+,     STREET_ADDRESS_1 as [Address 1]
+,     STREET_ADDRESS_2 as [Address 2]
+,     STREET_ADDRESS_3 as [Address 3]
+,     CITY as [City]
+,     STATE as [State]
+,     ZIP_CODE as [ZIP]
+,     LOC2_STREET_ADDRESS_1 as [LOC2 Address 1]
+,     LOC2_STREET_ADDRESS_2 as [LOC2 Address 2]
+,     LOC2_STREET_ADDRESS_3 as [LOC2 Address 3]
+,     LOC2_CITY as [LOC2 City]
+,     LOC2_STATE as [LOC2 State]
+,     LOC2_ZIP_CODE as [LOC2 ZIP]
+,     SOURCE as [Source]
+;
+
+SELECt dsp.ORDER_TRANS_NUMBER
+,      dsp.product_name
+,      dsp.product_ndc
+,      'WALGREENS' as thr_sp_name
+,      dsp.THR_SP_ID
+,      dsp.quant_dispensed
+,      dsp.MG_DISPENSED
+,      dsp.shipped_date
+,      dr.FIRST_NAME
+,      dr.LAST_NAME
+,      dr.LUNDBECK_ID
+,      dr.STREET_ADDRESS_1
+,      dr.STREET_ADDRESS_2
+,      dr.STREET_ADDRESS_3
+,      dr.CITY
+,      dr.STATE
+,      dr.ZIP_CODE
+,      dr.LOC2_STREET_ADDRESS_1
+,      dr.LOC2_STREET_ADDRESS_2
+,      dr.LOC2_STREET_ADDRESS_3
+,      dr.LOC2_CITY
+,      dr.LOC2_STATE
+,      dr.LOC2_ZIP_CODE
+,      'STG_WALGREEN_SAB_REMS_DSP' as SOURCE
+FROM    DW1_DB.LU_STAGE.LUINC.STG_WALGREEN_SAB_REMS_DSP dsp
+LEFT OUTER JOIN DW1_DB.LU_STAGE.LUSEC.[STG_THR_NRO_SAB_PHY] dr
+  On dr.THR_PHY_ID = dsp.THR_PHY_ID
+  AND  dr.DW_CURRENT_FLAG = 'Y'
+ORDER BY  dsp.ORDER_TRANS_NUMBER
+;
+
+//STG_ACCREDO_SAB_REMS_DSP (Sabril REMS)
+Load  ORDER_TRANS_NUMBER as [Transaction Number]
+,     ApplyMap('Product Group Map', product_ndc, product_name) as [Product Group]
+,     ApplyMap('Product Name Map', product_ndc, product_name) as [Product Name]
+,     product_ndc as [Product NDC]
+,     thr_sp_name as [SP Name]
+,     THR_SP_ID as [SP ID]
+,     quant_dispensed as [Quantity Dispensed]
+,     MG_DISPENSED as [MG Dispensed]
+,     DATE(DATE#(shipped_date, 'YYYYMMDD'), 'MM/DD/YYYY')  as [Shipped Date]
+,     FIRST_NAME as [First Name]
+,     LAST_NAME as [Last Name]
+,     LUNDBECK_ID as [Lundbeck ID]
+,     STREET_ADDRESS_1 as [Address 1]
+,     STREET_ADDRESS_2 as [Address 2]
+,     STREET_ADDRESS_3 as [Address 3]
+,     CITY as [City]
+,     STATE as [State]
+,     ZIP_CODE as [ZIP]
+,     LOC2_STREET_ADDRESS_1 as [LOC2 Address 1]
+,     LOC2_STREET_ADDRESS_2 as [LOC2 Address 2]
+,     LOC2_STREET_ADDRESS_3 as [LOC2 Address 3]
+,     LOC2_CITY as [LOC2 City]
+,     LOC2_STATE as [LOC2 State]
+,     LOC2_ZIP_CODE as [LOC2 ZIP]
+,     SOURCE as [Source]
+;
+
+SELECt dsp.ORDER_TRANS_NUMBER
+,      dsp.product_name
+,      dsp.product_ndc
+,      'ACCREDO' as thr_sp_name
+,      dsp.THR_SP_ID
+,      dsp.quant_dispensed
+,      dsp.MG_DISPENSED
+,      dsp.shipped_date
+,      dr.FIRST_NAME
+,      dr.LAST_NAME
+,      dr.LUNDBECK_ID
+,      dr.STREET_ADDRESS_1
+,      dr.STREET_ADDRESS_2
+,      dr.STREET_ADDRESS_3
+,      dr.CITY
+,      dr.STATE
+,      dr.ZIP_CODE
+,      dr.LOC2_STREET_ADDRESS_1
+,      dr.LOC2_STREET_ADDRESS_2
+,      dr.LOC2_STREET_ADDRESS_3
+,      dr.LOC2_CITY
+,      dr.LOC2_STATE
+,      dr.LOC2_ZIP_CODE
+,      'STG_ACCREDO_SAB_REMS_DSP' as SOURCE
+FROM    DW1_DB.LU_STAGE.LUINC.STG_ACCREDO_SAB_REMS_DSP dsp
+LEFT OUTER JOIN DW1_DB.LU_STAGE.LUSEC.[STG_THR_NRO_SAB_PHY] dr
+  On dr.THR_PHY_ID = dsp.THR_PHY_ID
+  AND  dr.DW_CURRENT_FLAG = 'Y'
+ORDER BY  dsp.ORDER_TRANS_NUMBER
+;
+
+//STG_THR_NRO_XEN_DSP (Xenazine)
+Load  ORDER_TRANS_NUMBER as [Transaction Number]
+,     ApplyMap('Product Group Map', product_ndc, product_name) as [Product Group]
+,     ApplyMap('Product Name Map', product_ndc, product_name) as [Product Name]
+,     product_ndc as [Product NDC]
+,     thr_sp_name as [SP Name]
+,     THR_SP_ID as [SP ID]
+,     quant_dispensed as [Quantity Dispensed]
+,     MG_DISPENSED as [MG Dispensed]
+,      DATE(shipped_date, 'MM/DD/YYYY') as [Shipped Date]
+,     FIRST_NAME as [First Name]
+,     LAST_NAME as [Last Name]
+,     LUNDBECK_ID as [Lundbeck ID]
+,     STREET_ADDRESS_1 as [Address 1]
+,     STREET_ADDRESS_2 as [Address 2]
+,     STREET_ADDRESS_3 as [Address 3]
+,     CITY as [City]
+,     STATE as [State]
+,     ZIP_CODE as [ZIP]
+,     LOC2_STREET_ADDRESS_1 as [LOC2 Address 1]
+,     LOC2_STREET_ADDRESS_2 as [LOC2 Address 2]
+,     LOC2_STREET_ADDRESS_3 as [LOC2 Address 3]
+,     LOC2_CITY as [LOC2 City]
+,     LOC2_STATE as [LOC2 State]
+,     LOC2_ZIP_CODE as [LOC2 ZIP]
+,     SOURCE as [Source]
+;
+
+SELECt dsp.ORDER_TRANS_NUMBER
+,      dsp.product_name
+,      dsp.product_ndc
+,      dsp.thr_sp_name
+,      dsp.THR_SP_ID
+,      dsp.quant_dispensed
+,      dsp.MG_DISPENSED
+,      dsp.shipped_date
+,      dr.FIRST_NAME
+,      dr.LAST_NAME
+,      dr.LUNDBECK_ID
+,      dr.STREET_ADDRESS_1
+,      dr.STREET_ADDRESS_2
+,      dr.STREET_ADDRESS_3
+,      dr.CITY
+,      dr.STATE
+,      dr.ZIP_CODE
+,      dr.LOC2_STREET_ADDRESS_1
+,      dr.LOC2_STREET_ADDRESS_2
+,      dr.LOC2_STREET_ADDRESS_3
+,      dr.LOC2_CITY
+,      dr.LOC2_STATE
+,      dr.LOC2_ZIP_CODE
+,      'STG_THR_NRO_XEN_DSP' as SOURCE
+FROM    DW1_DB.LU_STAGE.LUSEC.STG_THR_NRO_XEN_DSP dsp
+LEFT OUTER JOIN DW1_DB.LU_STAGE.LUSEC.[STG_THR_NRO_XEN_PHY] dr
+  On dr.THR_PHY_ID = dsp.THR_PHY_ID
+  AND  dr.DW_CURRENT_FLAG = 'Y'
+ORDER BY  dsp.ORDER_TRANS_NUMBER
+;
+
+
+Store FACT_DISPENSE into [$(vQSBIE_ExtractQVD_Fact)/FACT_DISPENSE$(vSpace).qvd](Qvd);
+
+Drop Table FACT_DISPENSE;
+//Drop Table [Product Name Map];
+//Drop Table [Product Group Map];
+///$tab Fact STG THR All Inventories
+STG_THR_NRO_ALL_INV:
+
+SELECT [THR_FILE_DATE]
+      ,[WEEK_ENDING_DATE]
+      ,[THR_SP_NAME]
+      ,[THR_SP_ID]
+      ,[THR_SP_NPI]
+      ,[PRODUCT_NAME]
+      ,[PRODUCT_NDC]
+      ,[INV_DATE_BEGIN]
+      ,[QTY_BEGIN]
+      ,[INV_DATE_END]
+      ,[QTY_END]
+  FROM DW1_DB.[LU_STAGE].[LUSEC].[STG_THR_NRO_ALL_INV];
+  
+  
+ 
+Store STG_THR_NRO_ALL_INV into [$(vQSBIE_ExtractQVD_Fact)/STG_THR_NRO_ALL_INV$(vSpace).qvd](Qvd);
+
+Drop Table STG_THR_NRO_ALL_INV;
+///$tab CURASCRIPT Sales
+FACT_CURASCRIPT_SALES:
+
+SELECT sales.[DATA_MONTH]
+      ,sales.[SHIP_DATE]
+      ,sales.[QUANTITY_SHIPPED]
+      ,sales.[CUSTOMER#]
+      ,sales.[NDC_NUMBER]
+      ,sales.[WAREHOUSE]
+      ,sales.[LOT#]
+      ,sales.[LOT_EXPIRATION_DATE]
+      ,sales.[INVOICE#]
+      ,sales.[ORDER#]
+      ,sales.[BILL_TO_NAME]
+      ,sales.[BILL_TO_ADDRESS#1]
+      ,sales.[BILL_TO_ADDRESS#2]
+      ,sales.[BILL_TO_CITY]
+      ,sales.[BILL_TO_STATE]
+      ,sales.[BILL_TO_ZIP]
+      ,ph.[SHIP_TO_NAME]
+      ,ph.[SHIP_TO_ADDRESS#1]
+      ,ph.[SHIP_TO_ADDRESS#2]
+      ,ph.[SHIP_TO_CITY]
+      ,ph.[SHIP_TO_STATE]
+      ,ph.[SHIP_TO_ZIP]
+      ,ph.[SHIP_TO_PHONE]
+      ,ph.[HIN#]
+      ,ph.[DEA#]
+  FROM DW1_DB.[LU_STAGE].[LUINC].[STG_CURASCRIPT_CSD_OVATION_NRO_SALES] sales
+  INNER JOIN DW1_DB.[LU_STAGE].[LUINC].[STG_CURASCRIPT_CSD_OVATION_NRO_PHARMACY] ph
+    on ph.CUSTOMER# = sales.CUSTOMER#
+	AND ph.DW_CURRENT_FLAG = 'Y'
+	;
+
+  
+ 
+Store FACT_CURASCRIPT_SALES into [$(vQSBIE_TransformQVD_Fact)/FACT_CURASCRIPT_SALES$(vSpace).qvd](Qvd);
+
+Drop Table FACT_CURASCRIPT_SALES;
+///$tab Snowflake
+// LIB CONNECT TO 'Snowflake_BI_Reader';
+
+// [Fact]:
+// SELECT *, 
+//  IFF(CAST(GETDATE() as Date) > NBA_END_DATE, 'Y','N') as "Sprint Completed",
+//  IFF(CAST(GETDATE() as Date) < NBA_END_DATE, 'Y','N') as "Sprint Active",
+//  IFF(PREDICTED_FLAG = 1, 'Predictive','Analytic') as "SUGGESTION_TYPE",
+//  IFF(VEEVA_RECORD_TYPE = 'Insight_vod', 'Insight','Schedule a Call') as "RECORD_TYPE"
+//  FROM "SLA"."REPORT"."NBA_NATIONAL_REPORT";
+ 
+// Store [Fact] into [$(vQSBIE_ExtractQVD_Fact)/SLA.REPORT.NBA_NATIONAL_REPORT$(vSpace).qvd](qvd);
+
+// Drop Table [Fact]; 
+
+
+
+// NBA:
+// Select *,
+// IFF(CAST(GETDATE() as Date) > NBA_END_DATE, 'Y','N') as "EXPIRED", 1 as "DEFAULT"
+// from SLA.REPORT.NBA_REPORT;
+
+// Store NBA into [$(vQSBIE_ExtractQVD_Fact)/SLA_REPORT_NBA_REPORT$(vSpace).qvd](qvd);
+
+// Drop Table NBA;
+///$tab VW_STG_INTERNAL_REMEDY_ITSM_DATA
+//LIB CONNECT TO 'INCW3255H - Finance';
+// LIB CONNECT TO 'LuUS_DATA:MSSQL_LuUS_DW_2.0';
+LIB CONNECT TO 'LuUS_DATA:vAZ_MSSQL_LuUS_DW_2.0';
+[Cherwell Data]:    
+SELECT VW_STG_INTERNAL_REMEDY_ITSM_DATA.REC_ID,
+       CONVERT(date, SYSDATETIME()) as REFRESH_DATE,
+       VW_STG_INTERNAL_REMEDY_ITSM_DATA.INCIDENT_NUMBER,
+       VW_STG_INTERNAL_REMEDY_ITSM_DATA.ENTRY_ID,
+       VW_STG_INTERNAL_REMEDY_ITSM_DATA.SERVICE_TYPE,
+       VW_STG_INTERNAL_REMEDY_ITSM_DATA.SHORT_DESCRIPTION,
+       //VW_STG_INTERNAL_REMEDY_ITSM_DATA.[DESCRIPTION],
+       VW_STG_INTERNAL_REMEDY_ITSM_DATA.STATUS,
+       VW_STG_INTERNAL_REMEDY_ITSM_DATA.PRIORITY,
+       VW_STG_INTERNAL_REMEDY_ITSM_DATA.FIRST_NAME,
+       VW_STG_INTERNAL_REMEDY_ITSM_DATA.LAST_NAME,
+       VW_STG_INTERNAL_REMEDY_ITSM_DATA.FULL_NAME,
+       VW_STG_INTERNAL_REMEDY_ITSM_DATA.ASSIGNED_GROUP,
+       VW_STG_INTERNAL_REMEDY_ITSM_DATA.ASSIGNEE,
+       VW_STG_INTERNAL_REMEDY_ITSM_DATA.PRODUCT_NAME,
+       VW_STG_INTERNAL_REMEDY_ITSM_DATA.DIRECT_CONTACT_CORPORATE_ID,
+       VW_STG_INTERNAL_REMEDY_ITSM_DATA.DIRECT_CONTACT_DEPARTMENT,
+       VW_STG_INTERNAL_REMEDY_ITSM_DATA.CORPORATE_ID,
+       VW_STG_INTERNAL_REMEDY_ITSM_DATA.SUBMITTER,
+       CONVERT(VARCHAR(10),VW_STG_INTERNAL_REMEDY_ITSM_DATA.SUBMIT_DATE,101) AS SUBMIT_DATE,
+       CONVERT(VARCHAR(8) ,VW_STG_INTERNAL_REMEDY_ITSM_DATA.SUBMIT_DATE,108) AS SUBMIT_TIME,
+       CONVERT(VARCHAR(10),VW_STG_INTERNAL_REMEDY_ITSM_DATA.REPORTED_DATE,101) as REPORTED_DATE,
+       CONVERT(VARCHAR(10),VW_STG_INTERNAL_REMEDY_ITSM_DATA.RESPONDED_DATE,101) as RESPONDED_DATE,
+       CONVERT(VARCHAR(10),VW_STG_INTERNAL_REMEDY_ITSM_DATA.LAST_RESOLVED_DATE,101) as LAST_RESOLVED_DATE,
+       CONVERT(VARCHAR(10),VW_STG_INTERNAL_REMEDY_ITSM_DATA.CLOSED_DATE,101) as CLOSED_DATE,
+       IIF(VW_STG_INTERNAL_REMEDY_ITSM_DATA.CLOSED_DATE is null, 'OPEN','CLOSED') as CLOSED_STATUS,
+       CONVERT(VARCHAR(10),VW_STG_INTERNAL_REMEDY_ITSM_DATA.LAST_MODIFIED_DATE,101) as LAST_MODIFIED_DATE,
+       VW_STG_INTERNAL_REMEDY_ITSM_DATA.LAST_MODIFIED_BY,
+       VW_STG_INTERNAL_REMEDY_ITSM_DATA.DEPARTMENT,
+       VW_STG_INTERNAL_REMEDY_ITSM_DATA.FRANCHISE,
+       VW_STG_INTERNAL_REMEDY_ITSM_DATA.ORG,
+       VW_STG_INTERNAL_REMEDY_ITSM_DATA.SALESFORCE_GROUP,
+       VW_STG_INTERNAL_REMEDY_ITSM_DATA.[LEVEL],
+       VW_STG_INTERNAL_REMEDY_ITSM_DATA.SALESFORCE_NAME,
+       VW_STG_INTERNAL_REMEDY_ITSM_DATA.SALESFORCE_ID,
+       VW_STG_INTERNAL_REMEDY_ITSM_DATA.CATEGORY,
+       VW_STG_INTERNAL_REMEDY_ITSM_DATA.PRODUCT_GROUP,
+       VW_STG_INTERNAL_REMEDY_ITSM_DATA.CATEGORIZATION_TIER_1,
+       VW_STG_INTERNAL_REMEDY_ITSM_DATA.CATEGORIZATION_TIER_2,
+       VW_STG_INTERNAL_REMEDY_ITSM_DATA.CATEGORIZATION_TIER_3,
+       VW_STG_INTERNAL_REMEDY_ITSM_DATA.DIRECT_CONTACT_COUNTRY,
+       VW_STG_INTERNAL_REMEDY_ITSM_DATA.COUNTRY,
+       VW_STG_INTERNAL_REMEDY_ITSM_DATA.CALL_SOURCE,
+       VW_STG_INTERNAL_REMEDY_ITSM_DATA.SPECIFIC_REC_ID,
+       VW_STG_INTERNAL_REMEDY_ITSM_DATA.DW_DATE_LOADED,
+       VW_STG_INTERNAL_REMEDY_ITSM_DATA.DW_USER_LOADED,
+       VW_STG_INTERNAL_REMEDY_ITSM_DATA.DW_JOB_LOADED
+       
+FROM LU_STAGE.LUINC.VW_STG_INTERNAL_REMEDY_ITSM_DATA
+     VW_STG_INTERNAL_REMEDY_ITSM_DATA;
+     
+Store [Cherwell Data] into [$(vQSBIE_ExtractQVD_Fact)/VW_STG_INTERNAL_REMEDY_ITSM_DATA$(vSpace).qvd](qvd);
+
+Drop Table [Cherwell Data];
