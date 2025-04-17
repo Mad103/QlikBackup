@@ -1,0 +1,902 @@
+///$tab Main
+SET ThousandSep=',';
+SET DecimalSep='.';
+SET MoneyThousandSep=',';
+SET MoneyDecimalSep='.';
+SET NumFormat='';
+SET MoneyFormat='#.##0,00 kr.;-#.##0,00 kr.';
+SET TimeFormat='hh.mm.ss';
+SET DateFormat='MM/DD/YYYY';
+SET TimestampFormat='MM/DD/YYYY h:mm:ss[.fff] TT';
+SET FirstWeekDay=0;
+SET BrokenWeeks=0;
+SET ReferenceDay=4;
+SET FirstMonthOfYear=1;
+SET CollationLocale='en-US';
+SET CreateSearchIndexOnReload=1;
+SET MonthNames='Jan;Feb;Mar;Apr;May;Jun;Jul;Aug;Sep;Oct;Nov;Dec';
+SET LongMonthNames='January;February;March;April;May;June;July;August;September;October;November;December';
+SET DayNames='Mon;Tue;Wed;Thu;Fri;Sat;Sun';
+SET LongDayNames='Monday;Tuesday;Wednesday;Thursday;Friday;Saturday;Sunday';
+SET NumericalAbbreviation='3:k;6:M;9:G;12:T;15:P;18:E;21:Z;24:Y;-3:m;-6:μ;-9:n;-12:p;-15:f;-18:a;-21:z;-24:y';
+
+
+
+
+
+
+///$tab Variable Declaration
+$(Must_Include='lib://LuUS_DATA:LuUS_SharePoint/Shared Documents/Qlik Sense Data Files/Include/Qlik Cloud/FolderConnections.txt');
+
+LIB CONNECT TO 'LuUS_DATA:SNOWFLAKE_LuUS_BI_Reader';
+
+LET vStartingDateCalKey=Date(AddMonths(Today(),-12),'YYYYMMDD');
+
+LET vToday=Date(Today(),'YYYYMMDD');
+
+LET vSpace=if(upper(GetSysAttr('spaceType'))='SHARED' or GetSysAttr('spaceType')='','_DEV');
+
+LET vSF='_SF';
+
+LET vTest = '';
+
+LET vPrev2TrimesterStartDate='20220101';
+
+//////////////////////////////CPTD Calculation Date Variable///////////////////////
+NoConcatenate
+SUMMIT_CP_DATE:
+SQL
+Select Distinct t.SALESFORCE_NAME as SALESFORCE_GROUP_NAME, 
+		Max(START_DATE_KEY) as DATE_KEY, 
+        MAX(END_DATE_KEY) as DATE_TO_KEY  
+ from LUNDBECK_DW.ANALYTICS.CALL_PLAN_LU_SF cp
+inner join LUNDBECK_DW.COMMON.TERRITORY t on t.TERRITORY_ID = cp.TERRITORY_ID
+Where t.SALESFORCE_NAME in ('SUMMIT') and START_DATE_KEY<='$(vToday)'
+group by SALESFORCE_NAME;
+
+Let vSummitStartDateKey=Peek('DATE_KEY');
+Let vSummitEndDateKey=Peek('DATE_TO_KEY')
+;
+
+Drop Table SUMMIT_CP_DATE;
+
+NoConcatenate
+SUMMIT_CP_WORKING_DAYS:
+SQL
+SELECT  COUNT(DATE_KEY) AS "Working_Day"
+FROM LUNDBECK_DW.COMMON.CALENDAR
+WHERE FLAG_WEEKDAY = 'Y'
+AND   FLAG_LU_HOLIDAY = 'N'
+AND   DATE_KEY<=$(vSummitEndDateKey) 
+AND   DATE_KEY>=$(vSummitStartDateKey)
+;
+
+
+Let vSumitTotalWorkingDays=if(peek('Working_Day')>0,peek('Working_Day'),0);
+
+drop table SUMMIT_CP_WORKING_DAYS;
+
+
+NoConcatenate
+SIERRA_CP_DATE:
+SQL
+Select Distinct t.SALESFORCE_NAME as SALESFORCE_GROUP_NAME, 
+		Max(START_DATE_KEY) as DATE_KEY, 
+        MAX(END_DATE_KEY) as DATE_TO_KEY  
+ from LUNDBECK_DW.ANALYTICS.CALL_PLAN_LU_SF cp
+inner join LUNDBECK_DW.COMMON.TERRITORY t on t.TERRITORY_ID = cp.TERRITORY_ID
+Where t.SALESFORCE_NAME in ('SIERRA') and START_DATE_KEY<='$(vToday)'
+group by SALESFORCE_NAME;
+
+Let vSierraStartDateKey=Peek('DATE_KEY');
+Let vSierraEndDateKey=Peek('DATE_TO_KEY')
+;
+
+Drop Table SIERRA_CP_DATE;
+
+NoConcatenate
+SIERRA_CP_WORKING_DAYS:
+SQL SELECT  COUNT(DATE_KEY) AS "Working_Day"
+FROM LUNDBECK_DW.COMMON.CALENDAR
+WHERE FLAG_WEEKDAY = 'Y'
+AND   FLAG_LU_HOLIDAY = 'N'
+AND   DATE_KEY>=$(vSierraStartDateKey) 
+AND DATE_KEY<=$(vSierraEndDateKey)
+;
+
+Let vSierraTotalWorkingDays=peek('Working_Day');
+
+drop table SIERRA_CP_WORKING_DAYS;
+
+
+
+NoConcatenate
+ALTITUDE_CP_DATE:
+SQL
+Select Distinct t.SALESFORCE_NAME as SALESFORCE_GROUP_NAME, 
+		Max(START_DATE_KEY) as DATE_KEY, 
+        MAX(END_DATE_KEY) as DATE_TO_KEY  
+ from LUNDBECK_DW.ANALYTICS.CALL_PLAN_LU_SF cp
+inner join LUNDBECK_DW.COMMON.TERRITORY t on t.TERRITORY_ID = cp.TERRITORY_ID
+Where t.SALESFORCE_NAME in ('ALTITUDE') and START_DATE_KEY<='$(vToday)'
+group by SALESFORCE_NAME;
+
+Let vAltitudeStartDateKey=Peek('DATE_KEY');
+Let vAltitudeEndDateKey=Peek('DATE_TO_KEY')
+;
+
+Drop Table ALTITUDE_CP_DATE;
+
+NoConcatenate
+ALTITUDE_CP_WORKING_DAYS:
+SQL
+SELECT  COUNT(DATE_KEY) AS "Working_Day"
+FROM LUNDBECK_DW.COMMON.CALENDAR
+WHERE FLAG_WEEKDAY = 'Y'
+AND   FLAG_LU_HOLIDAY = 'N'
+AND   DATE_KEY<=$(vAltitudeEndDateKey) 
+AND   DATE_KEY>=$(vAltitudeStartDateKey)
+;
+
+
+Let vAltitudeTotalWorkingDays=if(peek('Working_Day')>0,peek('Working_Day'),0);
+
+drop table ALTITUDE_CP_WORKING_DAYS;
+
+////////////////////////////////Call Activity Date Filter/////////////////////
+
+NoConcatenate
+MAX_CALL_ACTIVITY:
+SQL Select Max(CALL_DATE_KEY) as "MaxCallDate" 
+from LUNDBECK_DW.ANALYTICS.CALL_ACTIVITY_LU_SF c 
+WHERE upper(PRODUCT_GROUP_NAME)  IN ('ABILIFY LAI FRANCHISE','REXULTI MDD','REXULTI AADAD');   //'TRINTELLIX',  madhur   
+
+
+Let vMaxCallDate=peek('MaxCallDate');
+
+Let vMaxPrevMonth=Date(MonthStart(Date#('$(vMaxCallDate)','YYYYMMDD'))-1,'YYYYMMDD');
+
+Trace '$(vMaxPrevMonth)';
+
+drop table MAX_CALL_ACTIVITY;
+
+Trace '$(vPrev2TrimesterStartDate)'&'|'&'$(vMaxPrevMonth)';
+
+trace '$(vSierraEndDateKey)';
+
+LOAD
+    CALL_TYPE
+FROM [lib://LuUS_DATA:LuUS_SharePoint/Shared Documents/Qlik Sense Data Files/ExcelFiles/ReactiveCalls.xlsx]
+(ooxml, embedded labels, table is Sheet1);
+
+let vReactiveCalls = peek('CALL_TYPE');
+
+trace '$(vReactiveCalls)';
+///$tab Working Days
+///////////////////////////////////////////////Monthly Working Days///////////////////////////////////////
+
+NoConcatenate
+WORKING_DAYS:
+Load 
+    num(date#(MONTH_KEY,'YYYYMMDD')) & TERRITORY_KEY as Working_Day_Key,
+    num(date#(MONTH_KEY,'YYYYMMDD')) & TERRITORY_ID as MWF_Working_Day_ID,
+    TERRITORY_ID as MWF_Territory_ID,
+    MONTH_KEY as MWF_Month_Key,
+    NUMBER_WORKING_DAY AS Completed_Working_Days;
+SQL
+select fca.TERRITORY_ID as TERRITORY_KEY, 
+    fca.TERRITORY_ID,
+    CONCAT(LEFT(  fca.CALL_DATE_KEY,6) ,'01') AS MONTH_KEY, 
+    count(DISTINCT fca.CALL_DATE_KEY) AS NUMBER_WORKING_DAY
+FROM LUNDBECK_DW.ANALYTICS.CALL_ACTIVITY_LU_SF fca 
+join LUNDBECK_DW.COMMON.CALENDAR cal on fca.CALL_DATE_KEY = cal.DATE_KEY
+join LUNDBECK_DW.COMMON.TERRITORY t on fca.TERRITORY_ID= t.TERRITORY_ID
+where fca.DETAIL_PRIORITY =1 and fca.PDE>0 and cal.FLAG_WEEKDAY='Y' 
+and CALL_TYPE <> '$(vReactiveCalls)'
+	and t.SALESFORCE_NAME in ('SUMMIT', 'SIERRA','ALTITUDE')  
+and upper(PRODUCT_GROUP_NAME) IN ('ABILIFY LAI FRANCHISE', 'REXULTI MDD', 'REXULTI','REXULTI AADAD') //'TRINTELLIX'   madhur
+group by CONCAT(left( fca.CALL_DATE_KEY,6) ,'01'),
+	fca.TERRITORY_ID;
+
+Store WORKING_DAYS into  [$(vQSBIE_TransformQVD_Dimension)/NS2_COMPLETE_WORKING_DAYS$(vSpace)$(vSF)$(vTest).qvd](qvd);
+
+
+//////////////////////////////////////////////Full Call Plan Period Working Days//////////////////////////[Yearly Working Days]:
+YEARLY_WORKING_DAYS:
+Load ELIG as Elig, DATE_KEY;
+SQL
+SELECT  1 AS ELIG,
+		DATE_KEY
+FROM LUNDBECK_DW.COMMON.CALENDAR
+WHERE FLAG_WEEKDAY = 'Y'
+	AND   FLAG_LU_HOLIDAY = 'N'
+	AND   DATE_KEY>='20220101';
+
+STORE YEARLY_WORKING_DAYS INTO [$(vQSBIE_TransformQVD_Dimension)/LU Working Days$(vSpace)$(vSF)$(vTest).qvd](qvd);
+
+Left Join(YEARLY_WORKING_DAYS)
+SQL Select Distinct t.SALESFORCE_NAME as SALESFORCE_GROUP_NAME, 
+	START_DATE_KEY as DATE_FROM_KEY, 
+    END_DATE_KEY as DATE_TO_KEY  
+    from LUNDBECK_DW.ANALYTICS.CALL_PLAN_LU_SF cp
+inner join LUNDBECK_DW.COMMON.TERRITORY t on t.TERRITORY_ID = cp.TERRITORY_ID
+where START_DATE_KEY<='$(vToday)';
+
+
+NoConcatenate
+CP_TOTAL_WORKING_DAYS:
+Load DATE_FROM_KEY as DATE_KEY,
+	SALESFORCE_GROUP_NAME,
+	Sum(Elig) as [Trimester Total Working Days]
+Resident YEARLY_WORKING_DAYS
+where Floor(Date#(DATE_KEY,'YYYYMMDD'))>=Floor(Date#(DATE_FROM_KEY,'YYYYMMDD')) and Floor(Date#(DATE_KEY,'YYYYMMDD'))<=Floor(Date#(DATE_TO_KEY,'YYYYMMDD'))
+group by SALESFORCE_GROUP_NAME, 
+		 DATE_FROM_KEY;
+
+DROP TABLE YEARLY_WORKING_DAYS;
+
+Store CP_TOTAL_WORKING_DAYS into [$(vQSBIE_TransformQVD_Dimension)/Trimester Working Days$(vSpace)$(vSF)$(vTest).qvd](qvd);
+
+Drop table CP_TOTAL_WORKING_DAYS;
+
+
+
+////////////////////////////////////////////////CPTD Working Days/////////////////////////////////////////////
+
+NoConcatenate
+WORKING_DAYS_TABLE:
+LOAD
+    Date(Num(left(Working_Day_Key,5)),'YYYYMMDD') as DATE_KEY,
+    mid(Working_Day_Key,6) as TERRITORY_KEY,
+    Working_Day_Key,
+    Completed_Working_Days
+Resident WORKING_DAYS;
+
+Drop Table WORKING_DAYS;
+
+INNER JOIN(WORKING_DAYS_TABLE)
+LOAD Distinct TERRITORY_ID as TERRITORY_KEY,
+SALESFORCE_NAME as SALESFORCE_GROUP_NAME;
+SELECT TERRITORY_ID, SALESFORCE_NAME FROM LUNDBECK_DW.COMMON.TERRITORY WHERE CURRENT_IND='Y';
+
+Inner Join(WORKING_DAYS_TABLE)
+SQL Select MAX(START_DATE_KEY) as DATE_FROM_KEY, MAX(END_DATE_KEY) as T2, SALESFORCE_NAME as SALESFORCE_GROUP_NAME 
+from LUNDBECK_DW.ANALYTICS.CALL_PLAN_LU_SF p
+inner join LUNDBECK_DW.COMMON.TERRITORY t on t.TERRITORY_ID=p.TERRITORY_ID
+where START_DATE_KEY<='$(vToday)'
+group by SALESFORCE_NAME;
+
+
+NoConcatenate
+WORKING_DAYS:
+Load TERRITORY_KEY,
+	 SALESFORCE_GROUP_NAME,
+     DATE_FROM_KEY as [Trimester Start Date], 
+     Sum(Completed_Working_Days) as [TTD Working Days]
+Resident WORKING_DAYS_TABLE
+where Num(Date#(DATE_KEY,'YYYYMMDD'))<=Num(Date#(T2,'YYYYMMDD')) and Num(Date#(DATE_KEY,'YYYYMMDD'))>=Num(Date#(DATE_FROM_KEY,'YYYYMMDD'))
+group by TERRITORY_KEY,SALESFORCE_GROUP_NAME,
+     DATE_FROM_KEY;
+     
+drop table WORKING_DAYS_TABLE;
+
+DATE_MAP:
+LOAD DATE_KEY as [Call Date Key],
+    SF_TRIMESTER as [SF Trimester];
+SELECT DATE_KEY, SF_TRIMESTER FROM LUNDBECK_DW.COMMON.CALENDAR ;
+
+NoConcatenate
+FREQ_FACTOR:
+Load 
+    TERRITORY_KEY as CALL_TERRITORY_KEY,
+	 SALESFORCE_GROUP_NAME as Salesforce,
+     [Trimester Start Date] as DATE_KEY, 
+     [TTD Working Days],
+    [TTD Working Days]/Pick(Match(SALESFORCE_GROUP_NAME,'SUMMIT', 'SIERRA','ALTITUDE'),$(vSumitTotalWorkingDays), $(vSierraTotalWorkingDays),$(vAltitudeTotalWorkingDays))as  "Freq factor"     //change
+Resident WORKING_DAYS;
+
+drop table WORKING_DAYS;
+
+
+Inner join(FREQ_FACTOR)
+SELECT TERRITORY_ID  as CALL_TERRITORY_KEY,
+	 TERRITORY_ID as "Territory ID"
+FROM LUNDBECK_DW.COMMON.TERRITORY;
+
+
+
+
+///$tab Call Plan
+right join(FREQ_FACTOR)
+SQL SELECT cp.START_DATE_KEY as DATE_KEY
+,      cp.START_DATE_KEY as "CP Start Date Key"
+,      cp.TERRITORY_ID  as CALL_TERRITORY_KEY
+,      cp.LUNDBECK_ID as CUSTOMER_KEY 
+,      cp.PLANNED_CALLS
+,      case when cp.DETAIL_PRIORITY=1 then cp.PLANNED_CALLS else 0 end as PLANNED_CALLS_COUNT
+,      iff(upper(PRODUCT_GROUP_NAME) like 'REXULTI M%','REXULTI',upper(PRODUCT_GROUP_NAME)) as PRODUCT_GROUP_KEY                             
+,      iff(upper(PRODUCT_GROUP_NAME) like 'REXULTI M%','REXULTI',upper(PRODUCT_GROUP_NAME)) as "Brand Name"
+,      CP.DETAIL_PRIORITY 
+FROM   LUNDBECK_DW.ANALYTICS.CALL_PLAN_LU_SF cp
+INNER JOIN LUNDBECK_DW.COMMON.CUSTOMERS c ON c.LUNDBECK_ID = cp.LUNDBECK_ID
+INNER JOIN LUNDBECK_DW.COMMON.TERRITORY t ON t.TERRITORY_ID = cp.TERRITORY_ID
+WHERE upper(PRODUCT_GROUP_NAME) in ('ABILIFY LAI FRANCHISE', 'REXULTI MDD','REXULTI', 'REXULTI AADAD') //'TRINTELLIX',  madhur
+	AND (cp.END_DATE_KEY>= '$(vToday)' )
+	and UPPER(SALESFORCE_NAME) in ('SUMMIT', 'SIERRA','ALTITUDE');
+  
+
+NoConcatenate
+TEMP_FACT_TABLE:
+Load *,
+	round( PLANNED_CALLS*"Freq factor",0.5,0.5) as ADJUSTED_PLANNED_CALLS,
+    ROUND( PLANNED_CALLS_COUNT*"Freq factor") as ADJUSTED_PLANNED_CALLS_COUNT
+Resident FREQ_FACTOR;
+Drop table FREQ_FACTOR;
+
+
+NoConcatenate
+FACT_TABLE:
+LOAD
+  CUSTOMER_KEY as [Customer Key]
+, DATE_KEY  as [Call Date Key]
+,[CP Start Date Key]
+, PLANNED_CALLS as [Planned Calls]
+, CALL_TERRITORY_KEY as [Call Territory Key]
+, PRODUCT_GROUP_KEY as [Product Group Key]
+,DETAIL_PRIORITY as [Detail Priority]
+, ADJUSTED_PLANNED_CALLS as [Adjusted Planned Calls]
+,ADJUSTED_PLANNED_CALLS_COUNT
+,'Call Plan' as GrainFlag
+Resident TEMP_FACT_TABLE;
+
+Drop Table TEMP_FACT_TABLE;
+
+///$tab Call Activity
+NoConcatenate
+TEMP_CALL_ACTIVITY_TABLE:
+SQL SELECT
+    C.SPLIT_WEEK_KEY as CALL_DATE_KEY,
+    C1.SF_TRIMESTER,
+    dc.LUNDBECK_ID as CUSTOMER_KEY,
+    iff(upper(PRODUCT_GROUP_NAME) like 'REXULTI M%','REXULTI',upper(PRODUCT_GROUP_NAME)) as PRODUCT_GROUP_KEY,                                 //CHANGE
+    CA.TERRITORY_ID as CALL_TERRITORY_KEY,
+    t.SALESFORCE_NAME as SALESFORCE_GROUP_NAME,
+    DETAIL_PRIORITY,
+    REPORT_CALL_TYPE,
+    DATE_FROM_KEY as "CP Start Date Key",
+    PRIMARY_MESSAGE,
+    SECONDARY_MESSAGE,
+    Sum(PDE) as PDE,
+    CA.CALL_ID,
+    count(distinct CA.CALL_ID) AS NO_CALLS
+FROM LUNDBECK_DW.ANALYTICS.CALL_ACTIVITY_LU_SF CA
+Inner join LUNDBECK_DW.COMMON.CALENDAR C on CA.CALL_DATE_KEY=C.DATE_KEY
+Inner join LUNDBECK_DW.COMMON.CALENDAR C1 on C.SPLIT_WEEK_KEY=C1.DATE_KEY
+Inner join LUNDBECK_DW.COMMON.CUSTOMERS dc on dc.LUNDBECK_ID=CA.LUNDBECK_ID
+Inner Join LUNDBECK_DW.COMMON.TERRITORY t on t.TERRITORY_ID=CA.TERRITORY_ID
+Left JOIN (Select Distinct SALESFORCE_NAME, START_DATE_KEY as DATE_FROM_KEY, END_DATE_KEY as DATE_TO_KEY 
+	FROM LUNDBECK_DW.ANALYTICS.CALL_PLAN_LU_SF cp
+    INNER JOIN LUNDBECK_DW.COMMON.TERRITORY t on t.TERRITORY_ID = cp.TERRITORY_ID 
+    where START_DATE_KEY>='$(vPrev2TrimesterStartDate)' 
+    and SALESFORCE_NAME in ('SUMMIT', 'SIERRA','ALTITUDE') and START_DATE_KEY<='$(vToday)') A
+on A.SALESFORCE_NAME=t.SALESFORCE_NAME and CA.CALL_DATE_KEY>=DATE_FROM_KEY and CA.CALL_DATE_KEY<=A.DATE_TO_KEY
+
+where CALL_DATE_KEY >='$(vPrev2TrimesterStartDate)' and CALL_DATE_KEY<='$(vMaxPrevMonth)' 
+and UPPER(PRODUCT_GROUP_NAME) in ('ABILIFY LAI FRANCHISE','REXULTI MDD','REXULTI','REXULTI AADAD') //'TRINTELLIX',   madhur
+and CALL_TYPE <> '$(vReactiveCalls)'
+and RECORD_TYPE_NAME<>'Logistical Touchpoint' 
+group by C.SPLIT_WEEK_KEY,
+    C1.SF_TRIMESTER,
+    dc.LUNDBECK_ID,
+    iff(upper(PRODUCT_GROUP_NAME) like 'REXULTI M%','REXULTI',upper(PRODUCT_GROUP_NAME)),      //CHANGE
+    CA.TERRITORY_ID ,
+    t.SALESFORCE_NAME,
+    REPORT_CALL_TYPE,
+    DETAIL_PRIORITY,
+    DATE_FROM_KEY,
+    PRIMARY_MESSAGE,
+    SECONDARY_MESSAGE,
+    CA.CALL_ID;
+
+Concatenate(TEMP_CALL_ACTIVITY_TABLE)
+SELECT
+    CA.CALL_DATE_KEY as CALL_DATE_KEY,
+    C1.SF_TRIMESTER,
+    dc.LUNDBECK_ID as CUSTOMER_KEY,
+    iff(upper(PRODUCT_GROUP_NAME) like 'REXULTI M%','REXULTI',upper(PRODUCT_GROUP_NAME)) as PRODUCT_GROUP_KEY,                                 //CHANGE
+    CA.TERRITORY_ID as CALL_TERRITORY_KEY,
+    t.SALESFORCE_NAME as SALESFORCE_GROUP_NAME,
+    DETAIL_PRIORITY,
+    REPORT_CALL_TYPE,
+    DATE_FROM_KEY as "CP Start Date Key",
+    PRIMARY_MESSAGE,
+    SECONDARY_MESSAGE,
+    Sum(PDE) as PDE,
+    CA.CALL_ID,
+    count(distinct CA.CALL_ID) AS NO_CALLS
+FROM LUNDBECK_DW.ANALYTICS.CALL_ACTIVITY_LU_SF CA
+Inner join LUNDBECK_DW.COMMON.CALENDAR C on CA.CALL_DATE_KEY=C.DATE_KEY
+Inner join LUNDBECK_DW.COMMON.CALENDAR C1 on C.SPLIT_WEEK_KEY=C1.DATE_KEY
+Inner join LUNDBECK_DW.COMMON.CUSTOMERS dc on dc.LUNDBECK_ID=CA.LUNDBECK_ID
+Inner Join LUNDBECK_DW.COMMON.TERRITORY t on t.TERRITORY_ID=CA.TERRITORY_ID
+Left JOIN (Select Distinct SALESFORCE_NAME, START_DATE_KEY as DATE_FROM_KEY, END_DATE_KEY AS DATE_TO_KEY 
+    FROM LUNDBECK_DW.ANALYTICS.CALL_PLAN_LU_SF cp
+    INNER JOIN LUNDBECK_DW.COMMON.TERRITORY t on t.TERRITORY_ID = cp.TERRITORY_ID 
+    where START_DATE_KEY>='$(vPrev2TrimesterStartDate)' 
+    and SALESFORCE_NAME in ('SUMMIT', 'SIERRA','ALTITUDE') and START_DATE_KEY<='$(vToday)') A
+on A.SALESFORCE_NAME=t.SALESFORCE_NAME and CA.CALL_DATE_KEY>=DATE_FROM_KEY and CA.CALL_DATE_KEY<=A.DATE_TO_KEY
+where CALL_DATE_KEY>'$(vMaxPrevMonth)'
+and UPPER(PRODUCT_GROUP_NAME) in ('ABILIFY LAI FRANCHISE','REXULTI MDD','REXULTI','REXULTI AADAD')  //'TRINTELLIX',   madhur
+and CALL_TYPE <> '$(vReactiveCalls)'
+and RECORD_TYPE_NAME<>'Logistical Touchpoint' 
+group by CA.CALL_DATE_KEY,
+    C1.SF_TRIMESTER,
+    dc.LUNDBECK_ID,
+    iff(upper(PRODUCT_GROUP_NAME) like 'REXULTI M%','REXULTI',upper(PRODUCT_GROUP_NAME)),      //CHANGE
+    CA.TERRITORY_ID ,
+    t.SALESFORCE_NAME,
+    REPORT_CALL_TYPE,
+    DETAIL_PRIORITY,
+    DATE_FROM_KEY,
+    PRIMARY_MESSAGE,
+    SECONDARY_MESSAGE,
+    CA.CALL_ID;
+    
+
+left join (TEMP_CALL_ACTIVITY_TABLE)
+SQL SELECT CP.START_DATE_KEY as "CP Start Date Key",
+	iff(upper(PRODUCT_GROUP_NAME) like 'REXULTI M%','REXULTI',upper(PRODUCT_GROUP_NAME)) AS PRODUCT_GROUP_KEY, //Shwetha Updated
+	LUNDBECK_ID as CUSTOMER_KEY, 
+    CASE WHEN PLANNED_CALLS>0 THEN 1 ELSE 0 END AS CALL_PLAN,
+	CP.TERRITORY_ID AS CALL_TERRITORY_KEY,
+	SALESFORCE_NAME as SALESFORCE_GROUP_NAME
+FROM LUNDBECK_DW.ANALYTICS.CALL_PLAN_LU_SF CP 
+INNER JOIN LUNDBECK_DW.COMMON.CALENDAR C ON C.DATE_KEY=CP.START_DATE_KEY
+INNER JOIN LUNDBECK_DW.COMMON.TERRITORY T on T.TERRITORY_ID=CP.TERRITORY_ID
+where SALESFORCE_NAME in ('SUMMIT', 'SIERRA','ALTITUDE') and C.DATE_KEY>= '$(vPrev2TrimesterStartDate)';    
+
+left join (TEMP_CALL_ACTIVITY_TABLE)
+SQL 
+SELECT "CP Start Date Key",
+	CALL_TERRITORY_KEY, 
+    CUSTOMER_KEY, 
+    CASE WHEN CALL_PLAN>0 then 1 else 0 end as TEAM_CALL_PLAN 
+from (
+SELECT CP.START_DATE_KEY  as "CP Start Date Key", 
+	CP.TERRITORY_ID as CALL_TERRITORY_KEY, 
+    LUNDBECK_ID as CUSTOMER_KEY, 
+	Sum(PLANNED_CALLS) as CALL_PLAN
+FROM LUNDBECK_DW.ANALYTICS.CALL_PLAN_LU_SF CP 
+Group by CP.START_DATE_KEY , 
+	CP.TERRITORY_ID,
+    LUNDBECK_ID
+)A;
+
+/*Call Activity */
+
+Concatenate(FACT_TABLE)
+LOAD Distinct CUSTOMER_KEY as [Customer Key]
+    , CALL_DATE_KEY as [Call Date Key]
+    , CALL_TERRITORY_KEY as [Call Territory Key]
+    , PRODUCT_GROUP_KEY as [Product Group Key]
+    , PDE as [PDE]
+    , NO_CALLS
+    , CALL_ID
+    , PRIMARY_MESSAGE
+    , SECONDARY_MESSAGE
+    , REPORT_CALL_TYPE as [Call Type]
+    , if(Isnull(CALL_PLAN),0,1) as CALL_PLAN
+    , DETAIL_PRIORITY as [Detail Priority]
+    , if(Isnull(TEAM_CALL_PLAN),0,1) as TEAM_CALL_PLAN 
+    , 'Call Activity' as GrainFlag
+Resident TEMP_CALL_ACTIVITY_TABLE;
+
+drop table TEMP_CALL_ACTIVITY_TABLE;
+
+left join(FACT_TABLE)
+SQL SELECT
+    '$(vStartDate)' as "Call Date Key",
+    dc.LUNDBECK_ID as "Customer Key",
+    iff(upper(PRODUCT_GROUP_NAME) like 'REXULTI M%','REXULTI',upper(PRODUCT_GROUP_NAME)) as "Product Group Key",           //CHANGE
+    Sum(PDE) as ALLIANCE_PDE,
+    'Alliance Partner' as "GrainFlag"
+FROM (SELECT CALL_DATE_KEY,
+			TERRITORY_ID,
+            LUNDBECK_ID,
+            PRODUCT_GROUP_NAME,
+            PDE FROM 
+            LUNDBECK_DW.ANALYTICS.CALL_ACTIVITY_OTS_SF
+            where CALL_TYPE <> '$(vReactiveCalls)'
+//  madhur            
+// 	UNION all 
+    
+//     SELECT CALL_DATE_KEY,
+//     		TERRITORY_ID, 
+//             LUNDBECK_ID, 
+//             PRODUCT_GROUP_NAME,
+//             PDE FROM LUNDBECK_DW.ANALYTICS.CALL_ACTIVITY_TAK_SF
+//             where CALL_TYPE <> '$(vReactiveCalls)'
+      ) CA
+Inner join LUNDBECK_DW.COMMON.CALENDAR C on CA.CALL_DATE_KEY=C.DATE_KEY
+Inner join LUNDBECK_DW.COMMON.CUSTOMERS dc on dc.LUNDBECK_ID=CA.LUNDBECK_ID
+where CALL_DATE_KEY >='$(vStartDate)' 
+	 and UPPER(PRODUCT_GROUP_NAME) in ('ABILIFY LAI FRANCHISE', 'REXULTI MDD','REXULTI','REXULTI AADAD') //'TRINTELLIX',   madhur
+group by dc.LUNDBECK_ID,
+    iff(upper(PRODUCT_GROUP_NAME) like 'REXULTI M%','REXULTI',upper(PRODUCT_GROUP_NAME));
+
+
+Drop field "CP Start Date Key" from FACT_TABLE;
+///$tab Fact Transformation
+NoConcatenate
+TEMP_FACT_TABLE1:
+Load [Customer Key]
+, [Call Date Key]
+, [Call Territory Key]
+, [Product Group Key]
+,Sum([Adjusted Planned Calls]) as [Adjusted Planned Calls]
+,Sum([Planned Calls]) as [Planned Calls]
+,Sum(ADJUSTED_PLANNED_CALLS_COUNT) as PLANNED_CALLS_COUNT
+,Sum(if([Detail Priority]=2,0,PDE)) as CALLS
+Resident FACT_TABLE 
+Group by [Customer Key]
+, [Call Date Key]
+, [Call Territory Key]
+, [Product Group Key];
+
+NoConcatenate
+CP_CALLS:
+Load [Customer Key]
+, [Call Date Key]
+, [Call Territory Key]
+, [Product Group Key]
+,Sum(PDE) as PDE
+Resident FACT_TABLE 
+Group by [Customer Key]
+, [Call Date Key]
+, [Call Territory Key]
+, [Product Group Key];
+
+
+Left Join(CP_CALLS)
+SELECT TERRITORY_ID as "Call Territory Key",
+	 SALESFORCE_NAME as SALESFORCE_GROUP_NAME
+FROM LUNDBECK_DW.COMMON.TERRITORY;
+
+Inner Join(CP_CALLS)
+Select MAX(START_DATE_KEY) as DATE_FROM_KEY, 
+	   MAX(END_DATE_KEY) as DATE_TO_KEY,
+       SALESFORCE_NAME as SALESFORCE_GROUP_NAME
+from LUNDBECK_DW.ANALYTICS.CALL_PLAN_LU_SF p
+inner join LUNDBECK_DW.COMMON.TERRITORY t on t.TERRITORY_ID=p.TERRITORY_ID 
+where p.CURRENT_IND='Y'
+group by SALESFORCE_NAME;
+
+
+Outer Join(TEMP_FACT_TABLE1)
+Load [Customer Key]
+, DATE_FROM_KEY as [Call Date Key]
+, [Call Territory Key]
+, [Product Group Key]
+,SALESFORCE_GROUP_NAME
+,Sum(PDE) as PDE
+Resident CP_CALLS
+where [Call Date Key]>=DATE_FROM_KEY and [Call Date Key]<=DATE_TO_KEY 
+Group by [Customer Key]
+, DATE_FROM_KEY
+,SALESFORCE_GROUP_NAME
+, [Call Territory Key]
+, [Product Group Key];
+
+Drop Table CP_CALLS;
+
+
+NoConcatenate
+TEMP_FACT_TABLE2:
+Load Distinct *,
+if(PDE>[Adjusted Planned Calls] and [Planned Calls]<>0,PDE-[Adjusted Planned Calls],0) as Above_PDE,
+if(PDE>[Adjusted Planned Calls] ,[Adjusted Planned Calls],PDE) as Attainment,
+If(CALLS>PLANNED_CALLS_COUNT,PLANNED_CALLS_COUNT,CALLS) as CAPPED_CALLS,
+'Attainment' as GrainFlag
+Resident TEMP_FACT_TABLE1
+where [Adjusted Planned Calls]>0 or [Planned Calls] > 0;
+
+Drop Table TEMP_FACT_TABLE1;
+
+NoConcatenate
+TEMP_FACT_TABLE3:
+Load Distinct * ,
+Floor(MonthStart(Date#([Call Date Key],'YYYYMMDD')))&[Call Territory Key] as Working_Day_Key
+
+Resident FACT_TABLE;
+
+Drop Table FACT_TABLE;
+
+Rename Table TEMP_FACT_TABLE3 to FACT_TABLE;
+
+Drop Field [Adjusted Planned Calls] from FACT_TABLE;
+
+Concatenate(FACT_TABLE)
+Load distinct  [Customer Key]
+,  [Call Date Key]
+, [Call Territory Key]
+, [Product Group Key],
+Above_PDE,
+Attainment,
+[Adjusted Planned Calls],
+CAPPED_CALLS,
+GrainFlag
+Resident TEMP_FACT_TABLE2;
+
+Drop table TEMP_FACT_TABLE2;
+
+ZERO_FACT:
+Load Distinct [Call Date Key]
+Resident FACT_TABLE;
+
+left Join (ZERO_FACT)
+Load Distinct [Call Territory Key]
+Resident FACT_TABLE;
+
+Concatenate(FACT_TABLE)
+Load * where not Exists(Working_Day_Key);
+LOad Floor(MonthStart(Date#([Call Date Key],'YYYYMMDD')))&[Call Territory Key] as Working_Day_Key,
+   [Call Date Key],
+   [Call Territory Key]
+Resident ZERO_FACT;
+
+Drop Table ZERO_FACT;
+
+FINAL_FACT_TABLE:
+Load Distinct *
+,[Customer Key]&[Call Territory Key] as Sierra_Flag_Key
+,[Customer Key]&[Call Territory Key] as Summit_Flag_Key
+,[Customer Key]&[Product Group Key]&[Call Territory Key] as Call_Plan_Key
+Resident FACT_TABLE;
+
+Drop table FACT_TABLE;
+
+Left Join(FINAL_FACT_TABLE)
+Load DATE_FROM_KEY,
+	DATE_TO_KEY, 
+    "Call Territory Key" as "Call Territory Key", 
+    TeamIndicator;
+Select MAX(START_DATE_KEY) as DATE_FROM_KEY, 
+	   MAX(END_DATE_KEY) as DATE_TO_KEY,
+	   t.TERRITORY_ID as "Call Territory Key",
+       SALESFORCE_NAME as "TeamIndicator"
+from LUNDBECK_DW.ANALYTICS.CALL_PLAN_LU_SF p
+inner join LUNDBECK_DW.COMMON.TERRITORY t on t.TERRITORY_ID=p.TERRITORY_ID
+where START_DATE_KEY<='$(vToday)'
+group by t.TERRITORY_ID,SALESFORCE_NAME;
+
+STORE FINAL_FACT_TABLE INTO [$(vQSBIE_TransformQVD_Fact)/SALES_NS2_CPA$(vSpace)$(vSF)$(vTest).qvd] (qvd);
+///$tab Call Plan Flags
+NoConcatenate
+TEMP_CP_FLAG:
+Load Distinct Call_Plan_Key
+Resident FINAL_FACT_TABLE;
+
+Left Join(TEMP_CP_FLAG)
+Load CALL_PLAN_KEY as Call_Plan_Key, CALL_PLAN_FLAG as Call_Plan_Flag;
+SQL SELECT Distinct Concat(cp.LUNDBECK_ID,iff(upper(PRODUCT_GROUP_NAME) like 'REXULTI M%','REXULTI',upper(PRODUCT_GROUP_NAME)),cp.TERRITORY_ID) as CALL_PLAN_KEY,           //CHANGE
+	case when Sum(PLANNED_CALLS)>0 then 'Y' else 'N' end as CALL_PLAN_FLAG
+FROM   LUNDBECK_DW.ANALYTICS.CALL_PLAN_LU_SF cp
+Inner join LUNDBECK_DW.COMMON.CUSTOMERS dc on dc.LUNDBECK_ID=cp.LUNDBECK_ID
+INNER JOIN LUNDBECK_DW.COMMON.TERRITORY t ON t.TERRITORY_ID = cp.TERRITORY_ID
+ WHERE UPPER(PRODUCT_GROUP_NAME) in  ( 'ABILIFY LAI FRANCHISE','REXULTI MDD','REXULTI','REXULTI AADAD')  //'TRINTELLIX',  madhur
+ and UPPER(t.SALESFORCE_NAME) in ('SUMMIT', 'SIERRA','ALTITUDE')        
+ and (cp.END_DATE_KEY>='$(vToday)' )
+   group by Concat(cp.LUNDBECK_ID,iff(upper(PRODUCT_GROUP_NAME) like 'REXULTI M%','REXULTI',upper(PRODUCT_GROUP_NAME)),cp.TERRITORY_ID) ;
+
+
+NoConcatenate
+CP_FLAG:
+Load Call_Plan_Key,
+	 if(isnull(Call_Plan_Flag),'N','Y') as Call_Plan_Flag
+Resident TEMP_CP_FLAG;
+
+Drop Table TEMP_CP_FLAG;
+
+Store CP_FLAG into [$(vQSBIE_TransformQVD_Dimension)/NS2_CALL_PLAN_CUSTOMER$(vSpace)$(vSF)$(vTest).qvd]
+(qvd);
+
+drop table CP_FLAG ;
+
+///$tab Sierra Flags
+NoConcatenate
+TEMP_SIERRA_FLAG:
+Load Distinct Sierra_Flag_Key
+Resident FINAL_FACT_TABLE;
+
+Left Join(TEMP_SIERRA_FLAG)
+load *;
+Load SIERRA_FLAG_KEY as Sierra_Flag_Key,
+MY_TARGET
+;
+
+SQL SELECT Distinct Concat(cp.LUNDBECK_ID,cp.TERRITORY_ID) as SIERRA_FLAG_KEY,  //,PRODUCT_GROUP_NAME         
+MY_TARGET
+FROM   LUNDBECK_DW.ANALYTICS.CALL_PLAN_LU_SF cp
+Inner join LUNDBECK_DW.COMMON.CUSTOMERS dc on dc.LUNDBECK_ID=cp.LUNDBECK_ID
+INNER JOIN LUNDBECK_DW.COMMON.TERRITORY t ON t.TERRITORY_ID = cp.TERRITORY_ID
+ WHERE UPPER(PRODUCT_GROUP_NAME) in  ( 'REXULTI MDD','REXULTI','REXULTI AADAD') //'TRINTELLIX',  madhur
+ and UPPER(t.SALESFORCE_NAME) in ('SIERRA')        
+ and (cp.END_DATE_KEY>='$(vToday)' )
+   ;
+
+
+drop table FINAL_FACT_TABLE;
+
+NoConcatenate
+SIERRA_FLAG:
+Load Sierra_Flag_Key,
+	 if(isnull(MY_TARGET),'N',MY_TARGET) as MY_TARGET
+Resident TEMP_SIERRA_FLAG; 
+
+Drop Table TEMP_SIERRA_FLAG;
+
+Store SIERRA_FLAG into [$(vQSBIE_TransformQVD_Dimension)/NS2_SIERRA_CUSTOMER_FLAGS$(vSpace)$(vSF)$(vTest).qvd]
+(qvd);
+
+drop table SIERRA_FLAG ;
+
+///$tab Alliance PDE Data
+NoConcatenate
+ALLIANCE_PDE:
+Load Distinct CUSTOMER_KEY as [Customer Key],
+	ALLIANCE_TEAM,
+    ALLIANCE_PRODUCT,
+    OTSUKA_PDE;
+ SELECT
+    dc.LUNDBECK_ID as CUSTOMER_KEY,
+    'SUMMIT' as ALLIANCE_TEAM,
+    'ABILIFY LAI FRANCHISE' as ALLIANCE_PRODUCT,
+    Sum(PDE) as OTSUKA_PDE
+FROM LUNDBECK_DW.ANALYTICS.CALL_ACTIVITY_OTS_SF CA
+Inner join LUNDBECK_DW.COMMON.CALENDAR C on CA.CALL_DATE_KEY=C.DATE_KEY
+Inner join LUNDBECK_DW.COMMON.CUSTOMERS dc on dc.LUNDBECK_ID=CA.LUNDBECK_ID
+INNER join LUNDBECK_DW.COMMON.PRODUCTS p on p.PRODUCT_GROUP_NAME=CA.PRODUCT_GROUP_NAME
+where CALL_DATE_KEY >=(Select Max(START_DATE_KEY) as DATE_KEY FROM LUNDBECK_DW.ANALYTICS.CALL_PLAN_LU_SF F
+            INNER JOIN LUNDBECK_DW.COMMON.TERRITORY T on T.TERRITORY_ID = F.TERRITORY_ID 
+			   and T.SALESFORCE_NAME='SUMMIT')
+  and UPPER(p.PRODUCT_GROUP_NAME) in ('ABILIFY LAI FRANCHISE') 
+   and CALL_TYPE <> '$(vReactiveCalls)'
+group by dc.LUNDBECK_ID
+
+Union All
+
+ SELECT
+    dc.LUNDBECK_ID as CUSTOMER_KEY,
+    'SUMMIT' as ALLIANCE_TEAM,
+    'REXULTI INLINE' as ALLIANCE_PRODUCT,   //CAHNGE
+    Sum(PDE) as OTSUKA_PDE
+FROM LUNDBECK_DW.ANALYTICS.CALL_ACTIVITY_OTS_SF CA
+Inner join LUNDBECK_DW.COMMON.CALENDAR C on CA.CALL_DATE_KEY=C.DATE_KEY
+Inner join LUNDBECK_DW.COMMON.CUSTOMERS dc on dc.LUNDBECK_ID=CA.LUNDBECK_ID
+INNER join LUNDBECK_DW.COMMON.PRODUCTS p on p.PRODUCT_GROUP_NAME=CA.PRODUCT_GROUP_NAME
+where CALL_DATE_KEY >=(Select Max(START_DATE_KEY) as DATE_KEY FROM LUNDBECK_DW.ANALYTICS.CALL_PLAN_LU_SF F
+            INNER JOIN LUNDBECK_DW.COMMON.TERRITORY T on T.TERRITORY_ID = F.TERRITORY_ID 
+			   and T.SALESFORCE_NAME='SUMMIT')
+  and UPPER(p.PRODUCT_GROUP_NAME) in ('REXULTI MDD','REXULTI')
+   and CALL_TYPE <> '$(vReactiveCalls)'
+group by dc.LUNDBECK_ID
+
+Union All
+
+ SELECT
+    dc.LUNDBECK_ID as CUSTOMER_KEY,
+    'SIERRA' as ALLIANCE_TEAM,
+    'REXULTI INLINE' as ALLIANCE_PRODUCT,  //CHANGE
+    Sum(PDE) as OTSUKA_PDE
+FROM LUNDBECK_DW.ANALYTICS.CALL_ACTIVITY_OTS_SF CA
+Inner join LUNDBECK_DW.COMMON.CALENDAR C on CA.CALL_DATE_KEY=C.DATE_KEY
+Inner join LUNDBECK_DW.COMMON.CUSTOMERS dc on dc.LUNDBECK_ID=CA.LUNDBECK_ID
+INNER join LUNDBECK_DW.COMMON.PRODUCTS p on p.PRODUCT_GROUP_NAME=CA.PRODUCT_GROUP_NAME
+where CALL_DATE_KEY >=(Select Max(START_DATE_KEY) as DATE_KEY FROM LUNDBECK_DW.ANALYTICS.CALL_PLAN_LU_SF F
+            INNER JOIN LUNDBECK_DW.COMMON.TERRITORY T on T.TERRITORY_ID = F.TERRITORY_ID 
+			   and T.SALESFORCE_NAME='SIERRA')
+  and UPPER(p.PRODUCT_GROUP_NAME) in ('REXULTI MDD','REXULTI') 
+   and CALL_TYPE <> '$(vReactiveCalls)'
+group by dc.LUNDBECK_ID
+
+Union All  //CHANGE
+
+SELECT
+    dc.LUNDBECK_ID as CUSTOMER_KEY,
+    'ALTITUDE' as ALLIANCE_TEAM,
+    'REXULTI AADAD' as ALLIANCE_PRODUCT,
+    Sum(PDE) as OTSUKA_PDE
+FROM LUNDBECK_DW.ANALYTICS.CALL_ACTIVITY_OTS_SF CA
+Inner join LUNDBECK_DW.COMMON.CALENDAR C on CA.CALL_DATE_KEY=C.DATE_KEY
+Inner join LUNDBECK_DW.COMMON.CUSTOMERS dc on dc.LUNDBECK_ID=CA.LUNDBECK_ID
+INNER join LUNDBECK_DW.COMMON.PRODUCTS p on p.PRODUCT_GROUP_NAME=CA.PRODUCT_GROUP_NAME
+where CALL_DATE_KEY >=(Select Max(START_DATE_KEY) as DATE_KEY FROM LUNDBECK_DW.ANALYTICS.CALL_PLAN_LU_SF F
+            INNER JOIN LUNDBECK_DW.COMMON.TERRITORY T on T.TERRITORY_ID = F.TERRITORY_ID 
+			   and T.SALESFORCE_NAME='ALTITUDE')
+  and UPPER(p.PRODUCT_GROUP_NAME) in ('REXULTI AADAD') 
+   and CALL_TYPE <> '$(vReactiveCalls)'
+group by dc.LUNDBECK_ID
+
+Union All  //CHANGE
+
+ SELECT
+    dc.LUNDBECK_ID as CUSTOMER_KEY,
+    'ALTITUDE' as ALLIANCE_TEAM,
+    'REXULTI INLINE' as ALLIANCE_PRODUCT,
+    Sum(PDE) as OTSUKA_PDE
+FROM LUNDBECK_DW.ANALYTICS.CALL_ACTIVITY_OTS_SF CA
+Inner join LUNDBECK_DW.COMMON.CALENDAR C on CA.CALL_DATE_KEY=C.DATE_KEY
+Inner join LUNDBECK_DW.COMMON.CUSTOMERS dc on dc.LUNDBECK_ID=CA.LUNDBECK_ID
+INNER join LUNDBECK_DW.COMMON.PRODUCTS p on p.PRODUCT_GROUP_NAME=CA.PRODUCT_GROUP_NAME
+where CALL_DATE_KEY >=(Select Max(START_DATE_KEY) as DATE_KEY FROM LUNDBECK_DW.ANALYTICS.CALL_PLAN_LU_SF F
+            INNER JOIN LUNDBECK_DW.COMMON.TERRITORY T on T.TERRITORY_ID = F.TERRITORY_ID 
+			   and T.SALESFORCE_NAME='ALTITUDE')
+  and UPPER(p.PRODUCT_GROUP_NAME) in ('REXULTI MDD', 'REXULTI') 
+   and CALL_TYPE <> '$(vReactiveCalls)'
+group by dc.LUNDBECK_ID
+
+Union All  //CHANGE
+
+ SELECT
+    dc.LUNDBECK_ID as CUSTOMER_KEY,
+    'SIERRA' as ALLIANCE_TEAM,
+    'REXULTI AADAD' as ALLIANCE_PRODUCT,
+    Sum(PDE) as OTSUKA_PDE
+FROM LUNDBECK_DW.ANALYTICS.CALL_ACTIVITY_OTS_SF CA
+Inner join LUNDBECK_DW.COMMON.CALENDAR C on CA.CALL_DATE_KEY=C.DATE_KEY
+Inner join LUNDBECK_DW.COMMON.CUSTOMERS dc on dc.LUNDBECK_ID=CA.LUNDBECK_ID
+INNER join LUNDBECK_DW.COMMON.PRODUCTS p on p.PRODUCT_GROUP_NAME=CA.PRODUCT_GROUP_NAME
+where CALL_DATE_KEY >=(Select Max(START_DATE_KEY) as DATE_KEY FROM LUNDBECK_DW.ANALYTICS.CALL_PLAN_LU_SF F
+            INNER JOIN LUNDBECK_DW.COMMON.TERRITORY T on T.TERRITORY_ID = F.TERRITORY_ID  and T.SALESFORCE_NAME='SIERRA' and START_DATE_KEY<='$(vToday)')
+  and UPPER(p.PRODUCT_GROUP_NAME) in ('REXULTI AADAD') 
+   and CALL_TYPE <> '$(vReactiveCalls)'
+group by dc.LUNDBECK_ID;
+
+
+
+Left Join(ALLIANCE_PDE)
+Select LUNDBECK_ID as "Customer Key", 
+      "Otsuka_Portfolio_CP",
+      case when Sum("Otsuka_AM_CP")>=1 then 'Y' else 'N' end  as "Otsuka_AM_CP" ,
+      case when Sum("Otsuka_Rexulti_CP")>=1 then 'Y' else 'N' end as "Otsuka_Rexulti_CP",
+      case when Sum("Otsuka_Rexulti_AAD_CP")>=1 then 'Y' else 'N' end  as "Otsuka_Rexulti_AAD_CP",
+      case when Sum("Otsuka_Rexulti_Inline_CP")>=1 then 'Y' else 'N' end as "Otsuka_Rexulti_Inline_CP"
+From(
+Select Distinct  LUNDBECK_ID as LUNDBECK_ID,
+UPPER(p.PRODUCT_GROUP_NAME) as PRODUCT_NAME,
+'Y' as "Otsuka_Portfolio_CP",
+case when UPPER(p.PRODUCT_GROUP_NAME)='ABILIFY LAI FRANCHISE' then 1 end as "Otsuka_AM_CP",              
+Case when UPPER(p.PRODUCT_GROUP_NAME) in ('REXULTI MDD','REXULTI') then 1 end as "Otsuka_Rexulti_CP",
+Case when UPPER(p.PRODUCT_GROUP_NAME)='REXULTI AADAD' then 1 end as "Otsuka_Rexulti_AAD_CP",    //doubt
+Case when UPPER(p.PRODUCT_GROUP_NAME) in ('REXULTI MDD','REXULTI') then 1 end as "Otsuka_Rexulti_Inline_CP" 
+from LUNDBECK_DW.ANALYTICS.CALL_PLAN_OTS_SF FCP
+INNER JOIN LUNDBECK_DW.COMMON.PRODUCTS P on P.PRODUCT_GROUP_NAME = FCP.PRODUCT_GROUP_NAME
+where  UPPER(p.PRODUCT_GROUP_NAME) in ('ABILIFY MAINTENA','REXULTI MDD','REXULTI')
+) A
+Group by LUNDBECK_ID, 
+      "Otsuka_Portfolio_CP";
+
+Store ALLIANCE_PDE into [$(vQSBIE_TransformQVD_Fact)/NS2_CPA_ALLIANCE_PDE$(vSpace)$(vSF)$(vTest).qvd]
+(qvd);
+
+drop table ALLIANCE_PDE;
+///$tab EXIT SCRIPT
+EXIT SCRIPT;
+///$tab Max Call Plan
+// NoConcatenate
+// MAX_CALL_PLAN_DATE:
+// Load DATE_FROM_KEY,
+// 	DATE_TO_KEY, 
+//     "Call Territory Key" as "Call Territory Key", 
+//     TeamIndicator;
+// Select MAX(START_DATE_KEY) as DATE_FROM_KEY, 
+// 	   MAX(END_DATE_KEY) as DATE_TO_KEY,
+// 	   t.TERRITORY_ID as "Call Territory Key",
+//        SALESFORCE_NAME as "TeamIndicator"
+// from LUNDBECK_DW.ANALYTICS.CALL_PLAN_LU_SF p
+// inner join LUNDBECK_DW.COMMON.TERRITORY t on t.TERRITORY_ID=p.TERRITORY_ID
+// group by t.TERRITORY_ID,SALESFORCE_NAME;
+
+// Store MAX_CALL_PLAN_DATE into   [$(vQSBIE_TransformQVD_Dimension)/NS2_CPA_MAX_CALL_PLAN_DATE$(vSpace)$(vSF).qvd](qvd);
+
+// Drop Table MAX_CALL_PLAN_DATE;
