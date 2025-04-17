@@ -1,0 +1,480 @@
+///$tab Main
+SET ThousandSep=',';
+SET DecimalSep='.';
+SET MoneyThousandSep=',';
+SET MoneyDecimalSep='.';
+SET MoneyFormat='$#,##0.00;-$#,##0.00';
+SET TimeFormat='h:mm:ss TT';
+SET DateFormat='M/D/YYYY';
+SET TimestampFormat='M/D/YYYY h:mm:ss[.fff] TT';
+SET FirstWeekDay=6;
+SET BrokenWeeks=1;
+SET ReferenceDay=0;
+SET FirstMonthOfYear=1;
+SET CollationLocale='en-US';
+SET CreateSearchIndexOnReload=1;
+SET MonthNames='Jan;Feb;Mar;Apr;May;Jun;Jul;Aug;Sep;Oct;Nov;Dec';
+SET LongMonthNames='January;February;March;April;May;June;July;August;September;October;November;December';
+SET DayNames='Mon;Tue;Wed;Thu;Fri;Sat;Sun';
+SET LongDayNames='Monday;Tuesday;Wednesday;Thursday;Friday;Saturday;Sunday';
+SET NumericalAbbreviation='3:k;6:M;9:G;12:T;15:P;18:E;21:Z;24:Y;-3:m;-6:μ;-9:n;-12:p;-15:f;-18:a;-21:z;-24:y';
+
+LIB CONNECT TO 'LuUS_DATA:vAZ_MSSQL_LuUS_DW_2.0';
+
+vQVDPathFact = 'lib://LuUS_DATA:DataFiles/Production/QlikSense BI Evolution/QVDs/Extract/Facts/Vyepti';
+vQVDPathDim = 'lib://LuUS_DATA:DataFiles/Production/QlikSense BI Evolution/QVDs/Extract/Dimensions/Vyepti';
+
+vStorePathFact = 'lib://LuUS_DATA:DataFiles/Production/QlikSense BI Evolution/QVDs/Extract/Facts/Vyepti';
+
+vQVDNewPathFact = 'lib://LuUS_DATA:DataFiles/Production/QlikSense BI Evolution/QVDs/Extract/Facts/Vyepti/New';
+
+LET vSpace='';//if(upper(GetSysAttr('spaceType'))='SHARED' or GetSysAttr('spaceType')='','_DEV');
+
+Trace '$(vSpace)';
+
+
+
+// load *
+// FROM [$(vStorePathFact)/New/VYEPTI_SECURITY_USER_TO_TERRITORY_MAPPING.qvd] (qvd);
+// exit script;
+
+
+
+
+///$tab FRS Query
+// LIB CONNECT TO 'LuUS MDM';
+
+// [User List]:
+// SQL SELECT
+//   'HLUCORP\' + RTRIM(AD_ID) as AD_ID,
+//   LEVEL,
+//   Upper(SALESFORCE_ID) as JOB_ID,
+//   NULL as [GROUP],
+//   'USER' as ACCESS_LEVEL
+//   FROM  INCW2304H.mds.mdm.VW_LKP_SALESFORCE_ALIGNMENT_FRS sa
+//   WHERE (EXP_DATE IS NULL or EXP_DATE >= DATEADD(dd, DATEDIFF(dd, 0, getdate())+1, 0))
+//   AND   EFF_DATE <= DATEADD(dd, DATEDIFF(dd, 0, getdate())+1, 0)
+//   AND   AD_ID NOT IN (SELECT AD_ID
+//   FROM mds.mdm.VW_LKP_BI_SECURITY sec
+//   WHERE sec.APPLICATION IN ('FRS Dashboard')
+//   AND  sec.[REVOKE] = 'Y');
+
+
+// Concatenate([User List])
+// SQL SELECT  CASE RTRIM(AD_ID)
+//   WHEN '*' THEN RTRIM(AD_ID)
+//   ELSE 'HLUCORP\' + RTRIM(AD_ID) END as AD_ID 
+//   ,       RTRIM([GROUP]) as [GROUP]
+//   ,       [FILTER] as JOB_ID
+//   ,       CASE WHEN FILTER = '*' THEN 'ADMIN' ELSE 'USER' END  as ACCESS_LEVEL
+//   ,      'NATION' as LEVEL
+//   FROM   mds.mdm.VW_LKP_BI_SECURITY sec
+//   WHERE (sec.EXPIRED_DATE IS NULL or sec.EXPIRED_DATE >= DATEADD(dd, DATEDIFF(dd, 0, getdate())+1, 0))
+//   AND   sec.EFFECTIVE_DATE <= DATEADD(dd, DATEDIFF(dd, 0, getdate())+1, 0)
+//   AND  isnull(sec.[REVOKE], 'N') <> 'Y'
+//   AND  sec.APPLICATION IN ('FRS DASHBOARD');
+  
+// LIB CONNECT TO 'LuUS DW2.0';
+
+// NoConcatenate
+// TempUser:
+// Load Distinct AD_ID,
+//        LEVEL,
+//       ACCESS_LEVEL,
+//       [GROUP],
+//       JOB_ID
+// resident [User List]
+// where LEVEL='TERRITORY';
+
+// inner Join(TempUser)
+// SQL SELECT FRS_TERRITORY_ID as JOB_ID,
+//     FRS_TERRITORY_ID
+// From LUINC.DIM_FRS_TERRITORY;
+
+// NoConcatenate
+// TerritoryUser:
+// Load * Resident TempUser;   Drop table TempUser;
+
+// NoConcatenate
+// TempUser:
+// Load Distinct AD_ID,
+//        LEVEL,
+//       ACCESS_LEVEL,
+//       [GROUP],
+//       JOB_ID
+// resident [User List]
+// where LEVEL='AREA';
+
+// inner Join(TempUser)
+// SQL SELECT FRM_TERRITORY_ID as JOB_ID,
+//     FRS_TERRITORY_ID
+// From LUINC.DIM_FRS_TERRITORY;
+
+// Concatenate(TerritoryUser)
+// Load * Resident TempUser;    Drop table TempUser;
+
+// NoConcatenate
+// TempUser:
+// Load Distinct AD_ID,
+//        LEVEL,
+//       ACCESS_LEVEL,
+//       [GROUP]
+// resident [User List]
+// where LEVEL<>'AREA' and LEVEL<>'TERRITORY';
+
+// inner Join(TempUser)
+// SQL SELECT 
+//     FRS_TERRITORY_ID
+// From LUINC.DIM_FRS_TERRITORY;
+
+// Concatenate(TerritoryUser)
+// Load * Resident TempUser;    Drop table TempUser;
+
+// Drop Table [User List];
+
+// NoConcatenate
+// DefaultGeo:
+// Load Replace(AD_ID,'HLUCORP\','') as CURRENT_USER,
+// 	 AD_ID as NTNAME,
+//      ACCESS_LEVEL as ACCESS,
+//      LEVEL,
+//      FRS_TERRITORY_ID,
+//      [GROUP]
+// Resident TerritoryUser;
+
+// Concatenate(DefaultGeo)
+// Load 'BAMN' as CURRENT_USER,
+// 	 'HLUCORP\BAMN' as NTNAME,
+//      'USER' as ACCESS,
+//      LEVEL,
+//      FRS_TERRITORY_ID,
+//      [GROUP]
+// Resident DefaultGeo
+// where CURRENT_USER = 'KIMR';
+
+// Concatenate(DefaultGeo)
+// Load 'MEML' as CURRENT_USER,
+// 	 'HLUCORP\MEML' as NTNAME,
+//      'USER' as ACCESS,
+//      LEVEL,
+//      FRS_TERRITORY_ID,
+//      [GROUP]
+// Resident DefaultGeo
+// where CURRENT_USER = 'KIMR';
+
+// Drop Table TerritoryUser;
+
+// Concatenate(DefaultGeo)
+// Load * Inline [
+// CURRENT_USER,NTNAME, ACCESS,LEVEL,FRS_TERRITORY_ID
+// INTERNAL\SA_SCHEDULER,INTERNAL\SA_SCHEDULER,ADMIN,NATION, *
+// AIGR,HLUCORP\AIGR, USER,TERRITORY, 3E01202103
+// CRLR,HLUCORP\CRLR, USER,TERRITORY, 3E01201106
+// CEGU,HLUCORP\CEGU, USER,NATION, *
+// MEBH,HLUCORP\MEBH, USER,NATION, *
+// KTDI,HLUCORP\KTDI, USER,NATION, *
+// ELOE,HLUCORP\ELOE, USER,NATION, *
+// JEDL,HLUCORP\JEDL, USER,NATION, *
+// DAHK,HLUCORP\DAHK, USER,NATION, *
+// KJNS,HLUCORP\KJNS, USER,NATION, *
+// ];
+
+// Store DefaultGeo into [$(vStorePathFact)\New\VYEPTI_SECURITY_FRS_USER_TO_TERRITORY_MAPPING.qvd] (qvd);
+
+// Drop tables DefaultGeo;
+
+
+///$tab Query
+// LIB CONNECT TO 'LuUS_DATA:MSSQL_LuUS_MDM';
+LIB CONNECT TO 'LuUS_DATA:vAZ_MSSQL_LuUS_MDM';
+
+
+PhySecurityQVD:
+SELECT
+'HLUCORP\' + RTRIM(AD_ID) as AD_ID,
+LEVEL,
+Upper(SALESFORCE_ID) as JOB_ID,
+'USER' as ACCESS_LEVEL
+FROM  mds.mdm.VW_LKP_SALESFORCE_ALIGNMENT sa
+WHERE (EXP_DATE IS NULL or EXP_DATE >= DATEADD(dd, DATEDIFF(dd, 0, getdate())+1, 0))
+AND   EFF_DATE <= DATEADD(dd, DATEDIFF(dd, 0, getdate())+1, 0)
+AND   AD_ID NOT IN (SELECT AD_ID
+FROM mds.mdm.VW_LKP_BI_SECURITY sec
+WHERE sec.APPLICATION IN ('NS1 Sales')
+AND  sec.[REVOKE] = 'Y')  
+;
+
+Concatenate(PhySecurityQVD)
+SELECT  'HLUCORP\' + RTRIM(AD_ID) as AD_ID 
+,       [FILTER] as JOB_ID
+,       CASE WHEN FILTER = '*' THEN 'ADMIN' ELSE 'USER' END  as ACCESS_LEVEL
+,      'NATION' as LEVEL
+FROM   mds.mdm.VW_LKP_BI_SECURITY sec
+WHERE (sec.EXPIRED_DATE IS NULL or sec.EXPIRED_DATE >= DATEADD(dd, DATEDIFF(dd, 0, getdate())+1, 0))
+AND   sec.EFFECTIVE_DATE <= DATEADD(dd, DATEDIFF(dd, 0, getdate())+1, 0)
+AND  isnull(sec.[REVOKE], 'N') <> 'Y'
+AND  sec.APPLICATION IN ('NS1 Sales') 
+;
+
+
+DisConnect;
+// LIB CONNECT TO 'LuUS_DATA:MSSQL_LuUS_DW_2.0';
+LIB CONNECT TO 'LuUS_DATA:vAZ_MSSQL_LuUS_DW_2.0';
+
+Concatenate(PhySecurityQVD)
+Load * Inline [
+AD_ID,JOB_ID,ACCESS_LEVEL,LEVEL
+HLUCORP\NHUD,2A07000000,ADMIN,NATIONAL
+HLUCORP\MCHN,2A07000000,ADMIN,NATIONAL
+HLUCORP\SGAD,2A07000000,ADMIN,NATIONAL
+HLUCORP\DDUD,2A07000000,ADMIN,NATIONAL
+HLUCORP\SHRU,2A07000000,ADMIN,NATIONAL
+HLUCORP\CHJD,*,ADMIN,NATION
+HLUCORP\MCCN,*,USER,NATION
+HLUCORP\ALRW,*,USER,NATION
+HLUCORP\SHWG,*,USER,NATION
+HLUCORP\TRLF,*,USER,NATION
+HLUCORP\MEBH,*,USER,NATION
+HLUCORP\MIIT,*,USER,NATION
+HLUCORP\KTDI,*,USER,NATION
+];
+
+
+////Zs Users
+Concatenate(PhySecurityQVD)
+Load * Inline [
+AD_ID,JOB_ID,ACCESS_LEVEL,LEVEL
+HLUCORP\YAVI,2A07000000,USER,REGION
+HLUCORP\YAVI,1A01000000,USER,REGION
+HLUCORP\IAMC,2A01101104,USER,TERRITORY
+HLUCORP\IAMC,1A01105102,USER,TERRITORY
+HLUCORP\SOVE,1A01000000,USER,REGION
+HLUCORP\SOVE,2A01000000,USER,REGION
+HLUCORP\NINL,2A07000000,ADMIN,NATIONAL
+HLUCORP\KRAJ,1B03201000,ADMIN,AREA
+HLUCORP\MMAY,1B04000000,USER,NATION,
+HLUCORP\MMAY,1B03000000,USER,NATION,
+HLUCORP\TRJO,1B03000000,USER,NATION,
+HLUCORP\SITB,1B03000000,USER,NATION,
+HLUCORP\PIDA,1B03000000,USER,NATION,
+HLUCORP\SURK,1B03000000,USER,NATION
+];
+
+
+concatenate(PhySecurityQVD)
+LOAD
+    AD_ID,
+    JOB_ID,
+    ACCESS_LEVEL,
+    LEVEL
+FROM [lib://LuUS_DATA:LuUS_SharePoint/Shared Documents/Qlik Sense Data Files/ExcelFiles/SECTION ACCESS.xlsx]
+(ooxml, embedded labels, table is [NS1 Section Access]);
+
+
+///$tab My Geography
+NoConcatenate
+TerritoryUser:
+Load Distinct AD_ID,
+       LEVEL,
+       JOB_ID,
+      ACCESS_LEVEL,
+     1 as LEVEL_NO,
+     'My Geography' as View
+resident PhySecurityQVD
+where LEVEL='TERRITORY';
+
+inner Join(TerritoryUser)
+SQL SELECT TERRITORY_ID as JOB_ID,
+	REGION_NAME,
+	AREA_NAME,
+    TERRITORY_NAME+' - '+SALESFORCE_GROUP_NAME as TERRITORY_TEAM_NAME,
+    REGION_ID,
+    AREA_ID,
+    TERRITORY_ID,
+    ACCT_MGR_FULL_NAME as UserName
+From LUINC.DIM_TERRITORY
+where TERR_CURRENT_IND='Y' and ORGANIZATION='LU' AND  ISnull(ACCT_MGR_FULL_NAME,'VACANT') NOT LIKE '%(US)';
+
+
+
+NoConcatenate
+
+AreaUser:
+Load Distinct AD_ID,
+       LEVEL,
+       JOB_ID,
+      ACCESS_LEVEL,
+     2 as LEVEL_NO,
+     'My Geography' as View
+resident PhySecurityQVD
+where LEVEL='AREA';
+
+inner Join(AreaUser)
+SQL SELECT AREA_ID as JOB_ID,
+	REGION_NAME,
+	AREA_NAME,
+    TERRITORY_NAME+' - '+SALESFORCE_GROUP_NAME as TERRITORY_TEAM_NAME,
+    REGION_ID,
+    AREA_ID,
+    TERRITORY_ID,
+    AREA_MGR_FULL_NAME as UserName
+From LUINC.DIM_TERRITORY
+where TERR_CURRENT_IND='Y' and ORGANIZATION='LU' AND   ISnull(ACCT_MGR_FULL_NAME,'VACANT') NOT LIKE '%(US)';
+
+
+NoConcatenate
+
+RegionUser:
+Load Distinct AD_ID,
+       LEVEL,
+       JOB_ID,
+      ACCESS_LEVEL,
+     3 as LEVEL_NO,
+     'My Geography' as View
+resident PhySecurityQVD
+where LEVEL='REGION';
+
+inner Join(RegionUser)
+SQL SELECT REGION_ID as JOB_ID,
+	REGION_NAME,
+	AREA_NAME,
+    TERRITORY_NAME+' - '+SALESFORCE_GROUP_NAME as TERRITORY_TEAM_NAME,
+    REGION_ID,
+    AREA_ID,
+    TERRITORY_ID,
+    RGN_MGR_FULL_NAME as UserName
+From LUINC.DIM_TERRITORY
+where TERR_CURRENT_IND='Y' and ORGANIZATION='LU' AND   ISnull(ACCT_MGR_FULL_NAME,'VACANT') NOT LIKE '%(US)';
+
+NoConcatenate
+
+NationalUser:
+Load Distinct AD_ID,
+       LEVEL,
+      ACCESS_LEVEL,
+     4 as LEVEL_NO,
+     'My Geography' as View
+resident PhySecurityQVD
+where LEVEL='NATIONAL' or LEVEL='NATION';
+
+inner Join(NationalUser)
+SQL SELECT REGION_ID as JOB_ID,
+	REGION_NAME,
+	AREA_NAME,
+    TERRITORY_NAME+' - '+SALESFORCE_GROUP_NAME as TERRITORY_TEAM_NAME,
+    REGION_ID,
+    AREA_ID,
+    TERRITORY_ID
+From LUINC.DIM_TERRITORY
+where TERR_CURRENT_IND='Y' and ORGANIZATION='LU' AND   ISnull(ACCT_MGR_FULL_NAME,'VACANT') NOT LIKE '%(US)';
+
+NoConcatenate
+
+MyGeography:
+Load *   resident TerritoryUser;
+Concatenate
+Load * resident AreaUser;
+Concatenate
+Load * resident RegionUser;
+Concatenate
+Load * resident NationalUser;
+
+Drop tables TerritoryUser,AreaUser,RegionUser,NationalUser;
+
+
+
+
+
+///$tab All Geography
+NoConcatenate
+AllGeography_Temp:
+Load Distinct AD_ID,
+       LEVEL,
+       JOB_ID,
+      ACCESS_LEVEL,
+     1 as LEVEL_NO,
+     'All Geography' as View
+resident PhySecurityQVD
+where LEVEL='TERRITORY';
+Concatenate
+Load Distinct AD_ID,
+       LEVEL,
+       JOB_ID,
+      ACCESS_LEVEL,
+     2 as LEVEL_NO,
+     'All Geography' as View
+resident PhySecurityQVD
+where LEVEL='AREA';
+Concatenate
+Load Distinct AD_ID,
+       LEVEL,
+       JOB_ID,
+      ACCESS_LEVEL,
+     3 as LEVEL_NO,
+     'All Geography' as View
+resident PhySecurityQVD
+where LEVEL='REGION';
+Concatenate
+Load Distinct AD_ID,
+       LEVEL,
+      ACCESS_LEVEL,
+     4 as LEVEL_NO,
+     'All Geography' as View
+resident PhySecurityQVD
+where LEVEL='NATIONAL' or LEVEL='NATION';
+
+join(AllGeography_Temp)
+SELECT Distinct 
+   TERRITORY_ID,
+   AREA_ID,
+   REGION_ID,
+    AREA_NAME,
+	REGION_NAME
+From LUINC.DIM_TERRITORY
+where TERR_CURRENT_IND='Y' and ORGANIZATION='LU';
+
+NoConcatenate
+
+Final_QVD:
+Load * resident MyGeography;
+Concatenate
+Load * resident AllGeography_Temp;
+
+Drop tables AllGeography_Temp,MyGeography;
+
+
+
+
+///$tab Final QVD
+NoConcatenate
+DefaultGeo:
+Load Replace(AD_ID,'HLUCORP\','') as CURRENT_USER,
+	 AD_ID as NTNAME,
+     ACCESS_LEVEL as ACCESS,
+     LEVEL_NO as LEVEL,
+     LEVEL as GEOGRAPHY_LEVEL,
+     REGION_NAME,
+	 AREA_NAME,
+     TERRITORY_TEAM_NAME,
+     REGION_ID,
+     AREA_ID,
+     TERRITORY_ID,
+     View,
+     Upper(View) as VIEW
+Resident Final_QVD
+where not(AD_ID='HLUCORP\DDUD' and Wildmatch(TERRITORY_TEAM_NAME,'*APEX*','*PINNACLE*'));
+
+Concatenate
+Load * Inline [
+CURRENT_USER,NTNAME, ACCESS,GEOGRAPHY_LEVEL,REGION_NAME,AREA_NAME,TERRITORY_TEAM_NAME,REGION_ID,AREA_ID,TERRITORY_ID,View
+INTERNAL\SA_SCHEDULER,INTERNAL\SA_SCHEDULER,ADMIN,*,*,*,*,*,*,*,*
+];
+
+Drop Table Final_QVD;
+
+//Store DefaultGeo into [$(vStorePathFact)\VYEPTI_SECURITY_USER_TO_TERRITORY_MAPPING.qvd] (qvd);
+Store DefaultGeo into [$(vStorePathFact)/New/VYEPTI_SECURITY_USER_TO_TERRITORY_MAPPING$(vSpace).qvd] (qvd);
+
+
+Drop table DefaultGeo,
+PhySecurityQVD;
