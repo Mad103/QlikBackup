@@ -1,0 +1,24 @@
+
+SHEETS
+
+OBJECTS ON SHEETS
+
+DIMENSIONS
+
+MEASURES
+
+VARIABLES
+{"qName":"NumFormat","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"cdfb4b84-b1ab-4edb-bcd4-202f0f28bab7","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vQSBIE_ExtractQVD_Dimension","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/QlikSense BI Evolution\/QVDs\/Extract\/Dimensions","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"b92200a5-f189-4cb1-acc1-f6f831b1087a","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vQSBIE_ExtractQVD_Fact","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/QlikSense BI Evolution\/QVDs\/Extract\/Facts","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"446d0508-4ac2-43cb-ae0c-0f4eaf27c1d7","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vQSBIE_TransformQVD_Dimension","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/QlikSense BI Evolution\/QVDs\/Transform\/Dimensions","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"aefa602f-8bba-4911-8824-9f2c82e62444","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vQSBIE_TransformQVD_Fact","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/QlikSense BI Evolution\/QVDs\/Transform\/Facts","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"8fe2a563-d257-4d7a-99da-e7cdfb14d403","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vQSBIE_OfflineFiles","qDefinition":"lib:\/\/LuUS_DATA:LuUS_SharePoint\/Shared Documents\/Qlik Sense Data Files","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"a3bd8b39-8f0e-428d-8851-e1c50ebef971","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vConfidentialMessage","qDefinition":"*Prescriber data acquired by the Lundbeck are to be treated as confidential information. Sales representatives (and other employees and agents) must not disclose those data to any party outside of the Company without the express permission of the Legal Division. In addition, sales representatives (and other employees and agents) cannot ask co-promotion colleagues to share prescriber data with them.","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"94645d82-6fc9-409a-9705-0d0af753c583","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vStart","qDefinition":"20230101","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"48ad4a5c-7193-494f-afb2-841f8eb735af","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vCurrent","qDefinition":"20250416","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"ac293d32-3c83-43b5-8045-fe07a7578a7b","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vSpace","qDefinition":"_DEV","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"3e30dddf-4d14-4a94-b28f-63d3f558e03a","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vSF","qDefinition":"_SF","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"2a2703c2-4cd4-4d3b-a777-53ecc702a41b","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vReactiveCalls","qDefinition":"Reactive Call","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"3e4b8ba1-af1a-4b8d-9ecb-191e1ad1a71c","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+
+FIELDS
