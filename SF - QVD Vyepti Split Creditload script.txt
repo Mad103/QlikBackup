@@ -1,0 +1,658 @@
+///$tab Main
+// SET ThousandSep=',';
+SET DecimalSep='.';
+SET MoneyThousandSep=',';
+SET MoneyDecimalSep='.';
+SET MoneyFormat='$#,##0.00;($#,##0.00)';
+SET TimeFormat='h:mm:ss TT';
+//SET DateFormat='M/D/YYYY';
+SET DateFormat='YYYY-MM-DD';
+//SET TimestampFormat='M/D/YYYY h:mm:ss[.fff] TT';
+SET TimestampFormat='YYYY-MM-DD h:mm:ss[.fff] TT';
+SET FirstWeekDay=6;
+SET BrokenWeeks=1;
+SET ReferenceDay=0;
+SET FirstMonthOfYear=1;
+SET CollationLocale='en-US';
+SET CreateSearchIndexOnReload=1;
+SET MonthNames='Jan;Feb;Mar;Apr;May;Jun;Jul;Aug;Sep;Oct;Nov;Dec';
+SET LongMonthNames='January;February;March;April;May;June;July;August;September;October;November;December';
+SET DayNames='Mon;Tue;Wed;Thu;Fri;Sat;Sun';
+SET LongDayNames='Monday;Tuesday;Wednesday;Thursday;Friday;Saturday;Sunday';
+SET NumericalAbbreviation='3:k;6:M;9:G;12:T;15:P;18:E;21:Z;24:Y;-3:m;-6:μ;-9:n;-12:p;-15:f;-18:a;-21:z;-24:y';
+
+
+///$tab note
+// Check vSF variable
+// Search vGoalSFTrimester variable to and update to ensure only 3 trimesters are being pulled
+// check all sections for variable- 
+// (-1) - to bring previous trimester
+// or (-2) - for bringing 3rd trimester
+// has been added
+///$tab Variable Declaration
+LIB CONNECT TO 'LuUS_DATA:SNOWFLAKE_LuUS_BI_Reader';
+
+SET QVDLocation = 'lib://LuUS_DATA:DataFiles/Production/';
+
+LET vToday = DATE(TODAY(), 'YYYYMMDD');
+
+LET vSpace=if(upper(GetSysAttr('spaceType'))='SHARED' or GetSysAttr('spaceType')='','_DEV');
+
+Trace '$(vSpace)';
+
+LET vSF = '_SF';
+///$tab SF: Control Dates
+// ==============================================================================
+// VyeptiControlDates - This handles important dates for the data. This is stored
+// for use in the front end.
+// ==============================================================================
+
+// Find the last RX data week from the retail file
+NoConcatenate
+CurrentDataWeekTemp:
+Load 
+	CurrentDataWeekKey
+,   CurrentDataWeek
+,   num#(date(date#(NextWeekStartKey, 'YYYYMMDD'),'YYYYMMDD')) as NextWeekStartKey
+,   CurrentSFYear
+,   CurrentSFTrimester
+,   CurrentSFWeek
+,   CurrentSFRelativeTrimester
+,   CurrentSFRelativeWeek   
+,   CurrentSFTrimesterWeek
+,   CurrentSFWeekOfYear
+,   CurrentDataMonth
+;
+SELECT DATE_WEEK_END_KEY as "CurrentDataWeekKey"
+,      DATE_WEEK_END as "CurrentDataWeek"
+,      DATE_WEEK_END as "NextWeekStartKey"
+,      SF_YEAR as "CurrentSFYear"
+,      SF_TRIMESTER as "CurrentSFTrimester"
+,      SF_YEAR as "CurrentSFWeek"
+,      SF_RELATIVE_TRIMESTER as "CurrentSFRelativeTrimester"
+,      SF_RELATIVE_WEEK as "CurrentSFRelativeWeek"   
+,      SF_TRIMESTER_WEEK as "CurrentSFTrimesterWeek"
+,      SF_WEEK_OF_YEAR as "CurrentSFWeekOfYear"
+,      DateFromParts(YEAR(DATE_FULL), MONTH(DATE_FULL), 1) as "CurrentDataMonth"
+FROM  "LUNDBECK_DW"."COMMON"."CALENDAR" 
+WHERE DATE_KEY = (
+			SELECT MAX(DATE_KEY)
+     		FROM LUNDBECK_DW.ANALYTICS.ACCOUNT_SALES )
+;
+
+
+LET vCurrentDataWeek = Peek('CurrentDataWeek') ;
+LET vCurrentDataWeekCalKey  = Peek('CurrentDataWeekKey');
+LET vCurrentSFYear = Peek('CurrentSFYear');
+
+trace('$(vCurrentDataWeek)');
+trace('$(vCurrentDataWeekCalKey)');
+trace('$(vCurrentSFYear)');
+DROP TABLE CurrentDataWeekTemp;
+
+// Find the start of the previous year
+NoConcatenate
+StartingDateTemp:
+SELECT MIN(DATE_KEY) as "StartDataCalKey"
+,      MIN(DATE_FULL) as "StartDataDate"
+FROM   "LUNDBECK_DW"."COMMON"."CALENDAR" WHERE SF_YEAR = ($(vCurrentSFYear) - 1)
+;
+
+LET vStartingDateCalKey = Peek('StartDataCalKey') ;
+
+trace('$(vStartingDateCalKey)');
+
+DROP TABLE StartingDateTemp;
+
+// ==============================================================================
+// Goal Trimester - Based on the current date
+// ==============================================================================
+NoConcatenate
+GoalTrimester:
+SELECT MIN(c.DATE_KEY) as GOAL_TRI_START_KEY
+,      MAX(c.DATE_KEY) as GOAL_TRI_END_KEY
+,      c.SF_RELATIVE_TRIMESTER as GOAL_SF_TRIMESTER 
+FROM  "LUNDBECK_DW"."COMMON"."CALENDAR" c
+WHERE  c.SF_TRIMESTER = (
+		SELECT cw.SF_TRIMESTER 
+        FROM "LUNDBECK_DW"."COMMON"."CALENDAR" cw 
+        WHERE cw.DATE_KEY  = '$(vToday)' )
+GROUP BY  c.SF_RELATIVE_TRIMESTER
+;
+
+LET vGoalSFTrimester =  Peek('GOAL_SF_TRIMESTER');
+trace('$(vGoalSFTrimester)');
+
+DROP TABLE GoalTrimester;
+
+// ==============================================================================
+// Find the current competitor date
+// ==============================================================================
+
+NoConcatenate
+CompetitorDate:
+SELECT DATE_WEEK_END as "CurrentDataWeek"
+FROM  "LUNDBECK_DW"."COMMON"."CALENDAR" 
+WHERE DATE_KEY = 
+    (
+    	SELECT MAX(DATE_KEY)
+     		FROM LUNDBECK_DW.ANALYTICS.ACCOUNT_SALES 
+     )
+;
+
+LET vCompetitorWeekDate = Peek('CurrentDataWeek');
+
+trace('$(vCompetitorWeekDate)');
+
+DROP TABLE CompetitorDate; 
+
+
+
+
+
+///$tab SF: Calendar
+// ==============================================================================
+// Vyepti Calendar - Sales Calendar for Vyepti
+// ==============================================================================
+
+NoConcatenate
+PsyCalendar:
+LOAD   
+       DATE_KEY
+,      DATE_FULL as [Calendar Date]
+,      DATE_WEEK_END as 'Week Ending'
+,      SF_TRIMESTER as 'SF Trimester'
+,      SF_TRIMESTER_WEEK as 'SF Trimester Week'
+,      SF_TRI_START_DATE
+,      SF_TRI_END_DATE
+,      '$(vCompetitorWeekDate)' as 'Competitor Date'
+;
+
+SQL SELECT DATE_KEY
+,      DATE_FULL
+,      DATE_WEEK_END
+,      c.SF_TRIMESTER
+,      SF_TRIMESTER_WEEK
+,      sftri.SF_TRI_START_DATE
+,      sftri.SF_TRI_END_DATE
+FROM   "LUNDBECK_DW"."COMMON"."CALENDAR" c
+LEFT OUTER JOIN (
+  SELECT c.SF_TRIMESTER
+  ,      MIN(c.DATE_FULL) as SF_TRI_START_DATE
+  ,      MAX(c.DATE_FULL) as SF_TRI_END_DATE
+  FROM  "LUNDBECK_DW"."COMMON"."CALENDAR" c
+  GROUP BY c.SF_TRIMESTER
+  ) sftri
+ON sftri.SF_TRIMESTER = c.SF_TRIMESTER
+WHERE  DATE_KEY BETWEEN $(vStartingDateCalKey) AND $(vCurrentDataWeekCalKey)
+;
+
+
+STORE PsyCalendar INTO $(QVDLocation)Dimensions/VYEPTI_SPLIT_CREDIT_CALENDAR$(vSpace)$(vSF).qvd (qvd);
+DROP TABLE PsyCalendar;
+///$tab SF: Split Credit Territory Dimension
+// 2020-11-20 - New Territory Code
+
+NoConcatenate
+VyeptiTerritory:
+LOAD   TERRITORY_KEY 
+,      TERRITORY_ID  as  [Territory ID]
+,      TERRITORY_NAME & '-' & SALESFORCE_GROUP_NAME as [Territory]
+,      SALESFORCE_GROUP_NAME as [Sales Team]
+,      AREA_ID as  [Area ID]
+,      AREA_NAME as [Area]
+,      REGION_ID as [Region ID]
+,      REGION_NAME as [Region]
+,      FRANCHISE
+,      ACCT_MGR_FULL_NAME as  [Account Manager]
+,      RGN_MGR_FULL_NAME as [Regional Manager]
+,      AREA_MGR_FULL_NAME as  [Area Manager]
+;
+
+SELECT t.TERRITORY_ID as TERRITORY_KEY
+,      TERRITORY_ID 
+,      TERRITORY_NAME 
+,      SALESFORCE_NAME as SALESFORCE_GROUP_NAME 
+,      AREA_ID 
+,      AREA_NAME 
+,      REGION_ID 
+,      REGION_NAME
+,      FRANCHISE
+,      concat(FIRST_NAME , ' ' , LAST_NAME)  as ACCT_MGR_FULL_NAME
+,      concat(REGION_FIRST_NAME , ' ' , REGION_LAST_NAME)as RGN_MGR_FULL_NAME
+,      concat(AREA_FIRST_NAME , ' ' , AREA_LAST_NAME)as AREA_MGR_FULL_NAME 
+FROM   "LUNDBECK_DW"."COMMON"."TERRITORY" t
+WHERE   t.FRANCHISE IN ('NRO')
+AND    IFNULL(t.EXP_DATE, '12/31/9999') >= (SELECT MIN(cal.DATE_FULL)
+                           FROM   "LUNDBECK_DW"."COMMON"."CALENDAR" cal
+                           WHERE  cal.SF_RELATIVE_TRIMESTER =  $(vGoalSFTrimester)-2)
+AND    t.EFF_DATE <= (SELECT MAX(cal.DATE_FULL)
+                          FROM   "LUNDBECK_DW"."COMMON"."CALENDAR" cal
+                           WHERE  cal.SF_RELATIVE_TRIMESTER = $(vGoalSFTrimester))
+;
+
+
+STORE VyeptiTerritory INTO $(QVDLocation)Dimensions/SPLIT_CREDIT_VYEPTI_TERRITORY$(vSpace)$(vSF).qvd (qvd); 
+DROP TABLE VyeptiTerritory;
+///$tab SF: split Credit Customer
+// Split Credit
+NoConcatenate
+VyeptiRxSplitCredit:
+LOAD
+       CUSTOMER_KEY
+,      BRAND_KEY
+,	   RX_TYPE
+,      PRODUCT_GROUP_KEY
+,      AutoNumberHash128(CUSTOMER_KEY, BRAND, TRIMESTER) as CustomerLUBrandTrimester
+,      BRAND
+,      TERRITORY_KEY
+,      SPLIT_SHARE
+,      TRIMESTER
+;
+
+SQL SELECT sc.LUNDBECK_ID as CUSTOMER_KEY
+,      sc.TERRITORY_ID as TERRITORY_KEY
+,      PRODUCT_GROUP_CODE as BRAND_KEY
+,      PRODUCT_GROUP_CODE as PRODUCT_GROUP_KEY
+,      sc.SPLIT_PERCENTAGE as SPLIT_SHARE
+,      pg.BRAND
+,      sc.PERFORMANCE_PERIOD as TRIMESTER
+,	   CASE cust.customer_type
+       		WHEN 'HCO' THEN  'ACCOUNT'
+	   		ELSE 'HCP' END as RX_TYPE
+FROM   "LUNDBECK_DW"."ANALYTICS"."SPLIT_CREDITS" sc   
+INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" pg
+  ON pg.BRAND = sc.PRODUCT_GROUP_NAME
+INNER JOIN LUNDBECK_DW.COMMON.CUSTOMERS cust
+  ON cust.LUNDBECK_ID = sc.LUNDBECK_ID
+WHERE sc.PERFORMANCE_PERIOD IN (SELECT cal.SF_TRIMESTER
+                       FROM  "LUNDBECK_DW"."COMMON"."CALENDAR" cal
+                       WHERE cal.SF_RELATIVE_TRIMESTER IN ($(vGoalSFTrimester)-1,$(vGoalSFTrimester)-2,$(vGoalSFTrimester)))
+AND   pg.brand IN ('VYEPTI')
+;
+
+STORE VyeptiRxSplitCredit INTO $(QVDLocation)Facts/SALES_VYEPTI_SPLIT_CREDIT_CUSTOMER$(vSpace)$(vSF).qvd (qvd);
+Drop Table VyeptiRxSplitCredit;
+///$tab SF: Split Credit Data
+NoConcatenate
+VyeptiSplitCredit:
+LOAD
+       CUSTOMER_KEY
+,      AutoNumberHash128(CUSTOMER_KEY, LU_BRAND, TRIMESTER) as CustomerLUBrandTrimester
+,      LU_BRAND
+,      TRIMESTER
+,      BRAND
+,      LU_PRODUCT_FLAG
+,      GENERIC_AVAILABILITY_IND
+,      DATE_KEY
+,      RX_TYPE
+,      NORMALIZED_UNITS
+;
+
+SELECT  iff(cust.PDRP_IND = 'Y', '-1', acts.LUNDBECK_ID) as CUSTOMER_KEY
+,       acts.DATE_KEY
+,      'VYEPTI' as LU_BRAND
+,       mb.MARKET_BASKET_GROUP as  BRAND
+,      IFNULL(pg.BRAND_LU_PRODUCT_FLAG, 'N') as LU_PRODUCT_FLAG
+,      IFNULL(pg.BRAND_LU_GENERIC_FLAG, 'Y') as GENERIC_AVAILABILITY_IND
+,      cal.SF_TRIMESTER as TRIMESTER
+,      CASE cust.customer_type
+       WHEN 'HCO' THEN  'ACCOUNT'
+	   ELSE 'HCP' END as RX_TYPE
+,      SUM(acts.NORMALIZED_TRX) as NORMALIZED_UNITS
+FROM  LUNDBECK_DW.ANALYTICS.ACCOUNT_SALES acts
+INNER JOIN LUNDBECK_DW.COMMON.MB_VYEPTI_SA mb
+  ON mb.PRODUCT_GROUP_CODE = acts.PRODUCT_GROUP_CODE
+INNER JOIN LUNDBECK_DW.COMMON.PRODUCTS pg
+  ON pg.PRODUCT_GROUP_CODE = acts.PRODUCT_GROUP_CODE
+INNER JOIN LUNDBECK_DW.COMMON.CALENDAR cal
+  ON cal.DATE_KEY = acts.DATE_KEY
+INNER JOIN LUNDBECK_DW.COMMON.CUSTOMERS cust
+  ON cust.LUNDBECK_ID = acts.LUNDBECK_ID
+WHERE acts.SALE_TYPE = 'RETAIL'
+AND   IFNULL(cust.DATA_STEWARDSHIP_EXCLUSION_FLAG, 'N') <> 'Y'
+AND   IFNULL(cust.LU_NO_CONTACT_FLAG, 'N') <> 'Y'
+AND   IFNULL(acts.VYEPTI_AGE_GROUP_INCLUSION, 'Y') <> 'N'
+AND   IFNULL(acts.VYEPTI_CLASS_OF_TRADE_EXCLUSION, 'N') <> 'Y'
+AND   IFNULL(acts.VYEPTI_SPECIALTY_EXCLUSION, 'N') <> 'Y'
+AND   IFNULL(cust.PDRP_IND, 'N') <> 'Y'
+GROUP BY 
+        iff(cust.PDRP_IND = 'Y', '-1', acts.LUNDBECK_ID) 
+,       acts.DATE_KEY
+,       mb.MARKET_BASKET_GROUP 
+,      IFNULL(pg.BRAND_LU_PRODUCT_FLAG, 'N') 
+,      IFNULL(pg.BRAND_LU_GENERIC_FLAG, 'Y') 
+,      cal.SF_TRIMESTER 
+, CASE cust.customer_type
+       WHEN 'HCO' THEN  'ACCOUNT'
+	   ELSE 'HCP' END 
+;
+
+
+Concatenate(VyeptiSplitCredit)
+LOAD
+       CUSTOMER_KEY
+,      AutoNumberHash128(CUSTOMER_KEY, LU_BRAND, TRIMESTER) as CustomerLUBrandTrimester
+,      LU_BRAND
+,      TRIMESTER
+,      BRAND
+,      LU_PRODUCT_FLAG
+,      GENERIC_AVAILABILITY_IND
+,      DATE_KEY
+,      RX_TYPE
+,      NORMALIZED_UNITS
+;
+
+
+SELECT  iff(cust.PDRP_IND = 'Y','-1', acts.ACCOUNT_LUNDBECK_ID) as CUSTOMER_KEY
+,       acts.DATE_KEY
+,      'VYEPTI' as LU_BRAND
+,       mb.MARKET_BASKET_GROUP as  BRAND
+,      IFNULL(pg.BRAND_LU_PRODUCT_FLAG, 'N') as LU_PRODUCT_FLAG
+,      IFNULL(pg.BRAND_LU_GENERIC_FLAG, 'Y') as GENERIC_AVAILABILITY_IND
+,      cal.SF_TRIMESTER as TRIMESTER
+,      CASE cust.customer_type
+       WHEN 'HCO' THEN  'ACCOUNT'
+	   ELSE 'HCP' END as RX_TYPE
+,      SUM(acts.NORMALIZED_TRX) as NORMALIZED_UNITS
+FROM  LUNDBECK_DW.ANALYTICS.ACCOUNT_SALES acts
+INNER JOIN LUNDBECK_DW.COMMON.MB_VYEPTI_SA mb
+  ON mb.PRODUCT_GROUP_CODE = acts.PRODUCT_GROUP_CODE
+INNER JOIN LUNDBECK_DW.COMMON.PRODUCTS pg
+  ON pg.PRODUCT_GROUP_CODE = acts.PRODUCT_GROUP_CODE
+INNER JOIN LUNDBECK_DW.COMMON.CALENDAR cal
+  ON cal.DATE_KEY = acts.DATE_KEY
+INNER JOIN LUNDBECK_DW.COMMON.CUSTOMERS cust
+  On cust.LUNDBECK_ID = acts.ACCOUNT_LUNDBECK_ID
+WHERE acts.SALE_TYPE = 'NON RETAIL'
+AND   IFNULL(cust.DATA_STEWARDSHIP_EXCLUSION_FLAG, 'N') <> 'Y'
+AND   IFNULL(cust.LU_NO_CONTACT_FLAG, 'N') <> 'Y'
+AND   IFNULL(acts.VYEPTI_AGE_GROUP_INCLUSION, 'Y') <> 'N'
+AND   IFNULL(acts.VYEPTI_CLASS_OF_TRADE_EXCLUSION, 'N') <> 'Y'
+AND   IFNULL(acts.VYEPTI_SPECIALTY_EXCLUSION, 'N') <> 'Y'
+AND   IFNULL(cust.PDRP_IND, 'N') <> 'Y'
+GROUP BY 
+       iff(cust.PDRP_IND = 'Y','-1', acts.ACCOUNT_LUNDBECK_ID)
+,       acts.DATE_KEY
+,       mb.MARKET_BASKET_GROUP 
+,      IFNULL(pg.BRAND_LU_PRODUCT_FLAG, 'N') 
+,      IFNULL(pg.BRAND_LU_GENERIC_FLAG, 'Y') 
+,      cal.SF_TRIMESTER 
+,   CASE cust.customer_type
+       WHEN 'HCO' THEN  'ACCOUNT'
+	   ELSE 'HCP' END 
+;
+
+
+Concatenate(VyeptiSplitCredit)
+LOAD
+       CUSTOMER_KEY
+,      AutoNumberHash128(CUSTOMER_KEY, LU_BRAND, TRIMESTER) as CustomerLUBrandTrimester
+,      LU_BRAND
+,      TRIMESTER
+,      BRAND
+,      LU_PRODUCT_FLAG
+,      GENERIC_AVAILABILITY_IND
+,      DATE_KEY
+,      RX_TYPE
+,      NORMALIZED_UNITS
+;
+
+SELECT DISTINCT
+       iff(c.PDRP_IND = 'Y', '-1',sc.LUNDBECK_ID) as CUSTOMER_KEY
+,      pg.BRAND as LU_BRAND
+,      sc.PERFORMANCE_PERIOD as TRIMESTER
+,      mb.MARKET_BASKET_GROUP as BRAND
+,      pgb.BRAND_LU_PRODUCT_FLAG as LU_PRODUCT_FLAG
+,      pgb.BRAND_LU_GENERIC_FLAG as GENERIC_AVAILABILITY_IND
+,      cal.DATE_WEEK_END_KEY as DATE_KEY
+,      CASE c.customer_type
+       WHEN 'HCO' THEN  'ACCOUNT'
+	   ELSE 'HCP' END as RX_TYPE
+,      '0' as NORMALIZED_UNITS
+FROM LUNDBECK_DW.ANALYTICS.SPLIT_CREDITS sc
+INNER JOIN LUNDBECK_DW.COMMON.CUSTOMERS c
+  On c.LUNDBECK_ID = sc.LUNDBECK_ID
+INNER JOIN LUNDBECK_DW.COMMON.CALENDAR cal
+  ON  sc.PERFORMANCE_PERIOD = cal.SF_TRIMESTER
+INNER JOIN LUNDBECK_DW.COMMON.PRODUCTS pg
+  ON pg.PRODUCT_GROUP_NAME = sc.PRODUCT_GROUP_NAME
+CROSS JOIN LUNDBECK_DW.COMMON.MB_VYEPTI_SA mb
+INNER JOIN LUNDBECK_DW.COMMON.PRODUCTS pgb
+  ON pgb.PRODUCT_GROUP_CODE = mb.PRODUCT_GROUP_CODE
+WHERE sc.PERFORMANCE_PERIOD IN (SELECT cal.SF_TRIMESTER
+                       FROM LUNDBECK_DW.COMMON.CALENDAR cal
+                     WHERE cal.SF_RELATIVE_TRIMESTER IN ($(vGoalSFTrimester)-1,$(vGoalSFTrimester)-2,$(vGoalSFTrimester)))
+  AND  IFNULL(c.DATA_STEWARDSHIP_EXCLUSION_FLAG, 'N') = 'N'
+  AND  IFNULL(c.LU_NO_CONTACT_FLAG, 'N') <> 'Y'
+  AND   pg.brand IN ('VYEPTI')
+  AND  cal.date_key <= $(vCurrentDataWeekCalKey)
+;
+
+
+STORE VyeptiSplitCredit INTO $(QVDLocation)Facts/SALES_VYEPTI_SPLIT_CREDIT$(vSpace)$(vSF).qvd (qvd);
+DROP TABLE VyeptiSplitCredit;
+
+
+
+
+///$tab EXIT SCRIPT
+exit script;
+///$tab DW Date
+// DW2_SUMMARY:
+// Load
+//  END_DATE as DW2_REFRESH_DATE
+// ;
+
+// SELECT ls.END_DATE
+// FROM   luinc.LOAD_SUMMARY ls
+// WHERE  ls.COMPONENT_NAME  = 'LAST DW2 REFRESH'
+// ;
+
+// LET vDW2RefreshDate = num(Peek('DW2_REFRESH_DATE'));
+
+// DROP TABLE DW2_SUMMARY;
+///$tab Control Dates
+// //==============================================================================
+// // VyeptiControlDates - This handles important dates for the data. This is stored
+// // for use in the front end.
+// //==============================================================================
+
+// //Find the last RX data week from the retail file
+// CurrentDataWeekTemp:
+// SELECT DATE_WEEK_END_KEY as CurrentDataWeekKey
+// ,      DATE_WEEK_END as CurrentDataWeek
+// ,      CONVERT( int, Format(DateAdd(d, 1, DATE_WEEK_END), 'yyyyMMdd')) as NextWeekStartKey
+// ,      SF_YEAR as CurrentSFYear
+// ,      SF_TRIMESTER as CurrentSFTrimester
+// ,      SF_YEAR as CurrentSFWeek
+// ,      SF_RELATIVE_TRIMESTER as CurrentSFRelativeTrimester
+// ,      SF_RELATIVE_WEEK as CurrentSFRelativeWeek   
+// ,      SF_TRIMESTER_WEEK as CurrentSFTrimesterWeek
+// ,      SF_WEEK_OF_YEAR as CurrentSFWeekOfYear
+// ,      DateFromParts(YEAR(DATE_FULL), MONTH(DATE_FULL), 1) as CurrentDataMonth
+// FROM  LUINC.DIM_CLNDR WHERE DATE_KEY = 
+//     (SELECT MAX(cal.DATE_KEY)
+//      FROM   luinc.LOAD_SUMMARY ls
+//      INNER JOIN luinc.DIM_CLNDR cal
+//         On cal.DATE_FULL = ls.LAST_FULL_WEEK_END_DATE
+//      WHERE  ls.COMPONENT_NAME = 'CRX VYP DISPENSE'
+//      )
+// ;
+
+// LET vCurrentDataWeek = Peek('CurrentDataWeek') ;
+// LET vCurrentDataWeekCalKey  = Peek('CurrentDataWeekKey');
+// LET vCurrentSFYear = Peek('CurrentSFYear');
+// DROP TABLE CurrentDataWeekTemp;
+
+// //Find the start of the previous year
+// StartingDateTemp:
+// SELECT MIN(DATE_KEY) as StartDataCalKey
+// ,      MIN(DATE_FULL) as StartDataDate
+// FROM   LUINC.DIM_CLNDR WHERE SF_YEAR = ($(vCurrentSFYear) - 1)
+// ;
+
+// LET vStartingDateCalKey = Peek('StartDataCalKey') ;
+
+// DROP TABLE StartingDateTemp;
+
+// //==============================================================================
+// // Goal Trimester - Based on the current date
+// //==============================================================================
+// GoalTrimester:
+// SELECT MIN(c.DATE_KEY) as GOAL_TRI_START_KEY
+// ,      MAX(c.DATE_KEY) as GOAL_TRI_END_KEY
+// ,      c.SF_RELATIVE_TRIMESTER as GOAL_SF_TRIMESTER 
+// FROM   luinc.DIM_CLNDR c
+// WHERE  c.SF_TRIMESTER = (SELECT cw.SF_TRIMESTER FROM  luinc.DIM_CLNDR cw WHERE cw.DATE_FULL  = dateadd(dd, datediff(dd, 0, getdate())+0, 0))
+// GROUP BY  c.SF_RELATIVE_TRIMESTER
+// ;
+
+// LET vGoalSFTrimester = Peek('GOAL_SF_TRIMESTER');
+
+// DROP TABLE GoalTrimester;
+
+// //==============================================================================
+// // Find the current competitor date
+// //==============================================================================
+
+// CompetitorDate:
+// SELECT DATE_WEEK_END as CurrentDataWeek
+// FROM  LUINC.DIM_CLNDR WHERE DATE_KEY = 
+//     (SELECT MAX(cal.DATE_KEY)
+//      FROM   luinc.LOAD_SUMMARY ls
+//      INNER JOIN luinc.DIM_CLNDR cal
+//         On cal.DATE_FULL = ls.LAST_FULL_WEEK_END_DATE
+//      WHERE  ls.COMPONENT_NAME = 'SHA MH RETAIL'
+//      )
+// ;
+
+// LET vCompetitorWeekDate = Peek('CurrentDataWeek');
+
+// DROP TABLE CompetitorDate; 
+
+
+
+
+///$tab Calendar
+// //==============================================================================
+// // Vyepti Calendar - Sales Calendar for Vyepti
+// //==============================================================================
+
+// PsyCalendar:
+// LOAD   
+//        DATE_KEY
+// ,      DATE_FULL as [Calendar Date]
+// ,      DATE_WEEK_END as 'Week Ending'
+// ,      SF_TRIMESTER as 'SF Trimester'
+// ,      SF_TRIMESTER_WEEK as 'SF Trimester Week'
+// ,      SF_TRI_START_DATE
+// ,      SF_TRI_END_DATE
+// ,      '$(vCompetitorWeekDate)' as 'Competitor Date'
+// ;
+
+// SQL SELECT DATE_KEY
+// ,      DATE_FULL
+// ,      DATE_WEEK_END
+// ,      c.SF_TRIMESTER
+// ,      SF_TRIMESTER_WEEK
+// ,      sftri.SF_TRI_START_DATE
+// ,      sftri.SF_TRI_END_DATE
+// FROM   LUINC.DIM_CLNDR c
+// LEFT OUTER JOIN (
+//   SELECT c.SF_TRIMESTER
+//   ,      MIN(c.DATE_FULL) as SF_TRI_START_DATE
+//   ,      MAX(c.DATE_FULL) as SF_TRI_END_DATE
+//   FROM  LUINC.DIM_CLNDR c
+//   GROUP BY c.SF_TRIMESTER
+//   ) sftri
+// ON sftri.SF_TRIMESTER = c.SF_TRIMESTER
+// WHERE  DATE_KEY BETWEEN $(vStartingDateCalKey) AND $(vCurrentDataWeekCalKey)
+// ;
+
+// STORE PsyCalendar INTO $(QVDLocation)Dimensions/VYEPTI_SPLIT_CREDIT_CALENDAR$(vSpace).qvd (qvd);
+// DROP TABLE PsyCalendar;
+///$tab Split Credit Territory Dimension
+// // 2020-11-20 - New Territory Code
+
+// VyeptiTerritory:
+// LOAD   TERRITORY_KEY 
+// ,      TERRITORY_ID  as  [Territory ID]
+// ,      TERRITORY_NAME & '-' & SALESFORCE_GROUP_NAME as [Territory]
+// ,      SALESFORCE_GROUP_NAME as [Sales Team]
+// ,      AREA_ID as  [Area ID]
+// ,      AREA_NAME as [Area]
+// ,      REGION_ID as [Region ID]
+// ,      REGION_NAME as [Region]
+// ,      FRANCHISE
+// ,      ACCT_MGR_FULL_NAME as  [Account Manager]
+// ,      RGN_MGR_FULL_NAME as [Regional Manager]
+// ,      AREA_MGR_FULL_NAME as  [Area Manager]
+// ,     '$(vDW2RefreshDate)' as  [PSY Territory DW2 Refresh Date]
+// ;
+
+// SELECT t.TERRITORY_KEY
+// ,      TERRITORY_ID 
+// ,      TERRITORY_NAME 
+// ,      SALESFORCE_GROUP_NAME 
+// ,      AREA_ID 
+// ,      AREA_NAME 
+// ,      REGION_ID 
+// ,      REGION_NAME
+// ,      FRANCHISE
+// ,      ACCT_MGR_FULL_NAME
+// ,      RGN_MGR_FULL_NAME
+// ,      AREA_MGR_FULL_NAME 
+// FROM   luinc.dim_territory t
+// WHERE   t.FRANCHISE IN ('NRO')
+// AND     t.ORGANIZATION = 'LU'
+// AND    ISNULL(t.TERR_EXP_DATE, '12/31/9999') >= (SELECT MIN(cal.DATE_FULL)
+//                            FROM   luinc.DIM_CLNDR cal
+//                            WHERE  cal.SF_RELATIVE_TRIMESTER =  $(vGoalSFTrimester)-1)
+// AND    t.TERR_EFF_DATE <= (SELECT MAX(cal.DATE_FULL)
+//                           FROM   luinc.DIM_CLNDR cal
+//                            WHERE  cal.SF_RELATIVE_TRIMESTER = $(vGoalSFTrimester))
+// ;
+
+
+// STORE VyeptiTerritory INTO $(QVDLocation)Dimensions/SPLIT_CREDIT_VYEPTI_TERRITORY$(vSpace).qvd (qvd); 
+// DROP TABLE VyeptiTerritory;
+///$tab Split Credit Customer
+// //Split Credit
+// VyeptiRxSplitCredit:
+// LOAD
+//        CUSTOMER_KEY
+// ,      BRAND_KEY
+// ,      PRODUCT_GROUP_KEY
+// ,      AutoNumberHash128(CUSTOMER_KEY, BRAND, TRIMESTER) as CustomerLUBrandTrimester
+// ,      BRAND
+// ,      TERRITORY_KEY
+// ,      SPLIT_SHARE
+// ,      TRIMESTER
+// ,	   RESTROSPECTIVE_SC_IND, VEEVA_CREATED_DATE 
+// ,     '$(vDW2RefreshDate)' as  DW2_REFRESH_DATE
+// ;
+
+// SQL SELECT sc.CUSTOMER_KEY
+// ,      b.BRAND_KEY
+// ,      sc.PRODUCT_GROUP_KEY
+// ,      sc.TERRITORY_KEY
+// ,      sc.SPLIT_SHARE
+// ,      b.BRAND
+// ,      sc.TRIMESTER
+// ,	   RESTROSPECTIVE_SC_IND, VEEVA_CREATED_DATE 
+// FROM   lu_stage.luinc.FACT_SPLIT_CREDIT sc
+// INNER JOIN LUINC.DIM_PRODUCT_GROUP pg
+//   ON pg.PRODUCT_GROUP_KEY = sc.PRODUCT_GROUP_KEY
+// INNER JOIN LUINC.DIM_BRAND b
+//   ON b.BRAND_CODE = pg.BRAND_CODE
+// WHERE sc.TRIMESTER IN (SELECT cal.SF_TRIMESTER
+//                        FROM  LUINC.DIM_CLNDR cal
+//                        WHERE cal.SF_RELATIVE_TRIMESTER IN ($(vGoalSFTrimester)-1,$(vGoalSFTrimester)))
+// AND   pg.brand IN ('VYEPTI')
+// AND   sc.STATUS = 'Approved'
+// ;
+
+
+// STORE VyeptiRxSplitCredit INTO $(QVDLocation)Facts/SALES_VYEPTI_SPLIT_CREDIT_CUSTOMER$(vSpace).qvd (qvd);
+// Drop Table VyeptiRxSplitCredit;
