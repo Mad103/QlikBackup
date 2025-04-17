@@ -1,0 +1,39 @@
+
+SHEETS
+
+OBJECTS ON SHEETS
+
+DIMENSIONS
+
+MEASURES
+
+VARIABLES
+{"qName":"vSummitStartDateKey","qDefinition":"20250301","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"12c08cdc-035f-4b9e-80d5-6cdc7ced1975","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vQSBIE_OfflineFiles","qDefinition":"lib:\/\/LuUS_DATA:LuUS_SharePoint\/Shared Documents\/Qlik Sense Data Files","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"32732773-d003-4ab5-858f-51be0d9b520e","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"NumFormat","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"8a518130-691a-43b9-b32f-533278e9ff16","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vQSBIE_ExtractQVD_Fact","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/QlikSense BI Evolution\/QVDs\/Extract\/Facts","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"70ea3680-0f99-475b-b992-23085bedb18f","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vSumitTotalWorkingDays","qDefinition":"86","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"6902a6f3-974d-4345-9304-fbd92001c94c","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vSierraStartDateKey","qDefinition":"20250301","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"b972d886-52fb-4d7f-8f6a-e78f5a4d381d","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vQSBIE_TransformQVD_Dimension","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/QlikSense BI Evolution\/QVDs\/Transform\/Dimensions","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"481c200b-6d06-4788-9147-2b43765e0082","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vMaxPrevMonth","qDefinition":"20250331","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"341aaf61-449e-418c-9907-c1743e759b16","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vQSBIE_ExtractQVD_Dimension","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/QlikSense BI Evolution\/QVDs\/Extract\/Dimensions","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"301cb489-dade-456e-851a-72fcf2bd3429","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vSF","qDefinition":"_SF","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"e18da5b5-7323-47f4-b110-f1796385d51c","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vSierraEndDateKey","qDefinition":"20250630","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"26a40270-ed5d-4dbe-ae50-e280e6d04d31","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vSpace","qDefinition":"_DEV","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"b493256e-0374-40a6-9be4-8d0d6939ca4e","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vSummitEndDateKey","qDefinition":"20250630","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"0f7df63d-a831-4de3-8382-ab987930d804","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vAltitudeStartDateKey","qDefinition":"20250301","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"880b8d16-e7b3-48c3-be24-db418025c633","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vQSBIE_TransformQVD_Fact","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/QlikSense BI Evolution\/QVDs\/Transform\/Facts","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"04d99575-1dea-487e-8962-c7b9fc4fd85a","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vConfidentialMessage","qDefinition":"*Prescriber data acquired by the Lundbeck are to be treated as confidential information. Sales representatives (and other employees and agents) must not disclose those data to any party outside of the Company without the express permission of the Legal Division. In addition, sales representatives (and other employees and agents) cannot ask co-promotion colleagues to share prescriber data with them.","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"a9812bd7-3ce2-44d6-8a50-2fc2251c7946","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vStartingDateCalKey","qDefinition":"20240416","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"e9da761c-79da-48aa-a901-86605048fe69","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vReactiveCalls","qDefinition":"Reactive Call","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"605f1b96-1d61-4130-945a-d367a4b30ed7","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vSierraTotalWorkingDays","qDefinition":"86","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"8dcf8050-1f8a-48ce-bbc7-cb7c46bc9959","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vAltitudeEndDateKey","qDefinition":"20250630","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"dfa5de6f-bed9-4fc6-86f6-d194042ec269","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vAltitudeTotalWorkingDays","qDefinition":"86","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"f77f5c38-6cf1-4ace-8470-ac4ad1f68b88","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vMaxCallDate","qDefinition":"20250415","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"1c5a9fff-5f88-4210-b95e-c2c466f80b1b","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vPrev2TrimesterStartDate","qDefinition":"20220101","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"fb3a8b77-3e55-4c83-8c8b-51ef7d4ae10e","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vToday","qDefinition":"20250416","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"fecb20dc-7d50-4d00-b232-18ff539c3ab3","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vTest","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"ffcfab9c-5d73-4ec3-9b17-82f9f7c4d290","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vVertexEndDateKey","qDefinition":"20231231","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"f65f837d-250d-4bc4-9639-19dd5dc4bcee","qType":"variable"},"qData":[]}
+{"qName":"vVertexStartDateKey","qDefinition":"20230501","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"5908b0a8-aeb1-4cbf-b415-6ea0c8d2b747","qType":"variable"},"qData":[]}
+
+FIELDS
