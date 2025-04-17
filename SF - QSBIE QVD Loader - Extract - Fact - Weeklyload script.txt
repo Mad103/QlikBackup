@@ -1,0 +1,1038 @@
+///$tab Main
+SET ThousandSep=',';
+SET DecimalSep='.';
+SET MoneyThousandSep=',';
+SET MoneyDecimalSep='.';
+SET NumFormat='';
+SET MoneyFormat='#.##0,00 kr.;-#.##0,00 kr.';
+SET TimeFormat='hh.mm.ss';
+SET DateFormat='DD/MM/YYYY';
+SET TimestampFormat='DD/MM/YYYY hh.mm.ss[.fff]';
+SET FirstWeekDay=0;
+SET BrokenWeeks=0;
+SET ReferenceDay=4;
+SET FirstMonthOfYear=1;
+SET CollationLocale='en-US';
+SET CreateSearchIndexOnReload=1;
+SET MonthNames='Jan;Feb;Mar;Apr;May;Jun;Jul;Aug;Sep;Oct;Nov;Dec';
+SET LongMonthNames='January;February;March;April;May;June;July;August;September;October;November;December'; 
+SET DayNames='Mon;Tue;Wed;Thu;Fri;Sat;Sun';
+SET LongDayNames='Monday;Tuesday;Wednesday;Thursday;Friday;Saturday;Sunday';
+SET NumericalAbbreviation='3:k;6:M;9:G;12:T;15:P;18:E;21:Z;24:Y;-3:m;-6:μ;-9:n;-12:p;-15:f;-18:a;-21:z;-24:y';
+
+//LIB CONNECT TO 'LuUS_DATA:vAZ_MSSQL_LuUS_DW_2.0';
+
+// LIB CONNECT TO 'LuUS_DATA:MSSQL_LuUS_DW_2.0';
+LIB CONNECT TO 'LuUS_DATA:SNOWFLAKE_LuUS_BI_Reader';
+
+
+LET StartDate =Date( YearStart(Today(),-2),'YYYYMMDD');
+Trace '$(StartDate)';
+$(Must_Include='lib://LuUS_DATA:LuUS_SharePoint/Shared Documents/Qlik Sense Data Files/Include/Qlik Cloud/FolderConnections.txt');
+LET vSpace=if(upper(GetSysAttr('spaceType'))='SHARED' or (GetSysAttr('spaceType'))='','_DEV');
+Trace '$(vSpace)';
+
+let vSF = '_SF';
+trace '$(vSF)';
+///$tab Developer Note
+/*
+
+Version Control: V1.0
+Date: 26/03/2019
+Franchise: Pshychiatry and Neurology
+Summary: Creating Extractor for all fact tables.
+Developer: Shwetha Aruna
+
+*/
+
+/*
+
+Version Control: V2.0
+Date: 09/11/2019
+Franchise: Pshychiatry
+Summary: Updated the Fact list. Included only Fact QVD which need to be refreshed on Saturday. This file creates 22 QVDs.
+Developer: Shwetha Aruna
+
+*/
+///$tab SF:10: FACT CALL ACTIVITY
+// FACT_CALL_ACTIVITY:
+// SQL SELECT
+//     'PlaceHolder' as FACT_KEY,
+//     CALL_DATE_KEY,
+//     CALL_DATE_KEY AS ENTERED_DATE_KEY,
+//     CALL_DATE_KEY as ENTERED_TIME_KEY,
+//     LUNDBECK_ID as CUSTOMER_KEY,
+//     HCO_LUNDBECK_ID as HCO_CUSTOMER_KEY,             
+//     pg.PRODUCT_GROUP_CODE as    PRODUCT_GROUP_KEY,                  
+//     TERRITORY_ID as TERRITORY_KEY,                     
+//     DETAIL_PRIORITY,
+//     PDE,
+//     INTERACTION_TYPE,
+//     STAFF_CALL,
+//     RECORD_TYPE_NAME as RECORD_TYPE,                 
+//     CALL_TYPE,
+//     REPORT_CALL_TYPE,
+// //     REPORT_PRESCRIBER_CATEGORY,         //revisit                                 
+//     CALL_ID,                               
+//     PARENT_CALL_ID,
+//     CUSTOMER_ZIP,
+//     CALL_ID as FACT_SOURCE_ID,
+//     PRIMARY_MESSAGE,
+//     SECONDARY_MESSAGE   
+// FROM "LUNDBECK_DW"."ANALYTICS"."CALL_ACTIVITY_LU_SF" sa
+// INNER JOIN LUNDBECK_DW.COMMON.PRODUCTS pg
+//   ON pg.PRODUCT_GROUP_NAME = sa.PRODUCT_GROUP_NAME
+// WHERE CALL_DATE_KEY >= '$(StartDate)'
+
+// union
+
+// SELECT
+//     'PlaceHolder' as FACT_KEY,
+//     CALL_DATE_KEY,
+//     CALL_DATE_KEY AS ENTERED_DATE_KEY,
+//     CALL_DATE_KEY as ENTERED_TIME_KEY,
+//     LUNDBECK_ID as CUSTOMER_KEY,
+//     HCO_LUNDBECK_ID as HCO_CUSTOMER_KEY,             
+//     pg.PRODUCT_GROUP_CODE as    PRODUCT_GROUP_KEY,                  
+//     TERRITORY_ID as TERRITORY_KEY,                     
+//     DETAIL_PRIORITY,
+//     PDE,
+//     INTERACTION_TYPE,
+//     'NULL' as STAFF_CALL,
+//     RECORD_TYPE_NAME as RECORD_TYPE,                 
+//     CALL_TYPE,
+//     REPORT_CALL_TYPE,
+// //     REPORT_PRESCRIBER_CATEGORY,         //revisit                                 
+//     CALL_ID,                               
+//     'NULL' as PARENT_CALL_ID,
+//     CUSTOMER_ZIP,
+//     CALL_ID as FACT_SOURCE_ID,
+//     PRIMARY_MESSAGE,
+//     SECONDARY_MESSAGE   
+// FROM "LUNDBECK_DW"."ANALYTICS"."CALL_ACTIVITY_OTS_SF" sa
+// INNER JOIN LUNDBECK_DW.COMMON.PRODUCTS pg
+//   ON pg.PRODUCT_GROUP_NAME = sa.PRODUCT_GROUP_NAME
+// WHERE CALL_DATE_KEY >= '$(StartDate)'
+
+// union
+
+// SELECT
+//     'PlaceHolder' as FACT_KEY,
+//     CALL_DATE_KEY,
+//     CALL_DATE_KEY AS ENTERED_DATE_KEY,
+//     CALL_DATE_KEY as ENTERED_TIME_KEY,
+//     LUNDBECK_ID as CUSTOMER_KEY,
+//     LUNDBECK_ID as HCO_CUSTOMER_KEY,    //HCO LU ID not available         
+//     pg.PRODUCT_GROUP_CODE as    PRODUCT_GROUP_KEY,                  
+//     TERRITORY_ID as TERRITORY_KEY,                     
+//     DETAIL_PRIORITY,
+//     PDE,
+//     INTERACTION_TYPE,
+//     'NULL' as STAFF_CALL,
+//     RECORD_TYPE_NAME as RECORD_TYPE,                 
+//     CALL_TYPE,
+//     REPORT_CALL_TYPE,
+// //     REPORT_PRESCRIBER_CATEGORY,         //revisit                                 
+//     CALL_ID,                               
+//     'NULL' as PARENT_CALL_ID,
+//     CUSTOMER_ZIP,
+//     CALL_ID as FACT_SOURCE_ID,
+//     'NULL' as PRIMARY_MESSAGE,
+//     'NULL' as SECONDARY_MESSAGE   
+// FROM "LUNDBECK_DW"."ANALYTICS"."CALL_ACTIVITY_TAK_SF" sa
+// INNER JOIN LUNDBECK_DW.COMMON.PRODUCTS pg
+//   ON pg.PRODUCT_GROUP_NAME = sa.PRODUCT_GROUP_NAME
+// WHERE CALL_DATE_KEY >= '$(StartDate)';
+
+// STORE FACT_CALL_ACTIVITY INTO [$(vQSBIE_ExtractQVD_Fact)/FACT_CALL_ACTIVITY$(vSpace)$(vSF).qvd](qvd);
+
+// DROP Table FACT_CALL_ACTIVITY;
+
+///$tab 10: FACT CALL ACTIVITY
+// FACT_CALL_ACTIVITY:
+// SQL SELECT *
+//  FROM 
+// LUINC.FACT_CALL_ACTIVITY
+// WHERE CALL_DATE_KEY >= '$(StartDate)';
+
+// STORE FACT_CALL_ACTIVITY INTO [$(vQSBIE_ExtractQVD_Fact)/FACT_CALL_ACTIVITY$(vSpace).qvd](qvd);
+
+// DROP Table FACT_CALL_ACTIVITY;
+
+///$tab SF:7: FACT CALL PLAN
+FACT_CALL_PLAN:
+
+SQL SELECT 
+pg.PRODUCT_GROUP_CODE AS BRAND_KEY,
+CURRENT_IND,
+LUNDBECK_ID AS CUSTOMER_KEY,
+START_DATE_KEY AS DATE_KEY,
+END_DATE_KEY AS DATE_TO_KEY,
+DETAIL_PRIORITY,
+PLANNED_CALLS,
+pg.PRODUCT_GROUP_CODE AS PRODUCT_GROUP_KEY,
+TERRITORY_ID AS TERRITORY_KEY,
+ACCOUNT_ID,
+CALL_PLAN_NAME,
+CYCLE_PLAN_TARGET,
+'LU' AS ORGANIZATION
+  FROM LUNDBECK_DW.ANALYTICS.CALL_PLAN_LU_SF sa
+INNER JOIN LUNDBECK_DW.COMMON.PRODUCTS pg
+  ON pg.PRODUCT_GROUP_NAME = sa.PRODUCT_GROUP_NAME
+WHERE START_DATE_KEY >= '$(StartDate)'
+
+union
+
+SELECT 
+pg.PRODUCT_GROUP_CODE AS BRAND_KEY,
+'NULL' as CURRENT_IND,
+LUNDBECK_ID AS CUSTOMER_KEY,
+START_DATE_KEY AS DATE_KEY,
+END_DATE_KEY AS DATE_TO_KEY,
+DETAIL_PRIORITY,
+PLANNED_CALLS,
+pg.PRODUCT_GROUP_CODE AS PRODUCT_GROUP_KEY,
+TERRITORY_ID AS TERRITORY_KEY,
+'NULL' as ACCOUNT_ID,
+'NULL' as CALL_PLAN_NAME,
+'NULL' as CYCLE_PLAN_TARGET,
+'OTSUKA' AS ORGANIZATION
+FROM LUNDBECK_DW.ANALYTICS.CALL_PLAN_OTS_SF sa
+INNER JOIN LUNDBECK_DW.COMMON.PRODUCTS pg
+  ON pg.PRODUCT_GROUP_NAME = sa.PRODUCT_GROUP_NAME
+WHERE START_DATE_KEY >= '$(StartDate)'
+
+union
+
+SELECT 
+pg.PRODUCT_GROUP_CODE AS BRAND_KEY,
+'NULL' as CURRENT_IND,
+LUNDBECK_ID AS CUSTOMER_KEY,
+START_DATE_KEY AS DATE_KEY,
+END_DATE_KEY AS DATE_TO_KEY,
+DETAIL_PRIORITY,
+PLANNED_CALLS,
+pg.PRODUCT_GROUP_CODE AS PRODUCT_GROUP_KEY,
+TERRITORY_ID AS TERRITORY_KEY,
+'NULL' as ACCOUNT_ID,
+'NULL' as CALL_PLAN_NAME,
+'NULL' as CYCLE_PLAN_TARGET,
+'TAKEDA' AS ORGANIZATION
+FROM LUNDBECK_DW.ANALYTICS.CALL_PLAN_TAK_SF sa
+INNER JOIN LUNDBECK_DW.COMMON.PRODUCTS pg
+  ON pg.PRODUCT_GROUP_NAME = sa.PRODUCT_GROUP_NAME
+WHERE START_DATE_KEY >= '$(StartDate)';
+
+STORE FACT_CALL_PLAN INTO [$(vQSBIE_ExtractQVD_Fact)/FACT_CALL_PLAN$(vSpace)$(vSF).qvd](qvd);
+                          
+DROP Table FACT_CALL_PLAN;
+
+
+
+///$tab 7: FACT CALL PLAN
+// FACT_CALL_PLAN:
+
+// SQL SELECT *
+//  FROM 
+// LUINC.FACT_CALL_PLAN
+// WHERE DATE_KEY >= '$(StartDate)';
+
+// STORE FACT_CALL_PLAN INTO [$(vQSBIE_ExtractQVD_Fact)/FACT_CALL_PLAN$(vSpace).qvd] (qvd);
+// DROP Table FACT_CALL_PLAN;
+
+
+
+///$tab SF: 14: FACT PROMOTIONS
+LET StartDate =Date( YearStart(Today(),-2),'YYYYMMDD');
+
+FACT_PROMOTIONS:
+SQL SELECT 
+sa.LUNDBECK_ID as CUSTOMER_KEY,
+cal.SPLIT_WEEK_KEY as DATE_KEY,
+'' as FACT_KEY,
+pg.PRODUCT_GROUP_CODE as PRODUCT_GROUP_KEY,
+'SAMPLE' as PROMOTION_TYPE,
+TERRITORY_ID as TERRITORY_KEY,
+Sum( IFNULL(sa.QTY, 1)) as QUANTITY 
+FROM LUNDBECK_DW.ANALYTICS.SAMPLES_LU sa
+INNER JOIN LUNDBECK_DW.COMMON.CALENDAR cal 
+  ON cal.DATE_KEY = sa.CALL_DATE_KEY
+  INNER JOIN LUNDBECK_DW.COMMON.PRODUCTS pg
+  ON pg.PRODUCT_GROUP_NAME = sa.PRODUCT_GROUP_NAME
+Where sa.CALL_DATE_KEY > '$(StartDate)'
+group by  sa.LUNDBECK_ID
+, cal.SPLIT_WEEK_KEY,
+PRODUCT_GROUP_CODE,
+TERRITORY_ID
+
+union
+
+ SELECT 
+sa.LUNDBECK_ID as CUSTOMER_KEY,
+cal.SPLIT_WEEK_KEY as DATE_KEY,
+'' as FACT_KEY,
+pg.PRODUCT_GROUP_CODE as PRODUCT_GROUP_KEY,
+'VOUCHER' as PROMOTION_TYPE,
+T2.TERRITORY_ID as TERRITORY_KEY,
+Sum(sa.COPAY_CARD_COUNT) as QUANTITY 
+FROM LUNDBECK_DW.ANALYTICS.COPAY_DETAIL sa
+INNER JOIN LUNDBECK_DW.COMMON.CALENDAR cal 
+  ON cal.DATE_KEY = sa.DATE_KEY
+  INNER JOIN LUNDBECK_DW.COMMON.CUSTOMERS c
+  ON c.LUNDBECK_ID = sa.LUNDBECK_ID
+  INNER JOIN LUNDBECK_DW.COMMON.PRODUCTS pg
+  ON pg.PRODUCT_GROUP_CODE = sa.PRODUCT_GROUP_CODE
+  INNER JOIN LUNDBECK_DW.COMMON.ZIP_TO_TERRITORY ZT2 ON ZT2.ZIP=c.CUSTOMER_ZIP AND ZT2.CURRENT_IND = 'Y'
+INNER JOIN LUNDBECK_DW.COMMON.TERRITORY T2 ON T2.TERRITORY_ID=ZT2.TERRITORY_ID
+WHERE sa.DATE_KEY >= '$(StartDate)'
+ and sa.COPAY_VOUCHER = 'VOUCHER' 
+ group by  sa.LUNDBECK_ID
+, cal.SPLIT_WEEK_KEY,
+pg.PRODUCT_GROUP_CODE,
+T2.TERRITORY_ID
+
+ union 
+ 
+  SELECT 
+sa.LUNDBECK_ID as CUSTOMER_KEY,
+cal.SPLIT_WEEK_KEY as DATE_KEY,
+'' as FACT_KEY,
+pg.PRODUCT_GROUP_CODE as PRODUCT_GROUP_KEY,
+'COPAY' as PROMOTION_TYPE,
+T2.TERRITORY_ID as TERRITORY_KEY,
+Sum(sa.COPAY_CARD_COUNT) as QUANTITY 
+FROM LUNDBECK_DW.ANALYTICS.COPAY_DETAIL sa
+INNER JOIN LUNDBECK_DW.COMMON.CALENDAR cal 
+  ON cal.DATE_KEY = sa.DATE_KEY
+  INNER JOIN LUNDBECK_DW.COMMON.CUSTOMERS c
+  ON c.LUNDBECK_ID = sa.LUNDBECK_ID
+  INNER JOIN LUNDBECK_DW.COMMON.PRODUCTS pg
+  ON pg.PRODUCT_GROUP_CODE = sa.PRODUCT_GROUP_CODE
+    INNER JOIN LUNDBECK_DW.COMMON.ZIP_TO_TERRITORY ZT2 ON ZT2.ZIP=c.CUSTOMER_ZIP AND ZT2.CURRENT_IND = 'Y'
+INNER JOIN LUNDBECK_DW.COMMON.TERRITORY T2 ON T2.TERRITORY_ID=ZT2.TERRITORY_ID
+WHERE sa.DATE_KEY >= '$(StartDate)'
+ and sa.COPAY_VOUCHER = 'COPAY CARD'
+group by  sa.LUNDBECK_ID
+, cal.SPLIT_WEEK_KEY,
+pg.PRODUCT_GROUP_CODE,
+T2.TERRITORY_ID;
+
+STORE FACT_PROMOTIONS INTO [$(vQSBIE_ExtractQVD_Fact)/FACT_PROMOTIONS$(vSpace)$(vSF).qvd] (qvd);
+DROP Table FACT_PROMOTIONS;
+
+
+///$tab EXIT SCRIPT
+exit script;
+///$tab 14: FACT PROMOTIONS
+// FACT_PROMOTIONS:
+
+// SQL SELECT *
+//  FROM 
+// LUINC.FACT_PROMOTIONS
+// WHERE DATE_KEY >= '$(StartDate)';
+
+
+// STORE FACT_PROMOTIONS INTO [$(vQSBIE_ExtractQVD_Fact)/FACT_PROMOTIONS$(vSpace).qvd] (qvd);
+// DROP Table FACT_PROMOTIONS;
+
+
+
+///$tab SIERRA AADAD PARALLEL CHANGES
+FACT_CALL_ACTIVITY:
+SQL 
+ //,'$(vDW2RefreshDate)' as FactDW2RefreshDate
+ 
+
+SELECT
+    FACT_KEY,
+    CALL_DATE_KEY,
+    ENTERED_DATE_KEY,
+    ENTERED_TIME_KEY,
+    CUSTOMER_KEY,
+    HCO_CUSTOMER_KEY,
+    BRAND_KEY,
+    PRODUCT_GROUP_KEY,
+    CALL_PRODUCT_KEY,
+    TERRITORY_KEY,
+    SF1_TERRITORY_KEY,
+    SF2_TERRITORY_KEY,
+    SF3_TERRITORY_KEY,
+    SF4_TERRITORY_KEY,
+    SF5_TERRITORY_KEY,
+    SF6_TERRITORY_KEY,
+    MSL_AREA_KEY,
+    DETAIL_PRIORITY,
+    PDE,
+    INTERACTION_TYPE,
+    STAFF_CALL,
+    RECORD_TYPE,
+    ATTAINMENT_CATEGORY,
+    ATTAINMENT,
+    UNADJUSTED_ATTAINMENT,
+    CALL_TYPE,
+    REPORT_CALL_TYPE,
+    REPORT_PRESCRIBER_CATEGORY,
+    SYNC_DATE_KEY,
+    USER_ID,
+    MSL_INTERACTION_TYPE,
+    MSL_INTERACTION_LENGTH,
+    MSL_MEETING_TYPE,
+    AUDIENCE_TYPE,
+    MIRF_RESOLUTION,
+    FIRST_ATTEMPT_MTG_TYPE,
+    FIRST_ATTEMPT_DATE_KEY,
+    SECOND_ATTEMPT_MTG_TYPE,
+    SECOND_ATTEMPT_DATE_KEY,
+    THIRD_ATTEMPT_MTG_TYPE,
+    THIRD_ATTEMPT_DATE_KEY,
+    MIRF_CLOSED_DATE_KEY,
+    CLM_IND,
+    TOP_20_IND,
+    CALL_ID,
+    PARENT_CALL_ID,
+    CUSTOMER_ZIP,
+    FACT_SOURCE_ID,
+    PRIMARY_MESSAGE,
+    SECONDARY_MESSAGE
+    
+  FROM 
+LUINC.FACT_CALL_ACTIVITY
+WHERE CALL_DATE_KEY >= '$(StartDate)';
+
+STORE FACT_CALL_ACTIVITY INTO [$(vQSBIE_ExtractQVD_Fact)/FACT_CALL_ACTIVITY.qvd](qvd);
+
+DROP Table FACT_CALL_ACTIVITY;
+
+
+// EXIT SCRIPT;
+
+
+
+
+NoConcatenate
+FACT_CALL_PLAN:
+
+SQL SELECT *
+ FROM 
+LUINC.FACT_CALL_PLAN
+WHERE DATE_KEY >= '$(StartDate)';
+
+STORE FACT_CALL_PLAN INTO [$(vQSBIE_ExtractQVD_Fact)/FACT_CALL_PLAN.qvd] (qvd);
+DROP Table FACT_CALL_PLAN;
+
+// // We move the select statement to the top, and remove the with clauses, by inserting them directly, and joining together one by one.
+
+Call_Plan_Flag:
+SQL SELECT DISTINCT
+    U.CUSTOMER_KEY,
+    U.TERRITORY_KEY,
+    CALL_PLAN_DATE_KEY,
+    Lu_Call_Plan_Target_Abilify_Maintena,
+    Lu_Call_Plan_Target_Rexulti,
+    Lu_P1_Call_Plan_Target_Rexulti,
+    Lu_Call_Plan_Target_Trintellix,
+    Lu_Call_Plan_Target_RexultiAADAD,
+    Lu_Call_Plan_Target_Northera,
+    Lu_Call_Plan_Target_Vyepti,
+    Lu_Call_Plan_Target_Abilify_LAI_Franchise
+FROM (
+    SELECT DISTINCT
+        CUSTOMER_KEY,
+        TERRITORY_KEY,
+        DATE_KEY as CALL_PLAN_DATE_KEY
+    FROM LUINC.FACT_CALL_PLAN CP
+    INNER JOIN LUINC.DIM_PRODUCT_GROUP P ON P.PRODUCT_GROUP_KEY = CP.PRODUCT_GROUP_KEY
+    WHERE CP.CURRENT_IND = 'Y' AND P.PRODUCT_NAME IN ('ABILIFY MAINTENA', 'REXULTI', 'TRINTELLIX', 'NORTHERA', 'VYEPTI','ABILIFY LAI FRANCHISE')
+) U
+LEFT JOIN (
+    SELECT DISTINCT
+        CUSTOMER_KEY,
+        TERRITORY_KEY,
+        'Y' as Lu_Call_Plan_Target_Abilify_Maintena
+    FROM LUINC.FACT_CALL_PLAN CP
+    INNER JOIN LUINC.DIM_PRODUCT_GROUP P ON P.PRODUCT_GROUP_KEY = CP.PRODUCT_GROUP_KEY
+    WHERE CP.CURRENT_IND = 'Y' AND P.PRODUCT_NAME IN ('ABILIFY MAINTENA')
+) A ON A.CUSTOMER_KEY = U.CUSTOMER_KEY AND A.TERRITORY_KEY = U.TERRITORY_KEY
+LEFT JOIN (
+    SELECT DISTINCT
+        CUSTOMER_KEY,
+        TERRITORY_KEY,
+        'Y' as Lu_Call_Plan_Target_Rexulti
+    FROM LUINC.FACT_CALL_PLAN CP
+    INNER JOIN LUINC.DIM_PRODUCT_GROUP P ON P.PRODUCT_GROUP_KEY = CP.PRODUCT_GROUP_KEY
+    WHERE CP.CURRENT_IND = 'Y' AND P.PRODUCT_NAME IN ('REXULTI')
+) B ON B.CUSTOMER_KEY = U.CUSTOMER_KEY AND B.TERRITORY_KEY = U.TERRITORY_KEY
+LEFT JOIN (
+    SELECT DISTINCT
+        CUSTOMER_KEY,
+        TERRITORY_KEY,
+        'Y' as Lu_P1_Call_Plan_Target_Rexulti
+    FROM LUINC.FACT_CALL_PLAN CP
+    INNER JOIN LUINC.DIM_PRODUCT_GROUP P ON P.PRODUCT_GROUP_KEY = CP.PRODUCT_GROUP_KEY
+    WHERE CP.CURRENT_IND = 'Y' AND P.PRODUCT_NAME IN ('REXULTI') AND CP.DETAIL_PRIORITY = 1
+) C ON C.CUSTOMER_KEY = U.CUSTOMER_KEY AND C.TERRITORY_KEY = U.TERRITORY_KEY
+LEFT JOIN (
+    SELECT DISTINCT
+        CUSTOMER_KEY,
+        TERRITORY_KEY,
+        'Y' as Lu_Call_Plan_Target_Trintellix
+    FROM LUINC.FACT_CALL_PLAN CP
+    INNER JOIN LUINC.DIM_PRODUCT_GROUP P ON P.PRODUCT_GROUP_KEY = CP.PRODUCT_GROUP_KEY
+    WHERE CP.CURRENT_IND = 'Y' AND P.PRODUCT_NAME IN ('TRINTELLIX')
+) D ON D.CUSTOMER_KEY = U.CUSTOMER_KEY AND D.TERRITORY_KEY = U.TERRITORY_KEY
+LEFT JOIN (
+    SELECT DISTINCT
+        CUSTOMER_KEY,
+        TERRITORY_KEY,
+        'Y' as Lu_Call_Plan_Target_Northera
+    FROM LUINC.FACT_CALL_PLAN CP
+	INNER JOIN LUINC.DIM_PRODUCT_GROUP P on P.PRODUCT_GROUP_KEY = CP.PRODUCT_GROUP_KEY
+	where CP.CURRENT_IND='Y' and P.PRODUCT_NAME IN ('NORTHERA')
+) E ON E.CUSTOMER_KEY=U.CUSTOMER_KEY and E.TERRITORY_KEY=U.TERRITORY_KEY
+LEFT JOIN (
+    SELECT DISTINCT 
+    	CUSTOMER_KEY, 
+        TERRITORY_KEY, 
+        'Y' as Lu_Call_Plan_Target_Vyepti
+    FROM LUINC.FACT_CALL_PLAN CP
+    INNER JOIN LUINC.DIM_PRODUCT_GROUP P on P.PRODUCT_GROUP_KEY = CP.PRODUCT_GROUP_KEY
+    WHERE CP.CURRENT_IND='Y' AND P.PRODUCT_NAME IN ('VYEPTI')
+) F ON F.CUSTOMER_KEY=U.CUSTOMER_KEY and F.TERRITORY_KEY=U.TERRITORY_KEY
+LEFT JOIN (
+    SELECT DISTINCT
+        CUSTOMER_KEY,
+        TERRITORY_KEY,
+        'Y' as Lu_Call_Plan_Target_Abilify_LAI_Franchise
+    FROM LUINC.FACT_CALL_PLAN CP
+    INNER JOIN LUINC.DIM_PRODUCT_GROUP P ON P.PRODUCT_GROUP_KEY = CP.PRODUCT_GROUP_KEY
+    WHERE CP.CURRENT_IND = 'Y' AND P.PRODUCT_NAME IN ('ABILIFY LAI FRANCHISE')
+) G ON A.CUSTOMER_KEY = U.CUSTOMER_KEY AND A.TERRITORY_KEY = U.TERRITORY_KEY
+LEFT JOIN (
+    SELECT DISTINCT
+        CUSTOMER_KEY,
+        TERRITORY_KEY,
+        'Y' as Lu_Call_Plan_Target_RexultiAADAD
+    FROM LUINC.FACT_CALL_PLAN CP
+    INNER JOIN LUINC.DIM_PRODUCT_GROUP P ON P.PRODUCT_GROUP_KEY = CP.PRODUCT_GROUP_KEY
+    WHERE CP.CURRENT_IND = 'Y' AND P.PRODUCT_GROUP IN ('REXULTI AADAD')
+) H ON H.CUSTOMER_KEY = U.CUSTOMER_KEY AND H.TERRITORY_KEY = U.TERRITORY_KEY;
+
+
+Store Call_Plan_Flag into [$(vQSBIE_ExtractQVD_Dimension)/DIM_CALL_PLAN_FLAGS.qvd](qvd);
+
+drop Table Call_Plan_Flag;
+
+//EXIT SCRIPT;
+
+
+
+
+///$tab 8: FACT CLAIMS
+// FACT_CLAIMS:
+// sql
+// Select FC.DATE_KEY,  
+//      CUSTOMER_KEY,     
+//      FC.PRODUCT_GROUP_KEY,   
+//      PATIENT_KEY, 
+//      AGE_GROUP_KEY,     
+//      SF1_TERRITORY_KEY, 
+//      SF2_TERRITORY_KEY, 
+//      SF3_TERRITORY_KEY, 
+//      MM_REGIONAL_TERRITORY_KEY, 
+//      MM_NATIONAL_TERRITORY_KEY,  
+//      REJECT_REASON_KEY,     
+//      NEW_TO_BRAND, 
+//      APPR_CLAIMS, 
+//      REV_CLAIMS, 
+//      REJ_CLAIMS, 
+//      NON_REJ_CLAIMS,  
+//      PLAN_KEY,    
+//      TOTAL_CLAIMS,
+//      APPR_PTNT_PAID_DOLLARS,
+//      CLAIMS_FOR_APPR_PTNT_PAID,
+//      SOURCE_OF_BUSINESS
+// from LUINC.FACT_CLAIMS FC
+// Inner Join LUINC.DIM_PRODUCT_GROUP PG ON PG.PRODUCT_GROUP_KEY=FC.PRODUCT_GROUP_KEY
+// where FC.PRODUCT_GROUP_KEY in (
+//        select PRODUCT_GROUP_KEY from LUINC.DIM_MB_ABILIFY_MAINTENA_SA
+              
+//               union
+              
+//               select PRODUCT_GROUP_KEY from LUINC.DIM_MB_REXULTI_SA
+              
+//               union
+              
+//               select PRODUCT_GROUP_KEY from LUINC.DIM_MB_TRINTELLIX_SA
+//               union 
+//                select PRODUCT_GROUP_KEY from LUINC.DIM_MB_ABILIFY_MAINTENA_IC
+              
+//               union
+              
+//               select PRODUCT_GROUP_KEY from LUINC.DIM_MB_REXULTI_IC
+              
+//               union
+              
+//               select PRODUCT_GROUP_KEY from LUINC.DIM_MB_TRINTELLIX_IC
+//               union
+//                select PRODUCT_GROUP_KEY from LUINC.DIM_MB_ABILIFY_MAINTENA_MAI
+              
+//               union
+              
+//               select PRODUCT_GROUP_KEY from LUINC.DIM_MB_REXULTI_MAI
+              
+//               union
+              
+//               select PRODUCT_GROUP_KEY from LUINC.DIM_MB_TRINTELLIX_MAI
+//               union
+              
+//               select PRODUCT_GROUP_KEY from LUINC.DIM_MB_NORTHERA_SA
+              
+//               union
+              
+//               select PRODUCT_GROUP_KEY from LUINC.DIM_MB_NORTHERA_OH
+//               union
+              
+//               select PRODUCT_GROUP_KEY from LUINC.DIM_MB_NORTHERA_PD
+//               )
+           
+//       and Isnull(GENERIC_AVAILABILITY_IND,'N')<>'Y'        
+//       and DATE_KEY>= '$(StartDate)' 
+//   ;
+
+// STORE FACT_CLAIMS INTO [$(vQSBIE_ExtractQVD_Fact)/FACT_CLAIMS$(vSpace).qvd] (qvd);
+
+// DROP TABLE FACT_CLAIMS;
+
+
+///$tab 9: FACT CUSTOMER SEGMENTATION
+[Fact Cust Segmentation]:
+SQL
+Select *
+From LUINC.FACT_CUSTOMER_SEGMENTATION;
+
+Store [Fact Cust Segmentation] into [$(vQSBIE_ExtractQVD_Fact)/FACT_CUSTOMER_SEGMENTATION$(vSpace).qvd](Qvd);
+
+Drop Table [Fact Cust Segmentation];
+
+///$tab SF:9: FACT CUSTOMER SEGMENTATION
+// [Fact Cust Segmentation]:
+// SQL
+// Select CURRENT_IND		
+// ,EFF_DATE_KEY	AS	DATE_FROM_KEY
+// ,EXP_DATE_KEY	AS	DATE_TO_KEY
+// ,LUNDBECK_ID	AS	CUSTOMER_KEY
+// ,PRODUCT_GROUP_NAME	AS	PRODUCT_GROUP_KEY
+// ,SEGMENT_DESC	AS	SEGMENT_DESC
+// ,SEGMENT_TYPE	AS	SEGMENT_TYPE
+// ,SELECTION_ORDER		
+// ,SEGMENT_DESC	AS	SEGMENT_VALUE
+// ,PRODUCT_GROUP_NAME	AS	BRAND_KEY
+// From LUNDBECK_DW.ANALYTICS.CUSTOMER_SEGMENTATION;
+
+// Store [Fact Cust Segmentation] into [$(vQSBIE_ExtractQVD_Fact)/FACT_CUSTOMER_SEGMENTATION$(vSpace)$(vSF).qvd](Qvd);
+
+// Drop Table [Fact Cust Segmentation];
+
+///$tab 11 : FACT FORECAST SALES
+[Fact Factory Sales]:
+SQL
+Select *
+From LUINC.FACT_FACTORY_SALES
+WHERE DATE_KEY >= '$(StartDate)';
+
+Store [Fact Factory Sales] into [$(vQSBIE_ExtractQVD_Fact)/FACT_FACTORY_SALES$(vSpace).qvd](Qvd);
+
+Drop Table [Fact Factory Sales];
+
+///$tab 12: Forecast Monthly
+[Fact Forecast Monthly]:
+Load *,
+Replace(FORECAST_CYCLE,'QE0','TARGET') as FORECAST_CYCLE1;
+SQL
+Select *
+From LUINC.FACT_FORECAST_MONTHLY
+WHERE DATE_KEY >= '20170101' and Not (FORECAST_CYCLE like '%TARGET%') 
+and (FORECAST_CYCLE like '%QE0' or FORECAST_CYCLE like '%QE1' or FORECAST_CYCLE like '%QE2' or FORECAST_CYCLE like '%QE3' or FORECAST_CYCLE like '%BUDGET');
+
+Drop Field FORECAST_CYCLE;
+
+Rename Field FORECAST_CYCLE1 to FORECAST_CYCLE;
+
+Concatenate([Fact Forecast Monthly])
+LOAD
+    FACT_KEY,
+    DATE_KEY,
+    PRODUCT_GROUP_KEY,
+    TRX,
+    DEMAND_UNITS,
+    DEMAND_MGS,
+    ENROLLEES,
+    ACTIVE_PATIENT_BALANCE,
+    NET_SALES,
+    FORECAST_TYPE,
+    Replace(FORECAST_CYCLE,'TARGET','QE0') as FORECAST_CYCLE
+Resident [Fact Forecast Monthly]
+where WildMatch(FORECAST_CYCLE,'*TARGET*');
+
+Store [Fact Forecast Monthly] into [$(vQSBIE_ExtractQVD_Fact)/FACT_FORECAST_MONTHLY$(vSpace).qvd](Qvd);
+
+Drop Table [Fact Forecast Monthly];
+
+
+
+
+
+
+///$tab SF: 12: FORECAST MONTHLY 
+// [Fact Forecast Monthly]:
+// Load *,
+// Replace(FORECAST_CYCLE,'QE0','TARGET') as FORECAST_CYCLE1;
+// SQL
+// Select *
+// From LUNDBECK_DW.ANALYTICS.FORECAST_MONTHLY
+// WHERE DATE_KEY >= '20170101' and Not (FORECAST_CYCLE like '%TARGET%') 
+// and (FORECAST_CYCLE like '%QE0' or FORECAST_CYCLE like '%QE1' or FORECAST_CYCLE like '%QE2' or FORECAST_CYCLE like '%QE3' or FORECAST_CYCLE like '%BUDGET');
+
+// Drop Field FORECAST_CYCLE;
+
+// Rename Field FORECAST_CYCLE1 to FORECAST_CYCLE;
+
+// Concatenate([Fact Forecast Monthly])
+// LOAD
+//     FACT_KEY,
+//     DATE_KEY,
+//     PRODUCT_GROUP_KEY,
+//     TRX,
+//     DEMAND_UNITS,
+//     DEMAND_MGS,
+//     ENROLLEES,
+//     ACTIVE_PATIENT_BALANCE,
+//     NET_SALES,
+//     FORECAST_TYPE,
+//     Replace(FORECAST_CYCLE,'TARGET','QE0') as FORECAST_CYCLE
+// Resident [Fact Forecast Monthly]
+// where WildMatch(FORECAST_CYCLE,'*TARGET*');
+
+// Store [Fact Forecast Monthly] into [$(vQSBIE_ExtractQVD_Fact)/FACT_FORECAST_MONTHLY$(vSpace)$(vSF).qvd](Qvd);
+
+// Drop Table [Fact Forecast Monthly];
+
+
+
+
+
+
+///$tab 13: FACT FORMULARY NATIONAL
+[Fact Formulary National]:
+SQL
+Select *
+From LUINC.FACT_FORMULARY_NATIONAL
+where DATE_KEY>=' $(StartDate)';
+
+Store [Fact Formulary National] into [$(vQSBIE_ExtractQVD_Fact)/FACT_FORMULARY_NATIONAL$(vSpace).qvd](Qvd);
+
+Drop Table [Fact Formulary National];
+///$tab 15: FACT RETAIL SUMMARY WEEKLY
+FACT_RETAIL_SUMMARY_WKLY:
+
+SQL SELECT 
+FACT_KEY
+,DATE_KEY
+,CUSTOMER_KEY
+,BRAND_KEY
+,PRODUCT_GROUP_KEY
+,SF1_TERRITORY_KEY
+,SF2_TERRITORY_KEY
+,SF3_TERRITORY_KEY
+,NEW_WRITERS
+,TOTAL_WRITERS
+,TRX
+,NRX
+,T_QTY
+,N_QTY
+,DAYS_OF_THERAPY
+,NORMALIZED_TRX
+,NORMALIZED_NRX
+FROM 
+LUINC.FACT_RETAIL_SUMMARY_WKLY
+where PRODUCT_GROUP_KEY in (
+       select PRODUCT_GROUP_KEY from LUINC.DIM_MB_ABILIFY_MAINTENA_SA
+              
+              union
+              
+              select PRODUCT_GROUP_KEY from LUINC.DIM_MB_REXULTI_SA
+              
+              union
+              
+              select PRODUCT_GROUP_KEY from LUINC.DIM_MB_TRINTELLIX_SA
+              union 
+               select PRODUCT_GROUP_KEY from LUINC.DIM_MB_ABILIFY_MAINTENA_IC
+              
+              union
+              
+              select PRODUCT_GROUP_KEY from LUINC.DIM_MB_REXULTI_IC
+              
+              union
+              
+              select PRODUCT_GROUP_KEY from LUINC.DIM_MB_TRINTELLIX_IC
+              union
+               select PRODUCT_GROUP_KEY from LUINC.DIM_MB_ABILIFY_MAINTENA_MAI
+              
+              union
+              
+              select PRODUCT_GROUP_KEY from LUINC.DIM_MB_REXULTI_MAI
+              
+              union
+              
+              select PRODUCT_GROUP_KEY from LUINC.DIM_MB_TRINTELLIX_MAI
+              union
+              
+              select PRODUCT_GROUP_KEY from LUINC.DIM_MB_NORTHERA_SA
+              
+              union
+              
+              select PRODUCT_GROUP_KEY from LUINC.DIM_MB_NORTHERA_OH
+              union
+              
+              select PRODUCT_GROUP_KEY from LUINC.DIM_MB_NORTHERA_PD
+              )
+              
+      and DATE_KEY>= '$(StartDate)' 
+  ;
+
+STORE FACT_RETAIL_SUMMARY_WKLY INTO [$(vQSBIE_ExtractQVD_Fact)/FACT_RETAIL_SUMMARY_WKLY$(vSpace).qvd] (qvd);
+DROP Table FACT_RETAIL_SUMMARY_WKLY;
+
+
+///$tab 16: FACT SPEAKER PROGRAM
+FACT_SPEAKER_PROGRAM:
+
+
+SQL SELECT *
+ FROM 
+LUINC.FACT_SPEAKER_PROGRAM
+WHERE PROGRAM_DATE_KEY >= '$(StartDate)';
+
+STORE FACT_SPEAKER_PROGRAM INTO [$(vQSBIE_ExtractQVD_Fact)/FACT_SPEAKER_PROGRAM$(vSpace).qvd](qvd);
+DROP Table FACT_SPEAKER_PROGRAM;
+
+
+
+
+///$tab SF : 16: FACT SPEAKER PROGRAM
+FACT_SPEAKER_PROGRAM:
+
+
+SQL SELECT *
+ FROM 
+LUINC.FACT_SPEAKER_PROGRAM
+WHERE PROGRAM_DATE_KEY >= '$(StartDate)';
+
+STORE FACT_SPEAKER_PROGRAM INTO [$(vQSBIE_ExtractQVD_Fact)/FACT_SPEAKER_PROGRAM$(vSpace).qvd](qvd);
+DROP Table FACT_SPEAKER_PROGRAM;
+
+
+
+
+///$tab 17: FACT SPEAKR PRGM PARTICIPANTSFACT_SPEAKER_PROGRAM_PARTICIPANTS:  LOAD * ;  SQL SELECT * FROM  LUINC.FACT_SPEAKER_PROGRAM_PARTICIPANTS WHERE PROGRAM_DATE_KEY >= $(StartDate);  STORE FACT_SPEAKER_PROGRAM_PARTICIPANTS INTO $(QVDPath)FACT_SPEAKER_PROGRAM_
+FACT_SPEAKER_PROGRAM_PARTICIPANTS:
+
+SQL SELECT *
+ FROM 
+LUINC.FACT_SPEAKER_PROGRAM_PARTICIPANTS
+WHERE PROGRAM_DATE_KEY >= '$(StartDate)';
+
+STORE FACT_SPEAKER_PROGRAM_PARTICIPANTS INTO [$(vQSBIE_ExtractQVD_Fact)/FACT_SPEAKER_PROGRAM_PARTICIPANTS$(vSpace).qvd] (qvd);
+DROP Table FACT_SPEAKER_PROGRAM_PARTICIPANTS;
+
+
+
+///$tab 18: FACT PATIENT SNAPSHOT
+FACT_PATIENT_SNAPSHOT:
+
+
+SQL SELECT *
+ FROM 
+LUINC.FACT_PATIENT_SNAPSHOT
+WHERE SHIPPED_DATE_KEY >= '$(StartDate)';
+
+STORE FACT_PATIENT_SNAPSHOT INTO [$(vQSBIE_ExtractQVD_Fact)/FACT_PATIENT_SNAPSHOT$(vSpace).qvd] (qvd);
+DROP Table FACT_PATIENT_SNAPSHOT;
+
+
+
+///$tab 19: FACT_NON_RETAIL_SALES
+[Fact Non Retail Sales]:
+SQL
+Select 
+ FACT_KEY
+,DATE_KEY
+,CUSTOMER_KEY
+,PRODUCT_GROUP_KEY
+,CHANNEL_KEY
+,SF1_TERRITORY_KEY
+,SF2_TERRITORY_KEY
+,SF3_TERRITORY_KEY
+,TRX
+,UNITS
+,STRENGTH_UNITS
+,NORMALIZED_TRX
+,SOURCE
+,IND_340B_SALES
+,CLASS_OF_TRADE_KEY
+From LUINC.FACT_NON_RETAIL_SALES
+where PRODUCT_GROUP_KEY in (
+       select PRODUCT_GROUP_KEY from LUINC.DIM_MB_ABILIFY_MAINTENA_SA
+              
+              union
+              
+              select PRODUCT_GROUP_KEY from LUINC.DIM_MB_REXULTI_SA
+              
+              union
+              
+              select PRODUCT_GROUP_KEY from LUINC.DIM_MB_TRINTELLIX_SA
+              union 
+               select PRODUCT_GROUP_KEY from LUINC.DIM_MB_ABILIFY_MAINTENA_IC
+              
+              union
+              
+              select PRODUCT_GROUP_KEY from LUINC.DIM_MB_REXULTI_IC
+              
+              union
+              
+              select PRODUCT_GROUP_KEY from LUINC.DIM_MB_TRINTELLIX_IC
+              union
+               select PRODUCT_GROUP_KEY from LUINC.DIM_MB_ABILIFY_MAINTENA_MAI
+              
+              union
+              
+              select PRODUCT_GROUP_KEY from LUINC.DIM_MB_REXULTI_MAI
+              
+              union
+              
+              select PRODUCT_GROUP_KEY from LUINC.DIM_MB_TRINTELLIX_MAI
+              union
+              
+              select PRODUCT_GROUP_KEY from LUINC.DIM_MB_NORTHERA_SA
+              
+              union
+              
+              select PRODUCT_GROUP_KEY from LUINC.DIM_MB_NORTHERA_OH
+              union
+              
+              select PRODUCT_GROUP_KEY from LUINC.DIM_MB_NORTHERA_PD
+              )
+              
+      and DATE_KEY>= '$(StartDate)' 
+  ;
+Store [Fact Non Retail Sales] into [$(vQSBIE_ExtractQVD_Fact)/FACT_NON_RETAIL_SALES$(vSpace).qvd](Qvd);
+
+Drop Table [Fact Non Retail Sales];
+
+
+
+///$tab SF:19: FACT_NON_RETAIL_SALES
+// [Fact Non Retail Sales]:
+// SQL
+// Select 
+// // FACT_KEY
+// DATE_KEY
+// ,LUNDBECK_ID AS CUSTOMER_KEY
+// ,PRODUCT_GROUP_CODE AS PRODUCT_GROUP_KEY
+// ,'PLACE HOLDER' AS CHANNEL_KEY
+// // ,SF1_TERRITORY_KEY
+// // ,SF2_TERRITORY_KEY
+// // ,SF3_TERRITORY_KEY
+// ,CUSTOMER_ZIP
+// ,NORMALIZED_TRX AS TRX
+// ,UNITS
+// ,UNITS AS STRENGTH_UNITS
+// ,NORMALIZED_TRX
+// ,CUSTOMER_SOURCE_ID
+// ,'PLACE HOLDER' AS SOURCE
+// ,'PLACE HOLDER' AS IND_340B_SALES
+// ,'PLACE HOLDER' AS CLASS_OF_TRADE_KEY
+// From LUNDBECK_DW.ANALYTICS.NON_RETAIL_SALES
+// where PRODUCT_GROUP_CODE in (
+//        select PRODUCT_GROUP_CODE from LUNDBECK_DW.COMMON.MB_ABILIFY_MAINTENA_SA
+              
+//               union
+              
+//               select PRODUCT_GROUP_CODE from LUNDBECK_DW.COMMON.MB_REXULTI_SA
+              
+//               union
+              
+//               select PRODUCT_GROUP_CODE from LUNDBECK_DW.COMMON.MB_TRINTELLIX_SA
+//               union 
+//                select PRODUCT_GROUP_CODE from LUNDBECK_DW.COMMON.MB_ABILIFY_MAINTENA_IC
+              
+//               union
+              
+//               select PRODUCT_GROUP_CODE from LUNDBECK_DW.COMMON.MB_REXULTI_IC
+              
+//               union
+              
+//               select PRODUCT_GROUP_CODE from LUNDBECK_DW.COMMON.MB_TRINTELLIX_IC
+//               union
+//                select PRODUCT_GROUP_CODE from LUNDBECK_DW.COMMON.MB_ABILIFY_MAINTENA_MAI
+              
+//               union
+              
+//               select PRODUCT_GROUP_CODE from LUNDBECK_DW.COMMON.MB_REXULTI_MAI
+              
+//               union
+              
+//               select PRODUCT_GROUP_CODE from LUNDBECK_DW.COMMON.MB_TRINTELLIX_MAI
+             
+//               )
+              
+//       and DATE_KEY>= '$(StartDate)' 
+//   ;
+//   Store [Fact Non Retail Sales] into [$(vQSBIE_ExtractQVD_Fact)/FACT_NON_RETAIL_SALES$(vSpace)$(vSF).qvd](Qvd);
+
+// Drop Table [Fact Non Retail Sales];
+
+///$tab 21: FACT CALL PLAN CUSTOMER
+FACT_CALL_PLAN_CUSTOMER:
+
+SQL SELECT *
+ FROM 
+LUINC.FACT_CALL_PLAN_CUSTOMER
+WHERE DATE_KEY >= '$(StartDate)';
+
+STORE FACT_CALL_PLAN_CUSTOMER INTO [$(vQSBIE_ExtractQVD_Fact)/FACT_CALL_PLAN_CUSTOMER$(vSpace).qvd] (qvd);
+DROP Table FACT_CALL_PLAN_CUSTOMER;
+
+
+
+///$tab 22: FACT WRITER SUMMARY WEEKLY
+FACT_WRITER_SUMMARY_WEEKLY:
+
+
+SQL SELECT 
+FACT_KEY
+,DATE_KEY
+,CUSTOMER_KEY
+,PRODUCT_GROUP_KEY
+,SF1_TERRITORY_KEY
+,SF2_TERRITORY_KEY
+,SF3_TERRITORY_KEY
+,NEW_WRITER
+,CONTINUING_WRITER
+,SPORADIC_WRITER
+,RETURNING_LAPSED_WRITER
+,LAPSED_WRITER
+,SPORADIC_NON_WRITER
+,TRX
+,NRX
+,T_QTY
+,N_QTY
+,DAYS_OF_THERAPY
+,NORMALIZED_TRX
+,NORMALIZED_NRX
+FROM 
+LUINC.FACT_WRITER_SUMMARY_WEEKLY
+WHERE DATE_KEY >= '$(StartDate)';
+
+STORE FACT_WRITER_SUMMARY_WEEKLY INTO [$(vQSBIE_ExtractQVD_Fact)/FACT_WRITER_SUMMARY_WEEKLY$(vSpace).qvd] (qvd);
+DROP Table FACT_WRITER_SUMMARY_WEEKLY;
