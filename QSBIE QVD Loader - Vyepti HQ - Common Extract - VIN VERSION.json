@@ -1,0 +1,62 @@
+
+SHEETS
+{"qInfo":{"qId":"FsPJDLy","qType":"sheet"},"qMeta":{"title":"My new sheet","description":"","_resourcetype":"app.object","_objecttype":"sheet","id":"FsPJDLy","approved":false,"published":false,"owner":"SHRU@lundbeck.com","ownerId":"63652410abd1b5bf2763579e","createdDate":"2024-10-08T09:39:28.486Z","modifiedDate":"2024-10-08T09:39:28.486Z","privileges":["read","update","delete","publish","change_owner"]},"qData":[]}
+
+OBJECTS ON SHEETS
+
+DIMENSIONS
+
+MEASURES
+
+VARIABLES
+{"qName":"vReactiveCalls","qDefinition":"Reactive Call","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"87c16e0d-1973-45e0-874b-b0d1885d2380","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vWeekDay","qDefinition":"Wed","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"aa7d0ad5-7304-4f2e-bec9-9ae1165e8b84","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vZeroFactPatientDateStart","qDefinition":"20230401","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"6db6e82b-0da7-406a-b15f-88783cb89ffd","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vZeroFactRetailDateStart","qDefinition":"20230301","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"67de6793-00c6-4488-bee4-af700d41af15","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vQSBIE_ExtractQVD_Fact","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/QlikSense BI Evolution\/QVDs\/Extract\/Facts","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"0ada3515-b4d4-42d5-8fee-e16fab5e462c","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vStorePathFact","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/QlikSense BI Evolution\/QVDs\/Extract\/Facts\/Vyepti\/HQ","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"da17920a-075b-409a-b9e7-d00f7356baea","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vQSBIE_TransformQVD_Fact","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/QlikSense BI Evolution\/QVDs\/Transform\/Facts","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"7d3593b8-e4d5-4fa0-bf79-66b2f0aa5211","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vConfidentialMessage","qDefinition":"*Prescriber data acquired by the Lundbeck are to be treated as confidential information. Sales representatives (and other employees and agents) must not disclose those data to any party outside of the Company without the express permission of the Legal Division. In addition, sales representatives (and other employees and agents) cannot ask co-promotion colleagues to share prescriber data with them.","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"ac1869ea-d256-4813-a25e-96d97aee2f49","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vRetailDateStart","qDefinition":"20240301","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"a4684ff4-9ed8-4a1f-9f52-de6cc778babb","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vStorePathDim","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/QlikSense BI Evolution\/QVDs\/Extract\/Dimensions\/Vyepti\/HQ","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"315ffd73-b615-4590-8021-b7eebfd5db0e","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vQSBIE_OfflineFiles","qDefinition":"lib:\/\/LuUS_DATA:LuUS_SharePoint\/Shared Documents\/Qlik Sense Data Files","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"ceec93e5-f29e-4ef3-9fb3-6ea264d8c5e2","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vZeroFactAccountDateStart","qDefinition":"20230401","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"80d7babd-75d7-4eeb-8e97-7cc4de771330","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vAccountDateStart","qDefinition":"20240301","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"76006e84-da44-4751-a34c-db67b14d374a","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vToday","qDefinition":"04\/16\/2025","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"c92c57e0-be39-4b3a-9675-e52cecd43514","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vQSBIE_ExtractQVD_Dimension","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/QlikSense BI Evolution\/QVDs\/Extract\/Dimensions","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"d9431c0b-35f7-4c40-a4ea-eb5dcf187355","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vTodayKey","qDefinition":"20250416","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"df55c96b-6e18-4ece-8cd6-8c88f7254c42","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vQSBIE_TransformQVD_Dimension","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/QlikSense BI Evolution\/QVDs\/Transform\/Dimensions","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"f52f11e6-f283-4883-97c6-1e3340488ed1","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vPatientDateStart","qDefinition":"20240401","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"774cec7f-8bde-43da-84af-2b1fd09b1552","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vSpace","qDefinition":"_DEV","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"20c456e2-72fb-45ad-8914-84d4c2886d83","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vCustomerAliasSubject","qDefinition":"Incorrect Customer Aliases for Vyepti SD\/SP names in DIM_CUSTOMER","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"eab117ac-2549-44c6-b426-8e3c1bcb098d","qType":"variable"},"qData":[]}
+{"qName":"VmaxDate","qDefinition":"20240920","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"1a66ad17-6d2b-4e25-b9c2-5e56e928b6ae","qType":"variable"},"qData":[]}
+{"qName":"vMaxMedDate","qDefinition":"31-Jul-2024","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"59d91b4c-ccf1-4a98-b9d3-9487b23660f8","qType":"variable"},"qData":[]}
+{"qName":"vAllCustomerAlias_Account","qDefinition":"ASD|CARDINAL|CURASCRIPT|MCKESSON|ORSINI|WALGREENS","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"b886d98e-a53a-47d8-8e62-37d17b00b666","qType":"variable"},"qData":[]}
+{"qName":"vDateStart","qDefinition":"20190401","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"e9a9e62b-7019-4ed6-9a9f-d1348a073c22","qType":"variable"},"qData":[]}
+{"qName":"vStorePath","qDefinition":"lib:\/\/LuUS QVD\/QlikSense BI Evolution\/QVDs\/Extract\/Facts","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"ba91cf00-e722-4186-a202-d98d3d29ec73","qType":"variable"},"qData":[]}
+{"qName":"vCustomerAliasBody","qDefinition":"Hi Team,\\n Vyepti SD\/SP Customer Aliases are not as per the standard namimg convention, i.e. ASD,MCKESSON,ORSINI,WALGREENS. Affected Vyepti HQ Applications are Vyepti Daily Launch Tracker and Vyepti Account Performance Dashboard.","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"df934f73-db7d-49d1-9770-149f554721d2","qType":"variable"},"qData":[]}
+{"qName":"vAllCustomerAlias_Dailyinv","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"7bc7c677-c911-40c6-af3d-cbf0cf0d9875","qType":"variable"},"qData":[]}
+{"qName":"vMaxRxDate","qDefinition":"31-Jul-2024","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"89b30d55-f8b4-4359-b3af-5453e94a7ff1","qType":"variable"},"qData":[]}
+{"qName":"vAllCustomerAlias_Daily","qDefinition":"ASD|CARDINAL|CURASCRIPT|MCKESSON|ORSINI|WALGREENS","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"a8269c02-553a-4f40-8a4c-4e20e3e5b774","qType":"variable"},"qData":[]}
+{"qName":"vAllCustomerAlias","qDefinition":"ASD|ASD SPECIALTY HEALTHCARE, LLC.|ASD-BESSE MEDICAL|ASD-ONCOLOGY SUPPLY|MCKESSON|MCKESSON-MPB|MCKESSON-MSCD|ORSINI|WALGREENS","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"13ee3be8-6b40-4f90-abce-486bd1b5102b","qType":"variable"},"qData":[]}
+{"qName":"vCurrentDay","qDefinition":"20240924","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"3daada1a-b7d3-4c31-9a16-8ec3b0058a97","qType":"variable"},"qData":[]}
+{"qName":"vAllCustomerAlias_Monthlyinv","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"e05284a0-6601-4e01-9bdb-729b30b92c1d","qType":"variable"},"qData":[]}
+
+FIELDS
+{"qIsHidden":true,"qIsSystem":true,"qName":"$Field","qCardinal":11,"qTags":["$hidden","$system","$ascii","$text","$key"],"qSrcTables":[]}
+{"qIsHidden":true,"qIsSystem":true,"qName":"$Table","qCardinal":2,"qTags":["$hidden","$system","$ascii","$text","$key"],"qSrcTables":[]}
+{"qIsHidden":true,"qIsSystem":true,"qName":"$Rows","qCardinal":2,"qTags":["$hidden","$system","$numeric","$integer"],"qSrcTables":[]}
+{"qIsHidden":true,"qIsSystem":true,"qName":"$Fields","qCardinal":2,"qTags":["$hidden","$system","$numeric","$integer"],"qSrcTables":[]}
+{"qIsHidden":true,"qIsSystem":true,"qName":"$FieldNo","qCardinal":10,"qTags":["$hidden","$system","$numeric","$integer"],"qSrcTables":[]}
+{"qIsHidden":true,"qIsSystem":true,"qName":"$Info","qCardinal":1,"qTags":["$hidden","$system","$ascii","$text"],"qSrcTables":[]}
+{"qName":"CALL_TYPE","qCardinal":1,"qTags":["$ascii","$text"],"qSrcTables":["Sheet1"]}
+{"qName":"ACCOUNT_KEY","qCardinal":292157,"qTags":["$numeric","$integer"],"qSrcTables":["FACT_ACCOUNT_AFFILIATION"]}
+{"qName":"PARENT_ACCOUNT_KEY","qCardinal":286829,"qTags":["$numeric","$integer"],"qSrcTables":["FACT_ACCOUNT_AFFILIATION"]}
+{"qName":"CUSTOMER_KEY","qCardinal":315785,"qTags":["$numeric","$integer"],"qSrcTables":["FACT_ACCOUNT_AFFILIATION"]}
+{"qName":"AFFILIATION_TYPE","qCardinal":3,"qTags":["$ascii","$text"],"qSrcTables":["FACT_ACCOUNT_AFFILIATION"]}
+{"qName":"CUSTOMER_SHARE","qCardinal":10,"qTags":["$numeric"],"qSrcTables":["FACT_ACCOUNT_AFFILIATION"]}
+{"qName":"DEMAND_GENERATING_SITE","qCardinal":3,"qTags":["$ascii","$text"],"qSrcTables":["FACT_ACCOUNT_AFFILIATION"]}
+{"qName":"INFUSION_LOCATION","qCardinal":3,"qTags":["$ascii","$text"],"qSrcTables":["FACT_ACCOUNT_AFFILIATION"]}
+{"qName":"CUSTOMER_TYPE","qCardinal":3,"qTags":["$ascii","$text"],"qSrcTables":["FACT_ACCOUNT_AFFILIATION"]}
+{"qName":"CUST_DEMAND_GENERATING_SITE","qCardinal":2,"qTags":["$ascii","$text"],"qSrcTables":["FACT_ACCOUNT_AFFILIATION"]}
+{"qName":"SEGMENT_VALUE","qCardinal":0,"qTags":[],"qSrcTables":["FACT_ACCOUNT_AFFILIATION"]}
