@@ -1,0 +1,34 @@
+
+SHEETS
+
+OBJECTS ON SHEETS
+
+DIMENSIONS
+{"qInfo":{"qId":"gMRaUZ","qType":"dimension"},"qMeta":{"_resourcetype":"app.object","_objecttype":"dimension","id":"gMRaUZ","approved":true,"published":true,"publishTime":"2017-10-26T23:59:09.400Z","owner":"ELLM@lundbeck.com","ownerId":"6343da9c0fabff8ea791d24a","createdDate":"2023-03-30T09:16:24.258Z","modifiedDate":"2023-03-30T09:16:24.258Z","encrypted":true,"privileges":["read","update","delete","publish"],"title":"Date Week End","description":"","tags":[]},"qData":[]}
+{"qInfo":{"qId":"YzDWGkZ","qType":"dimension"},"qMeta":{"_resourcetype":"app.object","_objecttype":"dimension","id":"YzDWGkZ","approved":true,"published":true,"publishTime":"2017-10-26T23:59:09.400Z","owner":"ELLM@lundbeck.com","ownerId":"6343da9c0fabff8ea791d24a","createdDate":"2023-03-30T09:16:24.261Z","modifiedDate":"2023-03-30T09:16:24.261Z","encrypted":true,"privileges":["read","update","delete","publish"],"title":"Date","description":"","tags":[]},"qData":[]}
+
+MEASURES
+
+VARIABLES
+{"qName":"vSpace","qDefinition":"_DEV","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"5c75b738-d02c-4127-8fe9-cd4c231fd787","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"QVDLocation","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"d205bc68-e3bd-4250-8a08-b2c91019d235","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vSF","qDefinition":"_SF","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"16826a20-0025-431b-8fde-f6e4e18ef6b9","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vCurrentDataMonth","qDefinition":"04\/30\/2023","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"c95e1915-de3a-4cd5-9e70-d77d333385c2","qType":"variable"},"qData":[]}
+{"qName":"vFromRxDateKey","qDefinition":"20200201","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"8fe72105-0e49-4a07-8bb0-e125a0656150","qType":"variable"},"qData":[]}
+{"qName":"vCurrentDataWeek","qDefinition":"04\/30\/2023","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"90787447-4d5b-4b44-85e5-e148226aa79b","qType":"variable"},"qData":[]}
+{"qName":"vToRxDateKey","qDefinition":"20230331","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"199647ac-6111-40f4-9749-d95fb9f0bc38","qType":"variable"},"qData":[]}
+
+FIELDS
+{"qIsHidden":true,"qIsSystem":true,"qName":"$Field","qCardinal":7,"qTags":["$hidden","$system","$ascii","$text","$key"],"qSrcTables":[]}
+{"qIsHidden":true,"qIsSystem":true,"qName":"$Table","qCardinal":1,"qTags":["$hidden","$system","$ascii","$text","$key"],"qSrcTables":[]}
+{"qIsHidden":true,"qIsSystem":true,"qName":"$Rows","qCardinal":1,"qTags":["$hidden","$system","$numeric","$integer"],"qSrcTables":[]}
+{"qIsHidden":true,"qIsSystem":true,"qName":"$Fields","qCardinal":1,"qTags":["$hidden","$system","$numeric","$integer"],"qSrcTables":[]}
+{"qIsHidden":true,"qIsSystem":true,"qName":"$FieldNo","qCardinal":7,"qTags":["$hidden","$system","$numeric","$integer"],"qSrcTables":[]}
+{"qIsHidden":true,"qIsSystem":true,"qName":"$Info","qCardinal":1,"qTags":["$hidden","$system","$ascii","$text"],"qSrcTables":[]}
+{"qName":"DATE_KEY","qCardinal":4658,"qTags":["$numeric","$integer","$timestamp","$date"],"qSrcTables":["DIM_CLNDR"]}
+{"qName":"DATE_WEEK_END_KEY","qCardinal":666,"qTags":["$numeric","$integer"],"qSrcTables":["DIM_CLNDR"]}
+{"qName":"DATE_WEEK_END_1","qCardinal":666,"qTags":["$numeric","$integer","$timestamp","$date"],"qSrcTables":["DIM_CLNDR"]}
+{"qName":"CALENDAR_YEAR_MONTH","qCardinal":153,"qTags":["$numeric","$integer"],"qSrcTables":["DIM_CLNDR"]}
+{"qName":"CALENDAR_YEAR_QUARTER","qCardinal":51,"qTags":["$ascii","$text"],"qSrcTables":["DIM_CLNDR"]}
+{"qName":"MONTH_YEAR","qCardinal":153,"qTags":["$numeric","$integer"],"qSrcTables":["DIM_CLNDR"]}
+{"qName":"CALENDAR_YEAR","qCardinal":13,"qTags":["$numeric","$integer"],"qSrcTables":["DIM_CLNDR"]}
