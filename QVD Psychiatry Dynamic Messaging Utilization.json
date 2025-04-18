@@ -1,0 +1,60 @@
+
+SHEETS
+{"qInfo":{"qId":"fd8b5440-1c85-448b-99a7-10bc7a5c2f1c","qType":"sheet"},"qMeta":{"title":"My new sheet","description":"","createdDate":"2023-03-30T09:17:24.496Z","modifiedDate":"2023-03-30T09:17:24.496Z","published":true,"publishTime":"2020-04-29T22:19:57.617Z","approved":true,"qSize":-1,"sourceObject":"","draftObject":"","_resourcetype":"app.object","_objecttype":"sheet","id":"fd8b5440-1c85-448b-99a7-10bc7a5c2f1c","owner":"ELLM@lundbeck.com","ownerId":"6343da9c0fabff8ea791d24a","privileges":["read","publish"]},"qData":[]}
+
+OBJECTS ON SHEETS
+
+DIMENSIONS
+
+MEASURES
+
+VARIABLES
+{"qName":"cEndDate","qDefinition":"3\/31\/2025","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"71b17dd0-588c-4403-886d-a496c7fd32b4","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"cStartDate","qDefinition":"4\/1\/2023","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"e25850d0-8ee1-4107-b981-c3a6c3d9d909","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"cPODMaxDate","qDefinition":"12\/10\/2024","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"3e92c8fc-176d-486b-8453-da3e58f6a6d5","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"cCurrTrimester","qDefinition":"2025-T2","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"85b3d83e-4ca1-44bf-81bc-21e362233b28","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"cCurrYearQtr","qDefinition":"2025-Q1","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"0abf23f1-77ba-4be6-b10e-fec4730775fa","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"cPrevYearQtr","qDefinition":"2024-Q4","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"36d59b18-b8b3-4059-8fc6-e825a61af994","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vEnv","qDefinition":"Production","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"2913fb8c-0340-49a7-89d9-d5c590356917","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"cISAMaxDate","qDefinition":"3\/31\/2025","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"caecc8ad-098a-40cb-88bc-9c9cbc6a15c1","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"QVDDimPath","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/Dimensions","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"87a08e20-dd63-4a26-b60d-fbf7877aee9e","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"cEndDateKey","qDefinition":"20250331","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"71245397-8e40-4895-aba6-71604e7b0325","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"QVDLocation","qDefinition":"lib:\/\/LuUS_DATA:DataFiles","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"a5f46270-d88b-40c7-996e-eedb8c90133c","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"cPODMaxMonthEnd","qDefinition":"11\/30\/2024","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"bdaea2e8-8e3f-4a24-aae9-f4cbeed68327","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"QVDFactPath","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/Facts","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"7c182698-f6a0-48d4-b83f-594961ec18fd","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"cPrevTrimester","qDefinition":"2025-T1","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"6a51cb51-0051-4e4f-a7d5-a686400e87e9","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"cPODMinDate","qDefinition":"12\/1\/2022","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"a1b09558-4c00-43cb-9a4b-27407908b9a9","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"QVDIntPath","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/Internal","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"c2ea0381-795a-4b82-9b1c-4d746415fa62","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"cCurrYear","qDefinition":"2025","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"246393f4-398e-491c-aec3-faea601fe346","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"cPrevYearMonth","qDefinition":"2025-02","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"a1598de8-cee7-4282-8710-a4d9edaadf94","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"cStartDateKey","qDefinition":"20230401","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"c96ac4a4-e1c4-44f4-bd8d-ab00b2ee2270","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"cCurrYearMonth","qDefinition":"2025-03","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"3cfdafed-e44a-4c24-9522-69f80d466c29","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"QVDDimLoc","qDefinition":"lib:\/\/LuUS QVD\/Development\\Dimensions","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"07a3d803-b3c2-4e48-b68c-adcf5c8b39d0","qType":"variable"},"qData":[]}
+{"qName":"QVDFactLoc","qDefinition":"lib:\/\/LuUS QVD\/Development\\Facts","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"db3dce63-feeb-4504-9e84-ee7420b7f236","qType":"variable"},"qData":[]}
+{"qName":"vPrevMonthYear","qDefinition":"FEB-18","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"48a6bc06-3496-472e-ac08-d22e88295498","qType":"variable"},"qData":[]}
+{"qName":"vPrevYearMonth","qDefinition":"201802","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"6b785bb8-6ebc-49dd-a5d7-7960bd39fe3e","qType":"variable"},"qData":[]}
+{"qName":"vCurrMonthYear","qDefinition":"MAR-18","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"887efc86-6f32-4869-9f14-abacc63eaec7","qType":"variable"},"qData":[]}
+{"qName":"QVDIntLoc","qDefinition":"lib:\/\/LuUS QVD\/Development\\Internal","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"6115e53d-cef3-42ce-a6e7-7a261d36dcbf","qType":"variable"},"qData":[]}
+{"qName":"vCurrYearMonth","qDefinition":"201803","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"763f144e-bc39-4f97-8e4c-25716cc32819","qType":"variable"},"qData":[]}
+{"qName":"vEndDate","qDefinition":"2018-03-31","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"77bf928c-a0c0-41ea-af16-f5a7d1ec3b1e","qType":"variable"},"qData":[]}
+{"qName":"vCurrTrimester","qDefinition":"2018-T2","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"058e1516-d014-4448-af39-889973e9349b","qType":"variable"},"qData":[]}
+{"qName":"vCurrYearQtr","qDefinition":"2018-Q1","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"1208dfdf-869f-44ee-856d-035bd5bd314b","qType":"variable"},"qData":[]}
+{"qName":"vCurrentYearMonth","qDefinition":"201802","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"bebf071b-0da0-4bb3-b38b-e9a2ee60f216","qType":"variable"},"qData":[]}
+{"qName":"vCurrentYear","qDefinition":"2018","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"dea0adf1-9c65-40c5-a1f7-1e30b9318601","qType":"variable"},"qData":[]}
+{"qName":"vStartDate","qDefinition":"2017-01-01","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"4f73f7e5-8a4d-43d4-8a2f-135df3d0c468","qType":"variable"},"qData":[]}
+{"qName":"vCurrYear","qDefinition":"2018","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"8e9d82ae-8eaa-4822-b250-649f9f287926","qType":"variable"},"qData":[]}
+
+FIELDS
+{"qIsHidden":true,"qIsSystem":true,"qName":"$Field","qCardinal":7,"qTags":["$hidden","$system","$ascii","$text","$key"],"qSrcTables":[]}
+{"qIsHidden":true,"qIsSystem":true,"qName":"$Table","qCardinal":1,"qTags":["$hidden","$system","$ascii","$text","$key"],"qSrcTables":[]}
+{"qIsHidden":true,"qIsSystem":true,"qName":"$Rows","qCardinal":1,"qTags":["$hidden","$system","$numeric","$integer"],"qSrcTables":[]}
+{"qIsHidden":true,"qIsSystem":true,"qName":"$Fields","qCardinal":1,"qTags":["$hidden","$system","$numeric","$integer"],"qSrcTables":[]}
+{"qIsHidden":true,"qIsSystem":true,"qName":"$FieldNo","qCardinal":7,"qTags":["$hidden","$system","$numeric","$integer"],"qSrcTables":[]}
+{"qIsHidden":true,"qIsSystem":true,"qName":"$Info","qCardinal":1,"qTags":["$hidden","$system","$ascii","$text"],"qSrcTables":[]}
+{"qName":"BRAND_TERRITORY_KEY","qCardinal":1114,"qTags":["$numeric","$integer"],"qSrcTables":["ISAandPOD"]}
+{"qName":"BRIDGE_KEY","qCardinal":14243,"qTags":["$numeric","$integer"],"qSrcTables":["ISAandPOD"]}
+{"qName":"MONTH_DATE_KEY","qCardinal":24,"qTags":["$numeric","$integer"],"qSrcTables":["ISAandPOD"]}
+{"qName":"DATE_RANGE","qCardinal":39,"qTags":["$ascii","$text"],"qSrcTables":["ISAandPOD"]}
+{"qName":"USE_ISA","qCardinal":2,"qTags":["$ascii","$text"],"qSrcTables":["ISAandPOD"]}
+{"qName":"USE_POD","qCardinal":2,"qTags":["$ascii","$text"],"qSrcTables":["ISAandPOD"]}
+{"qName":"DM_USAGE","qCardinal":4,"qTags":["$ascii","$text"],"qSrcTables":["ISAandPOD"]}
