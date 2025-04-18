@@ -1,0 +1,132 @@
+///$tab Main
+SET ThousandSep=',';
+SET DecimalSep='.';
+SET MoneyThousandSep=',';
+SET MoneyDecimalSep='.';
+SET MoneyFormat='$#,##0.00;($#,##0.00)';
+SET TimeFormat='h:mm:ss TT';
+SET DateFormat='M/D/YYYY';
+SET TimestampFormat='M/D/YYYY h:mm:ss[.fff] TT';
+SET FirstWeekDay=6;
+SET BrokenWeeks=1;
+SET ReferenceDay=0;
+SET FirstMonthOfYear=1;
+SET CollationLocale='en-US';
+SET CreateSearchIndexOnReload=1;
+SET MonthNames='Jan;Feb;Mar;Apr;May;Jun;Jul;Aug;Sep;Oct;Nov;Dec';
+SET LongMonthNames='January;February;March;April;May;June;July;August;September;October;November;December';
+SET DayNames='Mon;Tue;Wed;Thu;Fri;Sat;Sun';
+SET LongDayNames='Monday;Tuesday;Wednesday;Thursday;Friday;Saturday;Sunday';
+
+SET QVDLocation = 'lib://LuUS_DATA:DataFiles/Production/';
+
+// LIB CONNECT TO 'LuUS_DATA:MSSQL_LuUS_DW_2.0';
+
+// LIB CONNECT TO 'LuUS_DATA:vAZ_MSSQL_LuUS_DW_2.0';
+LIB CONNECT TO 'LuUS_DATA:SNOWFLAKE_LuUS_BI_Reader';
+
+// LET vSpace='';//if(upper(GetSysAttr('spaceType'))='SHARED' or GetSysAttr('spaceType')='','_DEV');
+LET vSpace=if(upper(GetSysAttr('spaceType'))='SHARED' or GetSysAttr('spaceType')='','_DEV');
+
+Trace '$(vSpace)';
+
+LET vSF = '_SF';
+
+///$tab Load Control Dates
+// CONTROL_DATES:
+// LOAD Distinct
+// 	[IMS Current Rx Data Month Key],
+//     [MM Current Rx Start Data Month Key],
+//     [THR Current Data Month],
+//     [Current THR Data Week]
+//  FROM [$(QVDLocation)Internal/Control Dates$(vSpace).qvd] 
+// (qvd);
+
+// LET vToRxDateKey = Peek('IMS Current Rx Data Month Key') ;
+// LET vFromRxDateKey = Peek('MM Current Rx Start Data Month Key') ;
+// LET vCurrentDataMonth = Peek('THR Current Data Month');
+// LET vCurrentDataWeek = Peek('Current THR Data Week');
+// DROP TABLE CONTROL_DATES;
+///$tab Calendar
+// Calendar:
+// Load
+//   Num#(DATE_KEY) as [Date Key]
+// , Date#(DATE_NAME) as [Date]
+// , Date#(DATE_WEEK_END) as [Date Week End]
+// , SF_TRIMESTER as [SF Trimester]
+// , SF_TRIMESTER_WEEK as [SF Trimester Week]
+// , SF_YEAR as [SF Year]
+// , CALENDAR_YEAR as [Year]
+// , MONTH_OF_YEAR_SHORT_NAME as [Month]
+// , MONTH_ABBREV_YEAR as [Month Year]
+// , MONTH_YEAR_SORT as [Month Year Sort]
+// , CALENDAR_QUARTER as [Quarter]
+// , CALENDAR_YEAR_QUARTER as [Quarter Year]
+// , CALENDAR_YEAR_QUARTER_SORT as [Calendar Quarter Year Sort]
+// , MONTHS_BACK as [Months Back]
+// ; 
+
+// SQL SELECT 
+//   DATE_KEY
+// , CONVERT(varchar(10), cal.DATE_FULL, 101) as DATE_NAME
+// , FLAG_WEEKDAY
+// , CONVERT(varchar(10), cal.DATE_WEEK_END, 101) as DATE_WEEK_END
+// , SF_TRIMESTER
+// , SF_TRIMESTER_WEEK
+// , SF_YEAR
+// , CALENDAR_YEAR
+// , MONTH_OF_YEAR_SHORT_NAME
+// , MONTH_ABBREV_YEAR
+// , MONTH_OF_YEAR  + (CALENDAR_YEAR * 100) as MONTH_YEAR_SORT
+// , CALENDAR_QUARTER
+// , CALENDAR_YEAR_QUARTER
+// ,(CALENDAR_YEAR * 100) + CALENDAR_QUARTER as CALENDAR_YEAR_QUARTER_SORT
+// ,      CASE WHEN EOMONTH('$(vCurrentDataWeek)') = '$(vCurrentDataWeek)'
+//             THEN  DateDiff( M, '$(vCurrentDataMonth)',  DateFromParts(YEAR(DATE_FULL), MONTH(DATE_FULL), 1))  -1
+//             ELSE   DateDiff( M, '$(vCurrentDataMonth)',  DateFromParts(YEAR(DATE_FULL), MONTH(DATE_FULL), 1)) END as MONTHS_BACK 
+
+// FROM   luinc.DIM_CLNDR cal
+// WHERE cal.DATE_FULL <= CAST( FLOOR( CAST( GETDATE() AS float) ) AS smalldatetime)
+// ;
+
+// STORE Calendar INTO '$(QVDLocation)Dimensions/Calendar$(vSpace).qvd' (qvd); 
+// DROP TABLE Calendar;
+
+
+
+
+
+
+
+///$tab DIM_CLNDR_SP_KPI
+// NoConcatenate:
+// DIM_CLNDR:
+// LOAD DATE(DATE#(DATE_KEY, 'YYYYMMDD'), 'YYYYMMDD') AS DATE_KEY,
+// DATE_WEEK_END_KEY,
+// DATE(DATE#(DATE_WEEK_END_KEY, 'YYYYMMDD'), 'YYYY-MM-DD') AS DATE_WEEK_END_1,
+// NUM(CALENDAR_YEAR_MONTH) AS CALENDAR_YEAR_MONTH,
+// CALENDAR_YEAR_QUARTER,
+// dual(MONTH_ABBREV_YEAR,NUM#(CALENDAR_YEAR_MONTH)) as MONTH_YEAR,
+// NUM#(CALENDAR_YEAR) AS CALENDAR_YEAR;
+
+// select *
+// from LUINC.DIM_CLNDR 
+// WHERE DATE_KEY >='20200401';
+
+// STORE DIM_CLNDR INTO '$(QVDLocation)Dimensions/Calendar_SP_KPI$(vSpace).qvd' (qvd); 
+///$tab SF:DIM_CLNDR_SP_KPI
+NoConcatenate:
+DIM_CLNDR:
+LOAD DATE(DATE#(DATE_KEY, 'YYYYMMDD'), 'YYYYMMDD') AS DATE_KEY,
+DATE_WEEK_END_KEY,
+DATE(DATE#(DATE_WEEK_END_KEY, 'YYYYMMDD'), 'YYYY-MM-DD') AS DATE_WEEK_END_1,
+NUM(CALENDAR_YEAR_MONTH) AS CALENDAR_YEAR_MONTH,
+CALENDAR_YEAR_QUARTER,
+dual(MONTH_ABBREV_YEAR,NUM#(CALENDAR_YEAR_MONTH)) as MONTH_YEAR,
+NUM#(CALENDAR_YEAR) AS CALENDAR_YEAR;
+
+select *
+from LUNDBECK_DW.COMMON.CALENDAR 
+WHERE DATE_KEY >='20200401';
+
+STORE DIM_CLNDR INTO '$(QVDLocation)Dimensions/Calendar_SP_KPI$(vSpace)$(vSF).qvd' (qvd);
