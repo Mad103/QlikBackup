@@ -1,0 +1,2612 @@
+///$tab Main
+SET ThousandSep=',';
+SET DecimalSep='.';
+SET MoneyThousandSep=',';
+SET MoneyDecimalSep='.';
+SET MoneyFormat='$#,##0.00;-$#,##0.00';
+SET TimeFormat='h:mm:ss TT';
+SET DateFormat='M/D/YYYY';
+SET TimestampFormat='M/D/YYYY h:mm:ss[.fff] TT';
+SET FirstWeekDay=6;
+SET BrokenWeeks=1;
+SET ReferenceDay=0;
+SET FirstMonthOfYear=1;
+SET CollationLocale='en-US';
+SET CreateSearchIndexOnReload=1;
+SET MonthNames='Jan;Feb;Mar;Apr;May;Jun;Jul;Aug;Sep;Oct;Nov;Dec';
+SET LongMonthNames='January;February;March;April;May;June;July;August;September;October;November;December';
+SET DayNames='Mon;Tue;Wed;Thu;Fri;Sat;Sun';
+SET LongDayNames='Monday;Tuesday;Wednesday;Thursday;Friday;Saturday;Sunday';
+SET NumericalAbbreviation='3:k;6:M;9:G;12:T;15:P;18:E;21:Z;24:Y;-3:m;-6:μ;-9:n;-12:p;-15:f;-18:a;-21:z;-24:y';
+
+// LIB CONNECT TO 'LuUS_DATA:MSSQL_LuUS_DW_2.0';
+// LIB CONNECT TO 'LuUS_DATA:vAZ_MSSQL_LuUS_DW_2.0';
+LIB CONNECT TO 'LuUS_DATA:SNOWFLAKE_LuUS_BI_Reader';
+
+
+$(Must_Include=[lib://LuUS_DATA:DataFiles/Production/QlikSense BI Evolution/Offline Files/Include/Qlik Cloud/FolderConnections.txt]);
+
+
+
+LET vToday=DATE(TODAY(),'YYYYMMDD');
+
+LET vDayNameFlag=1;
+
+Trace 'vDayNameFlag:$(vDayNameFlag)';
+
+LET vSpace=if(upper(GetSysAttr('spaceType'))='SHARED' or GetSysAttr('spaceType')='','_DEV');
+
+Trace 'vSpace:$(vSpace)';
+
+vSF = '_SF';
+Trace 'vSF:$(vSF)';
+
+// SELECT * FROM LUINC.DIM_PRODUCT_GROUP;
+
+// EXIT SCRIPT;
+///$tab Variables
+LIB CONNECT TO 'LuUS_DATA:SNOWFLAKE_LuUS_BI_Reader';
+
+
+$(Must_Include=[lib://LuUS_DATA:DataFiles/Production/QlikSense BI Evolution/Offline Files/Include/Qlik Cloud/FolderConnections.txt]);
+
+
+
+LET vToday=DATE(TODAY(),'YYYYMMDD');//change
+
+LET vDayNameFlag=1;
+
+Trace 'vDayNameFlag:$(vDayNameFlag)';
+
+LET vSpace=if(upper(GetSysAttr('spaceType'))='SHARED' or GetSysAttr('spaceType')='','_DEV');
+
+Trace 'vSpace:$(vSpace)';
+
+// vSF = '_SF_BACKUP';
+vSF = '_SF'; // added for qlik files migration
+Trace 'vSF:$(vSF)';
+
+// SELECT * FROM LUINC.DIM_PRODUCT_GROUP;
+
+// EXIT SCRIPT;
+LOAD
+    CALL_TYPE
+FROM [lib://LuUS_DATA:DataFiles/Production/QlikSense BI Evolution/Offline Files/ExcelFiles/ReactiveCalls.xlsx]
+(ooxml, embedded labels, table is Sheet1);
+
+let vReactiveCalls = peek('CALL_TYPE');
+
+trace '$(vReactiveCalls)';
+///$tab Trimester Filter
+// MaxDate:
+// select Max(CALL_DATE_KEY) as MAX_DATE  FROM LUINC.FACT_CALL_ACTIVITY  
+// where RECORD_TYPE <> 'Logistical Touchpoint';
+
+// LET vMaxDate=Peek('MAX_DATE');
+// LET vCallMaxDate = Peek('MAX_DATE');  Drop Table MaxDate;
+// Let vCallActivity13WeekStartDate=Date((Date#('$(vCallMaxDate)','YYYYMMDD')-97),'YYYYMMDD');
+
+// MaxDate:
+// SQL
+// select max(DATE_WEEK_END_KEY) as MAX_DATE FROM LUINC.DIM_CLNDR cl1 where cl1.DATE_WEEK_END = (
+// select case when max(frs.DATE_KEY)  < max(cl.DATE_WEEK_END_KEY) then 
+// dateadd(DD,-7,max(cl.DATE_WEEK_END))
+// else max(cl.DATE_WEEK_END) end FROM LUINC.FACT_RETAIL_SALES frs
+// join LUINC.DIM_PRODUCT_GROUP pg on frs.PRODUCT_GROUP_KEY = pg.PRODUCT_GROUP_KEY
+// join LUINC.DIM_CLNDR cl on frs.DATE_KEY = cl.DATE_KEY
+// where pg.PRODUCT_NAME ='LATUDA');
+
+// LET vMaxDate=Peek('MAX_DATE');     Drop Table MaxDate;
+
+// Product:
+// SQL Select max(PRODUCT_GROUP_KEY) as ABIM_KEY FROM luinc.DIM_PRODUCT_GROUP pg
+// where PRODUCT_NAME = 'ABILIFY MAINTENA';
+
+// Let vABIMKey = peek('ABIM_KEY');   Drop Table Product;
+
+// Product:
+// SQL Select max(PRODUCT_GROUP_KEY) as ASIM_KEY FROM luinc.DIM_PRODUCT_GROUP pg
+// where PRODUCT_GROUP = 'ABILIFY ASIMTUFII';
+
+// Let vASIMKey = peek('ASIM_KEY');   Drop Table Product;
+
+// maxcallplanstartstartdate:
+// SELECT 
+//  max(DATE_KEY) as DATE
+// FROM 
+//   luinc.FACT_CALL_PLAN cp 
+ 
+//   INNER JOIN luinc.DIM_PRODUCT_GROUP pg On pg.PRODUCT_GROUP_KEY = cp.PRODUCT_GROUP_KEY 
+//   AND PRODUCT_GROUP = 'ABILIFY LAI FRANCHISE' 
+//   INNER JOIN luinc.DIM_TERRITORY t ON t.TERRITORY_KEY = cp.TERRITORY_KEY 
+//   AND t.FRANCHISE = 'PSY' 
+ 
+// where 
+//   (cp.DATE_TO_KEY >= '$(vToday)') 
+//   and ORGANIZATION = 'LU' 
+//   and SALESFORCE_GROUP_NAME = 'SUMMIT' 
+//   ;
+  
+// Let vCPStart = peek('DATE');   Drop Table maxcallplanstartstartdate;
+///$tab SF:Trimester Filter
+MaxDate:
+select Max(CALL_DATE_KEY) as MAX_DATE  FROM LUNDBECK_DW.ANALYTICS.CALL_ACTIVITY_LU_SF
+where RECORD_TYPE_NAME <> 'Logistical Touchpoint'  and CALL_TYPE <> '$(vReactiveCalls)';
+
+LET vMaxDate=Peek('MAX_DATE');//change
+LET vCallMaxDate = Peek('MAX_DATE'); //change
+Drop Table MaxDate;
+Let vCallActivity13WeekStartDate=Date((Date#('$(vCallMaxDate)','YYYYMMDD')-97),'YYYYMMDD');
+
+MaxDate:
+SQL
+select max(DATE_WEEK_END_KEY) as MAX_DATE FROM LUNDBECK_DW.COMMON.CALENDAR cl1 where cl1.DATE_WEEK_END = (
+select case when max(frs.DATE_KEY)  < max(cl.DATE_WEEK_END_KEY) then 
+dateadd(DD,-7,max(cl.DATE_WEEK_END))
+else max(cl.DATE_WEEK_END) end FROM LUNDBECK_DW.ANALYTICS.RETAIL_SALES frs
+join LUNDBECK_DW.COMMON.PRODUCTS pg on frs.PRODUCT_GROUP_CODE = pg.PRODUCT_GROUP_CODE
+join LUNDBECK_DW.COMMON.CALENDAR cl on frs.DATE_KEY = cl.DATE_KEY
+where pg.BRAND ='LATUDA/LURASIDONE HCL');
+
+LET vMaxDate=Peek('MAX_DATE');   TRACE 'vMaxDate:$(vMaxDate)';     Drop Table MaxDate;
+
+Product:
+SQL Select max(PRODUCT_GROUP_CODE) as ABIM_KEY FROM LUNDBECK_DW.COMMON.PRODUCTS pg
+where BRAND = 'ABILIFY MAINTENA';
+
+Let vABIMKey = peek('ABIM_KEY');TRACE 'vABIMKey:$(vABIMKey)';   Drop Table Product;
+
+Product:
+SQL Select max(PRODUCT_GROUP_CODE) as ASIM_KEY FROM LUNDBECK_DW.COMMON.PRODUCTS pg
+where PRODUCT_GROUP_NAME = 'ABILIFY ASIMTUFII';
+
+Let vASIMKey = peek('ASIM_KEY');TRACE 'vASIMKey:$(vASIMKey)';   Drop Table Product;
+
+maxcallplanstartstartdate:
+SELECT 
+ max(START_DATE_KEY) as DATE
+FROM 
+  LUNDBECK_DW.ANALYTICS.CALL_PLAN_LU_SF cp 
+  INNER JOIN LUNDBECK_DW.COMMON.TERRITORY t ON t.TERRITORY_ID = cp.TERRITORY_ID 
+  AND t.FRANCHISE = 'PSY' 
+ 
+where 
+  (cp.END_DATE_KEY >= '$(vToday)' ) //change
+  and SALESFORCE_NAME = 'SUMMIT' 
+    AND PRODUCT_GROUP_NAME = 'ABILIFY LAI FRANCHISE' 
+  ;
+  
+Let vCPStart = peek('DATE');TRACE 'vCPStart:$(vCPStart)';    Drop Table maxcallplanstartstartdate;
+
+
+///$tab Max Call Plan Date
+// NoConcatenate
+// [Call Activity]:
+// SQL SELECT Max(CALL_DATE_KEY) as ENTERD_DATE
+// FROM LUINC.FACT_CALL_ACTIVITY F
+// INNER JOIN LUINC.DIM_TERRITORY T ON T.TERRITORY_KEY = F.TERRITORY_KEY
+// WHERE SALESFORCE_GROUP_NAME = 'SUMMIT';
+
+// Let vMaxCallDataEnteredDate=Date(Date#(Peek('ENTERD_DATE'),'YYYYMMDD'),'DD-MMM-YYYY'); Drop Table [Call Activity];
+
+// trace '$(vMaxCallDataEnteredDate)';
+// NoConcatenate
+// CallPlanDateTable:
+// LOAD '$(vMaxCallDataEnteredDate)' as vMaxCallDataEnteredDate
+// AutoGenerate(1);
+
+// [Call Activity]:
+// SQL SELECT Max(DATE_KEY) as ENTERD_DATE
+// FROM luinc.fact_call_plan fcp
+// join LUINC.DIM_TERRITORY dt on fcp.TERRITORY_KEY = dt.TERRITORY_KEY
+
+// where dt.ORGANIZATION='LU' and dt.SALESFORCE_GROUP_NAME = 'SUMMIT' AND fcp.CURRENT_IND = 'Y'; // Change to Y before publish;
+
+// Let vMaxDateLU=Date(Date#(Peek('ENTERD_DATE'),'YYYYMMDD'),'MM/DD/YYYY');  Drop Table [Call Activity];
+
+// left join (CallPlanDateTable)
+// LOAD '$(vMaxDateLU)' as vMaxDateLU
+// AutoGenerate(1);
+
+
+// Store CallPlanDateTable into [$(vQSBIE_TransformQVD_Dimension)/Max_Call_Plan_Date_ALAI$(vSpace).qvd](qvd); drop table CallPlanDateTable;
+// // exit script;
+
+
+///$tab SF:Max Call Plan Date
+NoConcatenate
+[Call Activity]:
+SQL SELECT Max(CALL_DATE_KEY) as ENTERD_DATE
+FROM LUNDBECK_DW.ANALYTICS.CALL_ACTIVITY_LU_SF F
+INNER JOIN LUNDBECK_DW.COMMON.TERRITORY T ON T.TERRITORY_ID = F.TERRITORY_ID
+WHERE SALESFORCE_NAME = 'SUMMIT';
+
+Let vMaxCallDataEnteredDate=Date(Date#(Peek('ENTERD_DATE'),'YYYYMMDD'),'DD-MMM-YYYY');
+Drop Table [Call Activity];
+
+trace '$(vMaxCallDataEnteredDate)';
+NoConcatenate
+CallPlanDateTable:
+LOAD '$(vMaxCallDataEnteredDate)' as vMaxCallDataEnteredDate
+AutoGenerate(1);
+
+[Call Activity]:
+SQL SELECT Max(START_DATE_KEY) as ENTERD_DATE
+FROM LUNDBECK_DW.ANALYTICS.CALL_PLAN_LU_SF fcp
+join LUNDBECK_DW.COMMON.TERRITORY dt on fcp.TERRITORY_ID = dt.TERRITORY_ID
+
+where dt.SALESFORCE_NAME = 'SUMMIT'AND fcp.CURRENT_IND = 'Y'; // Change to Y before publish
+
+
+Let vMaxDateLU=Date(Date#(Peek('ENTERD_DATE'),'YYYYMMDD'),'MM/DD/YYYY');  Drop Table [Call Activity];
+TRACE 'vMaxDateLU:$(vMaxDateLU)';
+left join (CallPlanDateTable)
+LOAD '$(vMaxDateLU)' as vMaxDateLU
+AutoGenerate(1);
+
+
+Store CallPlanDateTable into [$(vQSBIE_TransformQVD_Dimension)/Max_Call_Plan_Date_ALAI$(vSpace)$(vSF).qvd](qvd); 
+drop table CallPlanDateTable;
+
+///$tab Forecast Weekly
+// NoConcatenate 
+// FactSales : 
+// SELECT 
+//   DATE_KEY, 
+//   '$(vABIMKey)' as PRODUCT_GROUP_KEY,
+//   SUM(TRX) AS TRX, 
+//   FORECAST_CYCLE, 
+//   SUM(TOTAL_DEMAND_UNITS) AS UNITS, 
+//   'FORECAST ABIM' AS SRC,
+//   'ABILIFY MAINTENA' AS [LU Product]
+// FROM 
+//   LUINC.FACT_FORECAST_WEEKLY F 
+//   INNER JOIN LUINC.DIM_PRODUCT_GROUP PG ON PG.PRODUCT_GROUP_KEY = F.PRODUCT_GROUP_KEY 
+// WHERE 
+//   (
+//     (
+//       FORECAST_CYCLE LIKE '%2023%' 
+//       AND DATE_KEY >= '20230401'
+//     ) 
+//     OR DATE_KEY >= '20240101'
+//   ) 
+//   AND (
+//     PRODUCT_NAME = 'ABILIFY MAINTENA' 
+//   ) 
+// GROUP BY 
+//   DATE_KEY, 
+//   FORECAST_CYCLE,
+//   PRODUCT_NAME,
+//   pg.PRODUCT_GROUP_KEY;
+
+// CONCATENATE(FactSales)
+// SELECT 
+//   DATE_KEY, 
+//   '$(vASIMKey)' as PRODUCT_GROUP_KEY,
+//   SUM(TRX) AS TRX, 
+//   FORECAST_CYCLE, 
+//   SUM(TOTAL_DEMAND_UNITS) AS UNITS, 
+//   'FORECAST ASIM' AS SRC,
+//   'ABILIFY ASIMTUFII' AS [LU Product]
+// FROM 
+//   LUINC.FACT_FORECAST_WEEKLY F 
+//   INNER JOIN LUINC.DIM_PRODUCT_GROUP PG ON PG.PRODUCT_GROUP_KEY = F.PRODUCT_GROUP_KEY 
+// WHERE 
+//   (
+//     (
+//       FORECAST_CYCLE LIKE '%2023%' 
+//       AND DATE_KEY >= '20230401'
+//     ) 
+//     OR DATE_KEY >= '20240101'
+//   ) 
+//   AND (
+//     PRODUCT_NAME = 'ABILIFY ASIMTUFII' 
+//   ) 
+// GROUP BY 
+//   DATE_KEY, 
+//   FORECAST_CYCLE,
+//   PRODUCT_NAME,
+//   pg.PRODUCT_GROUP_KEY;
+///$tab SF:Forecast Weekly
+// NOT DONE
+NoConcatenate 
+FactSales : 
+SELECT 
+  DATE_KEY, 
+  '$(vABIMKey)' as PRODUCT_GROUP_KEY,
+  SUM(TRX) AS TRX, 
+  FORECAST_CYCLE, 
+  SUM(TOTAL_DEMAND_UNITS) AS UNITS, 
+  'FORECAST ABIM' AS SRC,
+  'ABILIFY MAINTENA' AS "LU Product"
+FROM 
+  "LUNDBECK_DW"."ANALYTICS"."FORECAST_WEEKLY" F       
+WHERE 
+  (( FORECAST_CYCLE LIKE '%2023%' AND DATE_KEY >= '20230401') OR DATE_KEY >= '20240101') 
+  AND PRODUCT_GROUP_NAME = 'ABILIFY MAINTENA' 
+GROUP BY 
+  DATE_KEY, 
+  FORECAST_CYCLE
+ ;
+
+CONCATENATE(FactSales)
+SELECT 
+  DATE_KEY, 
+  '$(vASIMKey)' as PRODUCT_GROUP_KEY,
+  SUM(TRX) AS TRX, 
+  FORECAST_CYCLE, 
+  SUM(TOTAL_DEMAND_UNITS) AS UNITS, 
+  'FORECAST ASIM' AS SRC,
+  'ABILIFY ASIMTUFII' AS "LU Product"
+FROM 
+  "LUNDBECK_DW"."ANALYTICS"."FORECAST_WEEKLY" F 
+WHERE 
+  (( FORECAST_CYCLE LIKE '%2023%' AND DATE_KEY >= '20230401' ) OR DATE_KEY >= '20240101') 
+  AND PRODUCT_GROUP_NAME = 'ABILIFY ASIMTUFII'  
+GROUP BY 
+  DATE_KEY, 
+  FORECAST_CYCLE
+  ;
+///$tab Fact Non Retail Product Name
+// Concatenate(FactSales) 
+// Select 
+//   DATE_KEY, 
+//   '$(vABIMKey)' as PRODUCT_GROUP_KEY, 
+//   Sum(NORMALIZED_TRX) as NORMALIZED_TRX, 
+//   Sum(UNITS) as UNITS, 
+//   'NATFNRSA' as SRC, 
+//   'NON-RETAIL' as SALES_TYPE, 
+//   'ABILIFY MAINTENA' as [LU Product] 
+// FROM 
+//   LUINC.FACT_NON_RETAIL_SALES frs 
+//   Inner join LUINC.DIM_CUSTOMER dc on frs.CUSTOMER_KEY = dc.CUSTOMER_KEY 
+//   Inner join LUINC.DIM_PRODUCT_GROUP pg on frs.PRODUCT_GROUP_KEY = pg.PRODUCT_GROUP_KEY 
+// where 
+//   frs.DATE_KEY >= '20230407' 
+//   AND frs.DATE_KEY <= '$(vMaxDate)' 
+//   and pg.PRODUCT_NAME = 'ABILIFY MAINTENA' 
+// group by 
+//   DATE_KEY 
+  
+// union 
+
+// Select 
+//   DATE_KEY, 
+//   '$(vASIMKey)' as PRODUCT_GROUP_KEY, 
+//   Sum(NORMALIZED_TRX) as NORMALIZED_TRX, 
+//   Sum(UNITS) as UNITS, 
+//   'NATFNRSAA' as SRC, 
+//   'NON-RETAIL' as SALES_TYPE, 
+//   'ABILIFY ASIMTUFII' as [LU Product] 
+// FROM 
+//   LUINC.FACT_NON_RETAIL_SALES frs 
+//   Inner join LUINC.DIM_CUSTOMER dc on frs.CUSTOMER_KEY = dc.CUSTOMER_KEY 
+//   Inner join LUINC.DIM_PRODUCT_GROUP pg on frs.PRODUCT_GROUP_KEY = pg.PRODUCT_GROUP_KEY 
+// where 
+//   frs.DATE_KEY >= '20230407' 
+//   AND frs.DATE_KEY <= '$(vMaxDate)' 
+//   and pg.PRODUCT_NAME = 'ABILIFY ASIMTUFII' 
+// group by 
+//   DATE_KEY;
+
+///$tab SF: Fact Non Retail Product Name
+Concatenate(FactSales) 
+Select 
+  DATE_KEY, 
+  '$(vABIMKey)' as PRODUCT_GROUP_KEY, 
+  Sum(NORMALIZED_TRX) as NORMALIZED_TRX, 
+  Sum(UNITS) as UNITS, 
+  'NATFNRSA' as SRC, 
+  'NON-RETAIL' as SALES_TYPE, 
+  'ABILIFY MAINTENA' as "LU Product"
+FROM 
+  LUNDBECK_DW.ANALYTICS.NON_RETAIL_SALES frs 
+  Inner join "LUNDBECK_DW"."COMMON"."CUSTOMERS" dc on frs.LUNDBECK_ID = dc.LUNDBECK_ID 
+  Inner join "LUNDBECK_DW"."COMMON"."PRODUCTS" pg on frs.PRODUCT_GROUP_CODE = pg.PRODUCT_GROUP_CODE 
+where 
+  frs.DATE_KEY >= '20230407' 
+  AND frs.DATE_KEY <= '$(vMaxDate)' 
+  and pg.BRAND = 'ABILIFY MAINTENA' 
+group by 
+  DATE_KEY 
+  
+union 
+
+Select 
+  DATE_KEY, 
+  '$(vASIMKey)' as PRODUCT_GROUP_KEY, 
+  Sum(NORMALIZED_TRX) as NORMALIZED_TRX, 
+  Sum(UNITS) as UNITS, 
+  'NATFNRSAA' as SRC, 
+  'NON-RETAIL' as SALES_TYPE, 
+  'ABILIFY ASIMTUFII' as "LU Product" 
+FROM 
+  LUNDBECK_DW.ANALYTICS.NON_RETAIL_SALES frs 
+  Inner join "LUNDBECK_DW"."COMMON"."CUSTOMERS" dc on frs.LUNDBECK_ID = dc.LUNDBECK_ID 
+  Inner join "LUNDBECK_DW"."COMMON"."PRODUCTS" pg on frs.PRODUCT_GROUP_CODE = pg.PRODUCT_GROUP_CODE
+where 
+  frs.DATE_KEY >= '20230407' 
+  AND frs.DATE_KEY <= '$(vMaxDate)' 
+  and pg.BRAND = 'ABILIFY ASIMTUFII' 
+group by 
+  DATE_KEY;
+
+///$tab Fact Non Retail Market
+// Concatenate(FactSales) 
+// Select 
+//   DATE_KEY, 
+//   PG.BRAND as PRODUCT_GROUP_KEY, 
+//   Sum(NORMALIZED_TRX) as NORMALIZED_TRX, 
+//   Sum(UNITS) as UNITS, 
+//   'NATFNRSA' as SRC, 
+//   'NON-RETAIL' as SALES_TYPE, 
+//   'ABILIFY MAINTENA' as [LU Product] 
+// FROM 
+//   LUINC.FACT_NON_RETAIL_SALES frs 
+//   Inner join LUINC.DIM_CUSTOMER dc on frs.CUSTOMER_KEY = dc.CUSTOMER_KEY 
+//   Inner join LUINC.DIM_PRODUCT_GROUP pg on frs.PRODUCT_GROUP_KEY = pg.PRODUCT_GROUP_KEY 
+// where 
+//   frs.DATE_KEY >= '20230407' 
+//   AND frs.DATE_KEY <= '$(vMaxDate)' 
+//   and pg.Brand in ('INVEGA HAFYERA', 'INVEGA TRINZA', 'UZEDY')
+//   and frs.PRODUCT_GROUP_KEY in
+//   (select PRODUCT_GROUP_KEY from LUINC.DIM_MB_ABILIFY_MAINTENA_SA)
+// group by 
+//   DATE_KEY,
+//   PG.BRAND
+// ;
+
+
+// Concatenate(FactSales) 
+// Select 
+//   DATE_KEY, 
+//   PG.BRAND as PRODUCT_GROUP_KEY, 
+//   Sum(NORMALIZED_TRX) as NORMALIZED_TRX, 
+//   Sum(UNITS) as UNITS, 
+//   'NATFNRSAA' as SRC, 
+//   'NON-RETAIL' as SALES_TYPE, 
+//   'ABILIFY ASIMTUFII' as [LU Product] 
+// FROM 
+//   LUINC.FACT_NON_RETAIL_SALES frs 
+//   Inner join LUINC.DIM_CUSTOMER dc on frs.CUSTOMER_KEY = dc.CUSTOMER_KEY 
+//   Inner join LUINC.DIM_PRODUCT_GROUP pg on frs.PRODUCT_GROUP_KEY = pg.PRODUCT_GROUP_KEY 
+// where 
+//   frs.DATE_KEY >= '20230407' 
+//   AND frs.DATE_KEY <= '$(vMaxDate)' 
+//   and pg.Brand in ('INVEGA HAFYERA', 'INVEGA TRINZA', 'UZEDY')
+//   and frs.PRODUCT_GROUP_KEY in
+//   (select PRODUCT_GROUP_KEY from LUINC.DIM_MB_ABILIFY_ASIMTUFII_SA)
+// group by 
+//   DATE_KEY,
+//   PG.BRAND
+// ;
+///$tab SF: Fact Non Retail Market
+Concatenate(FactSales) 
+Select 
+  DATE_KEY, 
+  PG.BRAND as PRODUCT_GROUP_KEY, 
+  Sum(NORMALIZED_TRX) as NORMALIZED_TRX, 
+  Sum(UNITS) as UNITS, 
+  'NATFNRSA' as SRC, 
+  'NON-RETAIL' as SALES_TYPE, 
+  'ABILIFY MAINTENA' as "LU Product" 
+FROM 
+  LUNDBECK_DW.ANALYTICS.NON_RETAIL_SALES frs 
+  Inner join "LUNDBECK_DW"."COMMON"."CUSTOMERS" dc on frs.LUNDBECK_ID = dc.LUNDBECK_ID 
+  Inner join "LUNDBECK_DW"."COMMON"."PRODUCTS" pg on frs.PRODUCT_GROUP_CODE = pg.PRODUCT_GROUP_CODE 
+where 
+  frs.DATE_KEY >= '20230407' 
+  AND frs.DATE_KEY <= '$(vMaxDate)' 
+  and pg.Brand in ('INVEGA HAFYERA', 'INVEGA TRINZA', 'UZEDY')
+  and frs.PRODUCT_GROUP_CODE in
+  (select PRODUCT_GROUP_CODE from "LUNDBECK_DW"."COMMON"."MB_ABILIFY_MAINTENA_SA")
+group by 
+  DATE_KEY,
+  PG.BRAND
+;
+
+
+Concatenate(FactSales) 
+Select 
+  DATE_KEY, 
+  PG.BRAND as PRODUCT_GROUP_KEY, 
+  Sum(NORMALIZED_TRX) as NORMALIZED_TRX, 
+  Sum(UNITS) as UNITS, 
+  'NATFNRSAA' as SRC, 
+  'NON-RETAIL' as SALES_TYPE, 
+  'ABILIFY ASIMTUFII' as "LU Product" 
+FROM 
+  LUNDBECK_DW.ANALYTICS.NON_RETAIL_SALES frs 
+  Inner join "LUNDBECK_DW"."COMMON"."CUSTOMERS" dc on frs.LUNDBECK_ID = dc.LUNDBECK_ID 
+  Inner join "LUNDBECK_DW"."COMMON"."PRODUCTS" pg on frs.PRODUCT_GROUP_CODE = pg.PRODUCT_GROUP_CODE 
+where 
+  frs.DATE_KEY >= '20230407' 
+  AND frs.DATE_KEY <= '$(vMaxDate)' 
+  and pg.Brand in ('INVEGA HAFYERA', 'INVEGA TRINZA', 'UZEDY')
+  and frs.PRODUCT_GROUP_CODE in
+  (select PRODUCT_GROUP_CODE from "LUNDBECK_DW"."COMMON"."MB_ABILIFY_ASIMTUFII_SA")
+group by 
+  DATE_KEY,
+  PG.BRAND
+;
+///$tab Fact Retail Product Name
+// Concatenate(FactSales) 
+// select 
+//   frs.DATE_KEY, 
+//   frs.CUSTOMER_KEY as CUSTOMER_KEY, 
+//   '$(vABIMKey)' as PRODUCT_GROUP_KEY, 
+//   Sum(frs.NORMALIZED_TRX) as NORMALIZED_TRX, 
+//   Sum(frs.NORMALIZED_NRX) as NORMALIZED_NRX, 
+//   Sum(FRS.T_QTY) as UNITS, 
+//   Sum(frs.TRX) as NAT_TRx, 
+//   Sum(frs.NRX) as NAT_NRx, 
+//   max(
+//     CASE WHEN rsw.DATE_KEY = frs.DATE_KEY 
+//     AND dc.CUSTOMER_TYPE <> 'HCO' THEN 1 ELSE 0 END
+//   ) as NEW_WRITERS, 
+//   'NATFRSA' as SRC, 
+//   'RETAIL' as SALES_TYPE, 
+//   'ABILIFY MAINTENA' as [LU Product] 
+// FROM 
+//   LUINC.FACT_RETAIL_SALES frs 
+//   Inner join LUINC.DIM_CUSTOMER dc on frs.CUSTOMER_KEY = dc.CUSTOMER_KEY 
+//   INNER JOIN LUINC.DIM_CHANNEL cha on cha.CHANNEL_KEY = frs.CHANNEL_KEY 
+//   and CHANNEL_NAME <> 'UNKNOWN' 
+//   INNER JOIN LUINC.DIM_PRODUCT_GROUP pg ON pg.PRODUCT_GROUP_KEY = frs.PRODUCT_GROUP_KEY 
+//   INNER JOIN LUINC.DIM_BRAND b ON b.BRAND_CODE = pg.BRAND_CODE 
+//   LEFT OUTER JOIN (
+//     SELECT 
+//       DATE_KEY, 
+//       brand_key, 
+//       CUSTOMER_KEY, 
+//       NEW_WRITERS 
+//     FROM 
+//       LUINC.FACT_RETAIL_SUMMARY_WKLY rsw 
+//       INNER JOIN luinc.DIM_PRODUCT_GROUP pg on pg.PRODUCT_GROUP_KEY = rsw.PRODUCT_GROUP_KEY 
+//     where 
+//       PRODUCT_NAME = 'ABILIFY MAINTENA'
+//   ) RSW ON rsw.brand_key = b.BRAND_KEY 
+//   AND rsw.CUSTOMER_KEY = frs.CUSTOMER_KEY 
+//   AND rsw.NEW_WRITERS = 1 
+//   AND rsw.DATE_KEY = frs.DATE_KEY 
+// where 
+//   frs.DATE_KEY >= '20230407' 
+//   AND pg.BRAND = 'ABILIFY MAINTENA' 
+// group by 
+//   frs.DATE_KEY, 
+//   rsw.DATE_KEY, 
+//   frs.CUSTOMER_KEY, 
+//   dc.CUSTOMER_TYPE 
+// ;
+
+// Concatenate(FactSales) 
+// select 
+//   frs.DATE_KEY, 
+//   frs.CUSTOMER_KEY as CUSTOMER_KEY, 
+//   '$(vASIMKey)' as PRODUCT_GROUP_KEY, 
+//   Sum(frs.NORMALIZED_TRX) as NORMALIZED_TRX, 
+//   Sum(frs.NORMALIZED_NRX) as NORMALIZED_NRX, 
+//   Sum(FRS.T_QTY) as UNITS, 
+//   Sum(frs.TRX) as NAT_TRx, 
+//   Sum(frs.NRX) as NAT_NRx, 
+//   max(
+//     CASE WHEN rsw.DATE_KEY = frs.DATE_KEY 
+//     AND dc.CUSTOMER_TYPE <> 'HCO' THEN 1 ELSE 0 END
+//   ) as NEW_WRITERS, 
+//   'NATFRSAA' as SRC, 
+//   'RETAIL' as SALES_TYPE, 
+//   'ABILIFY ASIMTUFII' as [LU Product] 
+// FROM 
+//   LUINC.FACT_RETAIL_SALES frs 
+//   Inner join LUINC.DIM_CUSTOMER dc on frs.CUSTOMER_KEY = dc.CUSTOMER_KEY 
+//   INNER JOIN LUINC.DIM_CHANNEL cha on cha.CHANNEL_KEY = frs.CHANNEL_KEY 
+//   and CHANNEL_NAME <> 'UNKNOWN' 
+//   INNER JOIN LUINC.DIM_PRODUCT_GROUP pg ON pg.PRODUCT_GROUP_KEY = frs.PRODUCT_GROUP_KEY 
+//   INNER JOIN LUINC.DIM_BRAND b ON b.BRAND_CODE = pg.BRAND_CODE 
+//   LEFT OUTER JOIN (
+//     SELECT 
+//       DATE_KEY, 
+//       brand_key, 
+//       CUSTOMER_KEY, 
+//       NEW_WRITERS 
+//     FROM 
+//       LUINC.FACT_RETAIL_SUMMARY_WKLY rsw 
+//       INNER JOIN luinc.DIM_PRODUCT_GROUP pg on pg.PRODUCT_GROUP_KEY = rsw.PRODUCT_GROUP_KEY 
+//     where 
+//       PRODUCT_NAME = 'ABILIFY ASIMTUFII'
+//   ) RSW ON rsw.brand_key = b.BRAND_KEY 
+//   AND rsw.CUSTOMER_KEY = frs.CUSTOMER_KEY 
+//   AND rsw.NEW_WRITERS = 1 
+//   AND rsw.DATE_KEY = frs.DATE_KEY 
+// where 
+//   frs.DATE_KEY >= '20230407' 
+//   AND pg.BRAND = 'ABILIFY ASIMTUFII' 
+// group by 
+//   frs.DATE_KEY, 
+//   rsw.DATE_KEY, 
+//   frs.CUSTOMER_KEY, 
+//   dc.CUSTOMER_TYPE 
+// ;
+
+///$tab SF: Fact Retail Product Name
+Concatenate(FactSales) 
+select 
+  frs.DATE_KEY, 
+  frs.LUNDBECK_ID as CUSTOMER_KEY, 
+  '$(vABIMKey)' as PRODUCT_GROUP_KEY, 
+  Sum(frs.NORMALIZED_TRX) as NORMALIZED_TRX, 
+  Sum(frs.NORMALIZED_NRX) as NORMALIZED_NRX, 
+  Sum(FRS.T_QTY) as UNITS, 
+  Sum(frs.TRX) as "NAT_TRx", 
+  Sum(frs.NRX) as "NAT_NRx", 
+  max(
+    CASE WHEN nw.DATE_KEY = frs.DATE_KEY 
+    AND dc.CUSTOMER_TYPE <> 'HCO' THEN 1 ELSE 0 END
+  ) as NEW_WRITERS, 
+  'NATFRSA' as SRC, 
+  'RETAIL' as SALES_TYPE, 
+  'ABILIFY MAINTENA' as "LU Product" 
+FROM 
+  "LUNDBECK_DW"."ANALYTICS"."RETAIL_SALES" frs 
+  Inner join "LUNDBECK_DW"."COMMON"."CUSTOMERS" dc on frs.LUNDBECK_ID = dc.LUNDBECK_ID 
+  INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" pg ON pg.PRODUCT_GROUP_CODE = frs.PRODUCT_GROUP_CODE
+  LEFT OUTER JOIN LUNDBECK_DW.ANALYTICS.NEW_WRITER nw             
+ ON nw.brand = 'ABILIFY MAINTENA'
+ And nw.LUNDBECK_ID = frs.LUNDBECK_ID 
+ AND nw.DATE_KEY = frs.DATE_KEY AND  nw.NEW_WRITER = 'Y'
+where 
+  frs.DATE_KEY >= '20230407' 
+  and CHANNEL_NAME <> 'UNKNOWN' 
+  AND pg.BRAND = 'ABILIFY MAINTENA' 
+  and CHANNEL_NAME <> 'UNKNOWN' 
+group by 
+  frs.DATE_KEY, 
+  nw.DATE_KEY, 
+  frs.LUNDBECK_ID, 
+  dc.CUSTOMER_TYPE 
+;
+
+Concatenate(FactSales) 
+select 
+  frs.DATE_KEY, 
+  frs.LUNDBECK_ID as CUSTOMER_KEY, 
+  '$(vASIMKey)' as PRODUCT_GROUP_KEY, 
+  Sum(frs.NORMALIZED_TRX) as NORMALIZED_TRX, 
+  Sum(frs.NORMALIZED_NRX) as NORMALIZED_NRX, 
+  Sum(FRS.T_QTY) as UNITS, 
+  Sum(frs.TRX) as NAT_TRx, 
+  Sum(frs.NRX) as NAT_NRx, 
+  max(
+    CASE WHEN nw.DATE_KEY = frs.DATE_KEY      //revisit
+    AND dc.CUSTOMER_TYPE <> 'HCO' THEN 1 ELSE 0 END
+  ) as NEW_WRITERS, 
+  'NATFRSAA' as SRC, 
+  'RETAIL' as SALES_TYPE, 
+  'ABILIFY ASIMTUFII' as "LU Product" 
+FROM 
+  "LUNDBECK_DW"."ANALYTICS"."RETAIL_SALES" frs 
+  Inner join "LUNDBECK_DW"."COMMON"."CUSTOMERS" dc on frs.LUNDBECK_ID = dc.LUNDBECK_ID 
+  INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" pg ON pg.PRODUCT_GROUP_CODE = frs.PRODUCT_GROUP_CODE 
+  LEFT OUTER JOIN LUNDBECK_DW.ANALYTICS.NEW_WRITER nw             
+ ON nw.brand = 'ABILIFY ASIMTUFII'
+ And nw.LUNDBECK_ID = frs.LUNDBECK_ID 
+ AND nw.DATE_KEY = frs.DATE_KEY AND  nw.NEW_WRITER = 'Y'
+where 
+  frs.DATE_KEY >= '20230407' 
+  AND pg.BRAND = 'ABILIFY ASIMTUFII' 
+  and CHANNEL_NAME <> 'UNKNOWN' 
+group by 
+  frs.DATE_KEY, 
+  nw.DATE_KEY, 
+  frs.LUNDBECK_ID, 
+  dc.CUSTOMER_TYPE 
+;
+
+///$tab Fact Retail Market
+// Concatenate(FactSales) 
+// select 
+//   frs.DATE_KEY, 
+//   frs.CUSTOMER_KEY as CUSTOMER_KEY, 
+//   PG.BRAND as PRODUCT_GROUP_KEY, 
+//   Sum(frs.NORMALIZED_TRX) as NORMALIZED_TRX, 
+//   Sum(frs.NORMALIZED_NRX) as NORMALIZED_NRX, 
+//   Sum(FRS.T_QTY) as UNITS, 
+//   Sum(frs.TRX) as NAT_TRx, 
+//   Sum(frs.NRX) as NAT_NRx, 
+//   'NATFRSA' as SRC, 
+//   'RETAIL' as SALES_TYPE, 
+//   'ABILIFY MAINTENA' as [LU Product] 
+// FROM 
+//   LUINC.FACT_RETAIL_SALES frs 
+//   Inner join LUINC.DIM_CUSTOMER dc on frs.CUSTOMER_KEY = dc.CUSTOMER_KEY 
+//   INNER JOIN LUINC.DIM_CHANNEL cha on cha.CHANNEL_KEY = frs.CHANNEL_KEY 
+//   and CHANNEL_NAME <> 'UNKNOWN' 
+//   INNER JOIN LUINC.DIM_PRODUCT_GROUP pg ON pg.PRODUCT_GROUP_KEY = frs.PRODUCT_GROUP_KEY 
+//   INNER JOIN LUINC.DIM_BRAND b ON b.BRAND_CODE = pg.BRAND_CODE  
+// where 
+//   frs.DATE_KEY >= '20230407' 
+//   and pg.Brand in ('INVEGA HAFYERA', 'INVEGA TRINZA', 'UZEDY')
+//   and frs.PRODUCT_GROUP_KEY in
+//   (select PRODUCT_GROUP_KEY from LUINC.DIM_MB_ABILIFY_MAINTENA_SA)
+// group by 
+//   frs.DATE_KEY, 
+//   frs.CUSTOMER_KEY, 
+//   PG.BRAND
+  
+// union 
+
+// select 
+//   frs.DATE_KEY, 
+//   frs.CUSTOMER_KEY as CUSTOMER_KEY, 
+//   PG.BRAND as PRODUCT_GROUP_KEY, 
+//   Sum(frs.NORMALIZED_TRX) as NORMALIZED_TRX, 
+//   Sum(frs.NORMALIZED_NRX) as NORMALIZED_NRX, 
+//   Sum(FRS.T_QTY) as UNITS, 
+//   Sum(frs.TRX) as NAT_TRx, 
+//   Sum(frs.NRX) as NAT_NRx, 
+//   'NATFRSAA' as SRC, 
+//   'RETAIL' as SALES_TYPE, 
+//   'ABILIFY ASIMTUFII' as [LU Product] 
+// FROM 
+//   LUINC.FACT_RETAIL_SALES frs 
+//   Inner join LUINC.DIM_CUSTOMER dc on frs.CUSTOMER_KEY = dc.CUSTOMER_KEY 
+//   INNER JOIN LUINC.DIM_CHANNEL cha on cha.CHANNEL_KEY = frs.CHANNEL_KEY 
+//   and CHANNEL_NAME <> 'UNKNOWN' 
+//   INNER JOIN LUINC.DIM_PRODUCT_GROUP pg ON pg.PRODUCT_GROUP_KEY = frs.PRODUCT_GROUP_KEY 
+//   INNER JOIN LUINC.DIM_BRAND b ON b.BRAND_CODE = pg.BRAND_CODE 
+// where 
+//   frs.DATE_KEY >= '20230407' 
+//   and pg.Brand in ('INVEGA HAFYERA', 'INVEGA TRINZA', 'UZEDY')
+//   and frs.PRODUCT_GROUP_KEY in
+//   (select PRODUCT_GROUP_KEY from LUINC.DIM_MB_ABILIFY_ASIMTUFII_SA)
+// group by 
+//   frs.DATE_KEY, 
+//   frs.CUSTOMER_KEY, 
+//   PG.BRAND
+//   ;
+  
+
+///$tab SF: Fact Retail Market
+Concatenate(FactSales) 
+select 
+  frs.DATE_KEY, 
+  frs.LUNDBECK_ID as CUSTOMER_KEY, 
+  PG.BRAND as PRODUCT_GROUP_KEY, 
+  Sum(frs.NORMALIZED_TRX) as NORMALIZED_TRX, 
+  Sum(frs.NORMALIZED_NRX) as NORMALIZED_NRX, 
+  Sum(FRS.T_QTY) as UNITS, 
+  Sum(frs.TRX) as "NAT_TRx", 
+  Sum(frs.NRX) as "NAT_NRx", 
+  'NATFRSA' as SRC, 
+  'RETAIL' as SALES_TYPE, 
+  'ABILIFY MAINTENA' as "LU Product" 
+FROM 
+  "LUNDBECK_DW"."ANALYTICS"."RETAIL_SALES" frs 
+  Inner join "LUNDBECK_DW"."COMMON"."CUSTOMERS" dc on frs.LUNDBECK_ID = dc.LUNDBECK_ID 
+  INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" pg ON pg.PRODUCT_GROUP_CODE = frs.PRODUCT_GROUP_CODE 
+where 
+  frs.DATE_KEY >= '20230407' 
+  and pg.Brand in ('INVEGA HAFYERA', 'INVEGA TRINZA', 'UZEDY')
+  and CHANNEL_NAME <> 'UNKNOWN' 
+  and frs.PRODUCT_GROUP_CODE in
+  (select PRODUCT_GROUP_CODE from "LUNDBECK_DW"."COMMON"."MB_ABILIFY_MAINTENA_SA")
+  and CHANNEL_NAME <> 'UNKNOWN' 
+group by 
+  frs.DATE_KEY, 
+  frs.LUNDBECK_ID, 
+  PG.BRAND
+  
+union 
+
+select 
+  frs.DATE_KEY, 
+  frs.LUNDBECK_ID as CUSTOMER_KEY, 
+  PG.BRAND as PRODUCT_GROUP_KEY, 
+  Sum(frs.NORMALIZED_TRX) as NORMALIZED_TRX, 
+  Sum(frs.NORMALIZED_NRX) as NORMALIZED_NRX, 
+  Sum(FRS.T_QTY) as UNITS, 
+  Sum(frs.TRX) as NAT_TRx, 
+  Sum(frs.NRX) as NAT_NRx, 
+  'NATFRSAA' as SRC, 
+  'RETAIL' as SALES_TYPE, 
+  'ABILIFY ASIMTUFII' as "LU Product"
+FROM 
+  "LUNDBECK_DW"."ANALYTICS"."RETAIL_SALES" frs 
+  Inner join "LUNDBECK_DW"."COMMON"."CUSTOMERS" dc on frs.LUNDBECK_ID = dc.LUNDBECK_ID 
+  INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" pg ON pg.PRODUCT_GROUP_CODE = frs.PRODUCT_GROUP_CODE
+where 
+  frs.DATE_KEY >= '20230407' 
+  and pg.Brand in ('INVEGA HAFYERA', 'INVEGA TRINZA', 'UZEDY')
+  and CHANNEL_NAME <> 'UNKNOWN' 
+  and frs.PRODUCT_GROUP_CODE in
+  (select PRODUCT_GROUP_CODE from "LUNDBECK_DW"."COMMON"."MB_ABILIFY_ASIMTUFII_SA")
+  and CHANNEL_NAME <> 'UNKNOWN' 
+group by 
+  frs.DATE_KEY, 
+  frs.LUNDBECK_ID, 
+  PG.BRAND
+  ;
+  
+
+///$tab National Table
+// Concatenate(FactSales) 
+// SELECT 
+//   nsa.DATE_KEY as DATE_KEY, 
+//   nsa.NRX as NORMALIZED_NRX, 
+//   nsa.NORMALIZED_TRX as NORMALIZED_TRX, 
+//   nsa.NBRX as NORMALIZED_NBRX, 
+//   nsa.T_QTY as UNITS, 
+//   'FNRSWA' as SRC, 
+//   'ABILIFY MAINTENA' as [LU Product] 
+// FROM 
+//   LUINC.FACT_NATIONAL_SALES_WEEKLY nsa 
+//   inner join luinc.DIM_PRODUCT_GROUP PG ON PG.PRODUCT_GROUP_KEY = nsa.PRODUCT_GROUP_KEY 
+// WHERE 
+//   BRAND in ('ABILIFY MAINTENA') 
+//   and nsa.DATE_KEY >= '20230407' 
+//   and nsa.DATE_KEY <= '$(vMaxDate)';
+// Concatenate(FactSales) 
+// SELECT 
+//   nsa.DATE_KEY as DATE_KEY, 
+//   nsa.NORMALIZED_TRX as NORMALIZED_TRX, 
+//   nsa.UNITS as UNITS, 
+//   'FNNRSWA' as SRC, 
+//   'ABILIFY MAINTENA' as [LU Product]
+// FROM 
+//   LUINC.FACT_NATIONAL_NON_RETAIL_WEEKLY nsa 
+//   inner join luinc.DIM_PRODUCT_GROUP PG ON PG.PRODUCT_GROUP_KEY = nsa.PRODUCT_GROUP_KEY 
+// WHERE 
+//   BRAND in ('ABILIFY MAINTENA')
+//   and nsa.DATE_KEY >= '20230407'
+//   and nsa.DATE_KEY <= '$(vMaxDate)';
+  
+  
+// Concatenate(FactSales) 
+// SELECT 
+//   nsa.DATE_KEY as DATE_KEY, 
+//   nsa.NRX as NORMALIZED_NRX, 
+//   nsa.NORMALIZED_TRX as NORMALIZED_TRX, 
+//   nsa.NBRX as NORMALIZED_NBRX, 
+//   nsa.T_QTY as UNITS, 
+//   'FNRSWAA' as SRC, 
+//   'ABILIFY ASIMTUFII' as [LU Product] 
+// FROM 
+//   LUINC.FACT_NATIONAL_SALES_WEEKLY nsa 
+//   inner join luinc.DIM_PRODUCT_GROUP PG ON PG.PRODUCT_GROUP_KEY = nsa.PRODUCT_GROUP_KEY 
+// WHERE 
+//   BRAND in ('ABILIFY ASIMTUFII') 
+//   and nsa.DATE_KEY >= '20230407' 
+//   and nsa.DATE_KEY <= '$(vMaxDate)';
+// Concatenate(FactSales) 
+// SELECT 
+//   nsa.DATE_KEY as DATE_KEY, 
+//   nsa.NORMALIZED_TRX as NORMALIZED_TRX, 
+//   nsa.UNITS as UNITS, 
+//   'FNNRSWAA' as SRC, 
+//   'ABILIFY ASIMTUFII' as [LU Product] 
+// FROM 
+//   LUINC.FACT_NATIONAL_NON_RETAIL_WEEKLY nsa 
+//   inner join luinc.DIM_PRODUCT_GROUP PG ON PG.PRODUCT_GROUP_KEY = nsa.PRODUCT_GROUP_KEY 
+// WHERE 
+//   BRAND in ('ABILIFY ASIMTUFII') 
+//   and nsa.DATE_KEY >= '20230407' 
+//   and nsa.DATE_KEY <= '$(vMaxDate)';
+
+///$tab SF:National Table
+Concatenate(FactSales) 
+SELECT 
+  nsa.DATE_KEY as DATE_KEY, 
+  nsa.NRX as NORMALIZED_NRX, 
+  nsa.TRX as NORMALIZED_TRX, 
+  nsa.NBRX as NORMALIZED_NBRX, 
+  nsa.T_QTY as UNITS, 
+  'FNRSWA' as SRC, 
+  'ABILIFY MAINTENA' as "LU Product" 
+FROM 
+  "LUNDBECK_DW"."ANALYTICS".NATIONAL_SALES_WEEKLY nsa 
+  inner join "LUNDBECK_DW"."COMMON"."PRODUCTS" pg ON pg.PRODUCT_GROUP_CODE = nsa.PRODUCT_GROUP_CODE 
+WHERE 
+  pg.BRAND in ('ABILIFY MAINTENA') 
+  and nsa.DATE_KEY >= '20230407' 
+  and nsa.DATE_KEY <= '$(vMaxDate)';
+Concatenate(FactSales) 
+SELECT 
+  nsa.DATE_KEY as DATE_KEY, 
+  nsa.NORMALIZED_TRX as NORMALIZED_TRX, 
+  nsa.UNITS as UNITS, 
+  'FNNRSWA' as SRC, 
+  'ABILIFY MAINTENA' as "LU Product"
+FROM 
+  "LUNDBECK_DW"."ANALYTICS".NATIONAL_NON_RETAIL_WEEKLY nsa 
+  inner join "LUNDBECK_DW"."COMMON"."PRODUCTS" pg ON pg.PRODUCT_GROUP_CODE = nsa.PRODUCT_GROUP_CODE
+WHERE 
+  pg.BRAND in ('ABILIFY MAINTENA')
+  and nsa.DATE_KEY >= '20230407'
+  and nsa.DATE_KEY <= '$(vMaxDate)';
+  
+Concatenate(FactSales) 
+SELECT 
+  nsa.DATE_KEY as DATE_KEY, 
+  nsa.NRX as NORMALIZED_NRX, 
+  nsa.TRX as NORMALIZED_TRX, 
+  nsa.NBRX as NORMALIZED_NBRX, 
+  nsa.T_QTY as UNITS, 
+  'FNRSWAA' as SRC, 
+  'ABILIFY ASIMTUFII' as "LU Product" 
+FROM 
+  "LUNDBECK_DW"."ANALYTICS".NATIONAL_SALES_WEEKLY nsa 
+  inner join "LUNDBECK_DW"."COMMON"."PRODUCTS" pg ON pg.PRODUCT_GROUP_CODE = nsa.PRODUCT_GROUP_CODE 
+WHERE 
+  pg.BRAND in ('ABILIFY ASIMTUFII') 
+  and nsa.DATE_KEY >= '20230407' 
+  and nsa.DATE_KEY <= '$(vMaxDate)';
+Concatenate(FactSales) 
+SELECT 
+  nsa.DATE_KEY as DATE_KEY, 
+  nsa.NORMALIZED_TRX as NORMALIZED_TRX, 
+  nsa.UNITS as UNITS, 
+  'FNNRSWAA' as SRC, 
+  'ABILIFY ASIMTUFII' as "LU Product"
+FROM 
+  "LUNDBECK_DW"."ANALYTICS".NATIONAL_NON_RETAIL_WEEKLY nsa 
+  inner join "LUNDBECK_DW"."COMMON"."PRODUCTS" pg ON pg.PRODUCT_GROUP_CODE = nsa.PRODUCT_GROUP_CODE
+WHERE 
+  pg.BRAND in ('ABILIFY ASIMTUFII')
+  and nsa.DATE_KEY >= '20230407'
+  and nsa.DATE_KEY <= '$(vMaxDate)';
+///$tab Fact Call Plan
+// Concatenate(FactSales) 
+ 
+// SELECT 
+//   IIF(
+//     cp.DATE_KEY = '20230501', '20230511', 
+//     CP.DATE_KEY
+//   ) AS DATE_KEY, 
+//   cp.DATE_TO_KEY, 
+//   cp.CUSTOMER_KEY as UNIQUE_CUSTOMER_KEY, 
+//   cp.CUSTOMER_KEY, 
+//   cp.PLANNED_CALLS as PDE, 
+//   cp.TERRITORY_KEY as TERRITORY_KEY, 
+//   iif(
+//     CUSTOMER_TYPE = 'HCO', 'SNF', 'HCP'
+//   ) AS CUSTOMER_TYPE_FLAG, 
+//   pg.PRODUCT_GROUP_KEY as PRODUCT_GROUP_KEY, 
+//   CP.DETAIL_PRIORITY, 
+//   'FCPAAA' as SRC, 
+//   'ABILIFY LAI FRANCHISE' as [LU Product] 
+// FROM 
+//   luinc.FACT_CALL_PLAN cp 
+//   INNER JOIN luinc.DIM_CUSTOMER c ON c.CUSTOMER_KEY = cp.CUSTOMER_KEY 
+//   INNER JOIN luinc.DIM_PRODUCT_GROUP pg On pg.PRODUCT_GROUP_KEY = cp.PRODUCT_GROUP_KEY 
+//   AND PRODUCT_GROUP = 'ABILIFY LAI FRANCHISE' 
+//   INNER JOIN luinc.DIM_TERRITORY t ON t.TERRITORY_KEY = cp.TERRITORY_KEY 
+//   AND t.FRANCHISE = 'PSY' 
+//   INNER JOIN luinc.DIM_CLNDR cal ON cal.date_key = cp.DATE_KEY 
+// where 
+//   (cp.DATE_TO_KEY >= '$(vToday)') 
+//   and ORGANIZATION = 'LU' 
+//   and SALESFORCE_GROUP_NAME = 'SUMMIT' 
+//   and cp.CUSTOMER_KEY <> 0
+//   and CUSTOMER_TYPE <> 'HCO';
+  
+
+///$tab SF: Fact Call Plan
+Concatenate(FactSales) 
+ 
+SELECT 
+  IFF(
+    cp.START_DATE_KEY = '20230501', '20230511', 
+    CP.START_DATE_KEY
+  ) AS DATE_KEY, 
+  cp.END_DATE_KEY as DATE_TO_KEY, 
+  cp.LUNDBECK_ID as UNIQUE_CUSTOMER_KEY, 
+  cp.LUNDBECK_ID as CUSTOMER_KEY, 
+  cp.PLANNED_CALLS as PDE, 
+  cp.TERRITORY_ID as TERRITORY_KEY, 
+  iff(
+   c.CUSTOMER_TYPE = 'HCO', 'SNF', 'HCP'
+  ) AS CUSTOMER_TYPE_FLAG, 
+  pg.PRODUCT_GROUP_CODE as PRODUCT_GROUP_KEY, 
+  CP.DETAIL_PRIORITY, 
+  'FCPAAA' as SRC, 
+  'ABILIFY LAI FRANCHISE' as "LU Product" 
+FROM 
+  "LUNDBECK_DW"."ANALYTICS"."CALL_PLAN_LU_SF" cp 
+  INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" PG ON pg.PRODUCT_GROUP_NAME = CP.PRODUCT_GROUP_NAME
+  INNER JOIN "LUNDBECK_DW"."COMMON"."CUSTOMERS" c ON c.LUNDBECK_ID = cp.LUNDBECK_ID 
+  INNER JOIN "LUNDBECK_DW"."COMMON"."TERRITORY" t ON t.TERRITORY_ID = cp.TERRITORY_ID 
+  AND t.FRANCHISE = 'PSY' 
+  INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" cal ON cal.date_key = cp.START_DATE_KEY 
+where 
+(cp.END_DATE_KEY >= '$(vToday)') 
+//   (cp.END_DATE_KEY >= '$(vToday)') 
+  and t.SALESFORCE_NAME = 'SUMMIT' 
+  and cp.LUNDBECK_ID <> 'UNK'
+  and c.CUSTOMER_TYPE <> 'HCO'
+AND cp.PRODUCT_GROUP_NAME = 'ABILIFY LAI FRANCHISE'
+;
+  
+
+///$tab Fact Call Activity HCP
+// NoConcatenate CALL_ACTIVITY : 
+// SELECT 
+//   'FCAAAA' as SRC, 
+//   'ABILIFY LAI FRANCHISE' as [LU Product], 
+//   'HCP' AS CUSTOMER_TYPE_FLAG, 
+//   FCA.CALL_DATE_KEY as DATE_KEY, 
+//   fca.CUSTOMER_KEY as UNIQUE_CUSTOMER_KEY, 
+//   fca.CUSTOMER_KEY as CUSTOMER_KEY, 
+//   pg.PRODUCT_GROUP_KEY as PRODUCT_GROUP_KEY, 
+//   fca.TERRITORY_KEY as TERRITORY_KEY, 
+//   Sum(fca.PDE) as PDE, 
+//   FACT_SOURCE_ID, 
+//   fca.DETAIL_PRIORITY 
+// FROM 
+//   luinc.FACT_CALL_ACTIVITY fca 
+//   INNER JOIN luinc.DIM_PRODUCT_GROUP pg On pg.PRODUCT_GROUP_KEY = fca.PRODUCT_GROUP_KEY 
+//   AND PG.PRODUCT_GROUP = 'ABILIFY LAI FRANCHISE' 
+//   INNER JOIN luinc.DIM_CLNDR cal ON cal.date_key = fca.CALL_DATE_KEY 
+//   INNER JOIN luinc.DIM_CUSTOMER c ON c.CUSTOMER_KEY = fca.CUSTOMER_KEY 
+//   INNER JOIN luinc.DIM_TERRITORY t ON t.TERRITORY_KEY = fca.TERRITORY_KEY 
+// WHERE 
+//   t.FRANCHISE = 'PSY' 
+//   and cal.DATE_KEY >= '$(vCPStart)' 
+//   and RECORD_TYPE not in ('Logistical Touchpoint') 
+//   and fca.CUSTOMER_KEY <> 0 
+//   and SALESFORCE_GROUP_NAME = 'SUMMIT' 
+//   AND PDE > 0 
+//   AND CUSTOMER_TYPE <> 'HCO'
+// group by 
+//   FCA.CALL_DATE_KEY, 
+//   fca.CUSTOMER_KEY, 
+//   fca.DETAIL_PRIORITY, 
+//   fca.TERRITORY_KEY, 
+//   pg.PRODUCT_GROUP_KEY, 
+//   FACT_SOURCE_ID;
+  
+// Concatenate(CALL_ACTIVITY)
+// SELECT 
+//   'FCAAM' as SRC, 
+//   'ABILIFY MAINTENA' as [LU Product], 
+//   'HCP' AS CUSTOMER_TYPE_FLAG, 
+//   FCA.CALL_DATE_KEY as DATE_KEY, 
+//   fca.CUSTOMER_KEY as UNIQUE_CUSTOMER_KEY, 
+//   fca.CUSTOMER_KEY as CUSTOMER_KEY, 
+//   pg.PRODUCT_GROUP_KEY as PRODUCT_GROUP_KEY, 
+//   fca.TERRITORY_KEY as TERRITORY_KEY, 
+//   Sum(fca.PDE) as PDE, 
+//   FACT_SOURCE_ID, 
+//   fca.DETAIL_PRIORITY 
+// FROM 
+//   luinc.FACT_CALL_ACTIVITY fca 
+//   INNER JOIN luinc.DIM_PRODUCT_GROUP pg On pg.PRODUCT_GROUP_KEY = fca.PRODUCT_GROUP_KEY 
+//   AND PG.PRODUCT_GROUP = 'ABILIFY LAI FRANCHISE' 
+//   INNER JOIN luinc.DIM_CLNDR cal ON cal.date_key = fca.CALL_DATE_KEY 
+//   INNER JOIN luinc.DIM_CUSTOMER c ON c.CUSTOMER_KEY = fca.CUSTOMER_KEY 
+//   INNER JOIN luinc.DIM_TERRITORY t ON t.TERRITORY_KEY = fca.TERRITORY_KEY 
+// WHERE 
+//   t.FRANCHISE = 'PSY' 
+//   and cal.DATE_KEY >= '$(vCPStart)' 
+//   and RECORD_TYPE not in ('Logistical Touchpoint') 
+//   and fca.CUSTOMER_KEY <> 0 
+//   and SALESFORCE_GROUP_NAME = 'SUMMIT' 
+//   AND PDE > 0 
+//   and (upper(PRIMARY_MESSAGE) = 'ABILIFY MAINTENA' or upper(SECONDARY_MESSAGE) = 'ABILIFY MAINTENA')
+//   AND CUSTOMER_TYPE <> 'HCO'
+// group by 
+//   FCA.CALL_DATE_KEY, 
+//   fca.CUSTOMER_KEY, 
+//   fca.DETAIL_PRIORITY, 
+//   fca.TERRITORY_KEY, 
+//   pg.PRODUCT_GROUP_KEY, 
+//   FACT_SOURCE_ID;
+  
+// Concatenate(CALL_ACTIVITY)
+// SELECT 
+//   'FCAAA' as SRC, 
+//   'ABILIFY ASIMTUFII' as [LU Product], 
+//   'HCP' AS CUSTOMER_TYPE_FLAG, 
+//   FCA.CALL_DATE_KEY as DATE_KEY, 
+//   fca.CUSTOMER_KEY as UNIQUE_CUSTOMER_KEY, 
+//   fca.CUSTOMER_KEY as CUSTOMER_KEY, 
+//   pg.PRODUCT_GROUP_KEY as PRODUCT_GROUP_KEY, 
+//   fca.TERRITORY_KEY as TERRITORY_KEY, 
+//   Sum(fca.PDE) as PDE, 
+//   FACT_SOURCE_ID, 
+//   fca.DETAIL_PRIORITY 
+// FROM 
+//   luinc.FACT_CALL_ACTIVITY fca 
+//   INNER JOIN luinc.DIM_PRODUCT_GROUP pg On pg.PRODUCT_GROUP_KEY = fca.PRODUCT_GROUP_KEY 
+//   AND PG.PRODUCT_GROUP = 'ABILIFY LAI FRANCHISE' 
+//   INNER JOIN luinc.DIM_CLNDR cal ON cal.date_key = fca.CALL_DATE_KEY 
+//   INNER JOIN luinc.DIM_CUSTOMER c ON c.CUSTOMER_KEY = fca.CUSTOMER_KEY 
+//   INNER JOIN luinc.DIM_TERRITORY t ON t.TERRITORY_KEY = fca.TERRITORY_KEY 
+// WHERE 
+//   t.FRANCHISE = 'PSY' 
+//   and cal.DATE_KEY >= '$(vCPStart)' 
+//   and RECORD_TYPE not in ('Logistical Touchpoint') 
+//   and fca.CUSTOMER_KEY <> 0 
+//   and SALESFORCE_GROUP_NAME = 'SUMMIT' 
+//   AND PDE > 0 
+//   and (upper(PRIMARY_MESSAGE) = 'ABILIFY ASIMTUFII' or upper(SECONDARY_MESSAGE) = 'ABILIFY ASIMTUFII')
+//   AND CUSTOMER_TYPE <> 'HCO'
+// group by 
+//   FCA.CALL_DATE_KEY, 
+//   fca.CUSTOMER_KEY, 
+//   fca.DETAIL_PRIORITY, 
+//   fca.TERRITORY_KEY, 
+//   pg.PRODUCT_GROUP_KEY, 
+//   FACT_SOURCE_ID;
+  
+// NoConcatenate CALL_PLAN_DATA : 
+// SELECT 
+//   cp.TERRITORY_KEY as TERRITORY_KEY, 
+//   cp.CUSTOMER_KEY as UNIQUE_CUSTOMER_KEY, 
+//   pg.PRODUCT_GROUP_KEY as PRODUCT_GROUP_KEY, 
+//   '1' AS CALL_PLAN 
+// FROM 
+//   luinc.FACT_CALL_PLAN cp 
+//   INNER JOIN luinc.DIM_CUSTOMER c ON c.CUSTOMER_KEY = cp.CUSTOMER_KEY 
+//   INNER JOIN luinc.DIM_PRODUCT_GROUP pg On pg.PRODUCT_GROUP_KEY = cp.PRODUCT_GROUP_KEY 
+//   AND PRODUCT_GROUP = 'ABILIFY LAI FRANCHISE' 
+//   INNER JOIN luinc.DIM_TERRITORY t ON t.TERRITORY_KEY = cp.TERRITORY_KEY 
+//   AND t.FRANCHISE = 'PSY' 
+//   INNER JOIN luinc.DIM_CLNDR cal ON cal.date_key = cp.DATE_KEY 
+// where 
+//   (cp.DATE_TO_KEY >= '$(vToday)') 
+//   and ORGANIZATION = 'LU' 
+//   and SALESFORCE_GROUP_NAME = 'SUMMIT' 
+//   and cp.CUSTOMER_KEY <> 0
+// ;
+// LEFT JOIN (CALL_ACTIVITY) LOAD * Resident CALL_PLAN_DATA;
+// DROP 
+//   Table CALL_PLAN_DATA;
+// Concatenate(FactSales) LOAD * RESIDENT CALL_ACTIVITY;
+// DROP 
+//   TABLE CALL_ACTIVITY;
+
+///$tab SF: Fact Call Activity HCP
+NoConcatenate 
+CALL_ACTIVITY: 
+SELECT 
+  'FCAAAA' as SRC, 
+  'ABILIFY LAI FRANCHISE' as "LU Product", 
+  'HCP' AS CUSTOMER_TYPE_FLAG, 
+  FCA.CALL_DATE_KEY as DATE_KEY, 
+  fca.LUNDBECK_ID as UNIQUE_CUSTOMER_KEY, 
+  fca.LUNDBECK_ID as CUSTOMER_KEY, 
+  pg.PRODUCT_GROUP_CODE as PRODUCT_GROUP_KEY, 
+  fca.TERRITORY_ID as TERRITORY_KEY, 
+  Sum(fca.PDE) as PDE, 
+  fca.CALL_ID as FACT_SOURCE_ID, 
+  fca.DETAIL_PRIORITY 
+FROM 
+  "LUNDBECK_DW"."ANALYTICS"."CALL_ACTIVITY_LU_SF" fca 
+  INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" PG ON pg.PRODUCT_GROUP_NAME =  fca.PRODUCT_GROUP_NAME
+  INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" cal ON cal.date_key = fca.CALL_DATE_KEY 
+  INNER JOIN "LUNDBECK_DW"."COMMON"."CUSTOMERS" c ON c.LUNDBECK_ID = fca.LUNDBECK_ID 
+  INNER JOIN "LUNDBECK_DW"."COMMON"."TERRITORY" t ON t.TERRITORY_ID = fca.TERRITORY_ID
+WHERE 
+  t.FRANCHISE = 'PSY' 
+  and cal.DATE_KEY >= '$(vCPStart)'
+  and CALL_TYPE <> '$(vReactiveCalls)'
+  and RECORD_TYPE_NAME not in ('Logistical Touchpoint') 
+  and fca.LUNDBECK_ID <> 'UNK' 
+  and SALESFORCE_NAME = 'SUMMIT' 
+  AND PDE > 0 
+  AND CUSTOMER_TYPE <> 'HCO'
+  AND fca.PRODUCT_GROUP_NAME = 'ABILIFY LAI FRANCHISE' 
+group by 
+  FCA.CALL_DATE_KEY, 
+  fca.LUNDBECK_ID, 
+  fca.DETAIL_PRIORITY, 
+  fca.TERRITORY_ID, 
+  pg.PRODUCT_GROUP_CODE, 
+  FCA.CALL_ID;
+  
+Concatenate(CALL_ACTIVITY)
+SELECT 
+  'FCAAM' as SRC, 
+  'ABILIFY MAINTENA' as "LU Product", 
+  'HCP' AS CUSTOMER_TYPE_FLAG, 
+  FCA.CALL_DATE_KEY as DATE_KEY, 
+  fca.LUNDBECK_ID as UNIQUE_CUSTOMER_KEY, 
+  fca.LUNDBECK_ID as CUSTOMER_KEY, 
+  pg.PRODUCT_GROUP_CODE as PRODUCT_GROUP_KEY, 
+  fca.TERRITORY_ID as TERRITORY_KEY, 
+  Sum(fca.PDE) as PDE, 
+  FCA.CALL_ID as FACT_SOURCE_ID, 
+  fca.DETAIL_PRIORITY 
+FROM 
+  "LUNDBECK_DW"."ANALYTICS"."CALL_ACTIVITY_LU_SF" fca  
+  INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" PG ON pg.PRODUCT_GROUP_NAME =  fca.PRODUCT_GROUP_NAME
+  INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" cal ON cal.date_key = fca.CALL_DATE_KEY 
+  INNER JOIN "LUNDBECK_DW"."COMMON"."CUSTOMERS" c ON c.LUNDBECK_ID = fca.LUNDBECK_ID 
+  INNER JOIN "LUNDBECK_DW"."COMMON"."TERRITORY" t ON t.TERRITORY_ID = fca.TERRITORY_ID 
+WHERE 
+  t.FRANCHISE = 'PSY' 
+  and cal.DATE_KEY >= '$(vCPStart)' 
+  and CALL_TYPE <> '$(vReactiveCalls)'
+  and RECORD_TYPE_NAME not in ('Logistical Touchpoint') 
+  and fca.LUNDBECK_ID <> 'UNK' 
+  and SALESFORCE_NAME = 'SUMMIT' 
+  AND PDE > 0 
+  and (upper(PRIMARY_MESSAGE) = 'ABILIFY MAINTENA' or upper(SECONDARY_MESSAGE) = 'ABILIFY MAINTENA')
+  AND CUSTOMER_TYPE <> 'HCO'
+  AND fca.PRODUCT_GROUP_NAME = 'ABILIFY LAI FRANCHISE'
+group by 
+  FCA.CALL_DATE_KEY, 
+  fca.LUNDBECK_ID, 
+  fca.DETAIL_PRIORITY, 
+  fca.TERRITORY_ID, 
+  pg.PRODUCT_GROUP_CODE, 
+  fca.CALL_ID;
+  
+Concatenate(CALL_ACTIVITY)
+SELECT 
+  'FCAAA' as SRC, 
+  'ABILIFY ASIMTUFII' as "LU Product", 
+  'HCP' AS CUSTOMER_TYPE_FLAG, 
+  FCA.CALL_DATE_KEY as DATE_KEY, 
+  fca.LUNDBECK_ID as UNIQUE_CUSTOMER_KEY, 
+  fca.LUNDBECK_ID as CUSTOMER_KEY, 
+  pg.PRODUCT_GROUP_CODE as PRODUCT_GROUP_KEY, 
+  fca.TERRITORY_ID as TERRITORY_KEY, 
+  Sum(fca.PDE) as PDE, 
+  fca.CALL_ID as FACT_SOURCE_ID, 
+  fca.DETAIL_PRIORITY 
+FROM 
+  "LUNDBECK_DW"."ANALYTICS"."CALL_ACTIVITY_LU_SF" fca 
+  INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" PG ON pg.PRODUCT_GROUP_NAME =  fca.PRODUCT_GROUP_NAME
+  INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" cal ON cal.date_key = fca.CALL_DATE_KEY 
+  INNER JOIN "LUNDBECK_DW"."COMMON"."CUSTOMERS" c ON c.LUNDBECK_ID = fca.LUNDBECK_ID 
+  INNER JOIN "LUNDBECK_DW"."COMMON"."TERRITORY" t ON t.TERRITORY_ID = fca.TERRITORY_ID
+WHERE 
+  t.FRANCHISE = 'PSY' 
+  and cal.DATE_KEY >= '$(vCPStart)' 
+  and CALL_TYPE <> '$(vReactiveCalls)'
+  and RECORD_TYPE_NAME not in ('Logistical Touchpoint') 
+  and fca.LUNDBECK_ID <> 'UNK' 
+  and SALESFORCE_NAME = 'SUMMIT' 
+  AND PDE > 0 
+  and (upper(PRIMARY_MESSAGE) = 'ABILIFY ASIMTUFII' or upper(SECONDARY_MESSAGE) = 'ABILIFY ASIMTUFII')
+  AND CUSTOMER_TYPE <> 'HCO'
+  AND fca.PRODUCT_GROUP_NAME = 'ABILIFY LAI FRANCHISE' 
+group by 
+  FCA.CALL_DATE_KEY, 
+  fca.LUNDBECK_ID, 
+  fca.DETAIL_PRIORITY, 
+  fca.TERRITORY_ID, 
+  pg.PRODUCT_GROUP_CODE, 
+  fca.CALL_ID;
+  
+NoConcatenate CALL_PLAN_DATA : 
+SELECT 
+  cp.TERRITORY_ID as TERRITORY_KEY, 
+  cp.LUNDBECK_ID as UNIQUE_CUSTOMER_KEY, 
+  pg.PRODUCT_GROUP_CODE as PRODUCT_GROUP_KEY, 
+  '1' AS CALL_PLAN 
+FROM 
+  "LUNDBECK_DW"."ANALYTICS"."CALL_PLAN_LU_SF" cp 
+  INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" PG ON pg.PRODUCT_GROUP_NAME = CP.PRODUCT_GROUP_NAME
+  INNER JOIN "LUNDBECK_DW"."COMMON"."CUSTOMERS" c ON c.LUNDBECK_ID = cp.LUNDBECK_ID 
+  INNER JOIN "LUNDBECK_DW"."COMMON"."TERRITORY" t ON t.TERRITORY_ID = cp.TERRITORY_ID
+  AND t.FRANCHISE = 'PSY' 
+  INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" cal ON cal.date_key = cp.START_DATE_KEY 
+where 
+(cp.END_DATE_KEY >= '$(vToday)' ) 
+//   (cp.END_DATE_KEY >= '$(vToday)') 
+  and SALESFORCE_NAME = 'SUMMIT' 
+  and cp.LUNDBECK_ID <> 'UNK'
+  AND cp.PRODUCT_GROUP_NAME = 'ABILIFY LAI FRANCHISE' 
+;
+LEFT JOIN (CALL_ACTIVITY) LOAD * Resident CALL_PLAN_DATA;
+DROP 
+  Table CALL_PLAN_DATA;
+Concatenate(FactSales) LOAD * RESIDENT CALL_ACTIVITY;
+DROP 
+  TABLE CALL_ACTIVITY;
+
+///$tab Monthly Working Days
+// NoConcatenate
+// [Temp Working Days]:
+// Load 
+// SPLIT_WEEK_KEY AS [Date Key],
+// MONTH_KEY,
+// TERRITORY_KEY,
+// num(date#(MONTH_KEY,'YYYYMMDD')) & TERRITORY_KEY as Working_Day_Key,
+// NUMBER_WORKING_DAY AS [Completed Working Days];
+// SQL
+// select fca.TERRITORY_KEY,
+// t.TERRITORY_ID, 
+// SPLIT_WEEK_KEY,
+// CONCAT(LEFT(  fca.CALL_DATE_KEY,6) ,'01') AS MONTH_KEY,
+// count(DISTINCT fca.CALL_DATE_KEY) AS NUMBER_WORKING_DAY
+// FROM LUINC.FACT_CALL_ACTIVITY  fca
+// join LUINC.DIM_CLNDR cal
+// on fca.CALL_DATE_KEY = cal.DATE_KEY
+// join LUINC.DIM_TERRITORY t
+// on fca.TERRITORY_KEY= t.TERRITORY_KEY
+// join LUINC.DIM_PRODUCT_GROUP pg
+// On pg.PRODUCT_GROUP_KEY = fca.PRODUCT_GROUP_KEY
+// where fca.DETAIL_PRIORITY =1
+// and fca.PDE>0
+// and cal.FLAG_WEEKDAY='Y'
+// and t.SALESFORCE_GROUP_NAME in ('SUMMIT')
+// group by SPLIT_WEEK_KEY,
+// CONCAT(left( fca.CALL_DATE_KEY,6) ,'01'),
+// fca.TERRITORY_KEY,  t.TERRITORY_ID;
+
+// INNER JOIN([Temp Working Days])
+// LOAD Distinct TERRITORY_KEY,
+// SALESFORCE_GROUP_NAME
+// FROM [$(vQSBIE_ExtractQVD_Dimension)/DIM_TERRITORY$(vSpace).qvd]
+// (qvd)
+// WHERE SALESFORCE_GROUP_NAME = 'SUMMIT';
+
+// Inner Join([Temp Working Days])
+// LOAD Distinct SALESFORCE_GROUP_NAME, If(MaxCallDate>=DATE_KEY and MaxCallDate<=DATE_TO_KEY,DATE_KEY, Date(DAte#(DATE_TO_KEY,'YYYYMMDD')+1,'YYYYMMDD')) as TrimesterStart;
+// SQL Select MAX(DATE_KEY) as DATE_KEY ,MAX(DATE_TO_KEY) as DATE_TO_KEY, MaxCallDate, T.SALESFORCE_GROUP_NAME 
+// from luinc.fact_call_plan fp 
+// INNER JOIN LUINC.DIM_TERRITORY T on T.TERRITORY_KEY = fp.TERRITORY_KEY
+// LEFT JOIN(
+//     Select Max(CALL_DATE_KEY) as MaxCallDate,  SALESFORCE_GROUP_NAME from LUINC.FACT_CALL_ACTIVITY  c
+//     inner join LUINC.DIM_TERRITORY t on t.TERRITORY_KEY = c.TERRITORY_KEY
+//     inner join LUINC.DIM_CLNDR dc on dc.DATE_KEY=c.CALL_DATE_KEY
+//     where t.SALESFORCE_GROUP_NAME in ('SUMMIT')
+//     group by  SALESFORCE_GROUP_NAME
+// )fil on fil.SALESFORCE_GROUP_NAME=T.SALESFORCE_GROUP_NAME
+// where t.SALESFORCE_GROUP_NAME in ('SUMMIT')
+// group by T.SALESFORCE_GROUP_NAME,MaxCallDate;
+
+
+// drop Field SALESFORCE_GROUP_NAME, Working_Day_Key from [Temp Working Days];
+
+// [Working Days]:
+// LOAD 
+// *,
+// 'WD' AS SRC
+// RESIDENT [Temp Working Days];
+
+// Store [Working Days] into [$(vQSBIE_TransformQVD_Fact)/WORKING_DAYS_ALAI$(vSpace).qvd](Qvd);
+// DROP TABLE [Temp Working Days];
+// DROP TABLE [Working Days];
+///$tab SF: Monthly Working Days
+NoConcatenate
+[Temp Working Days]:
+Load 
+SPLIT_WEEK_KEY AS [Date Key],
+MONTH_KEY,
+TERRITORY_KEY,
+num(date#(MONTH_KEY,'YYYYMMDD')) & TERRITORY_KEY as Working_Day_Key,
+NUMBER_WORKING_DAY AS [Completed Working Days];
+SQL
+select fca.TERRITORY_ID as TERRITORY_KEY,
+t.TERRITORY_ID, 
+cal.SPLIT_WEEK_KEY,
+CONCAT(LEFT(  fca.CALL_DATE_KEY,6) ,'01') AS MONTH_KEY,
+count(DISTINCT fca.CALL_DATE_KEY) AS NUMBER_WORKING_DAY
+FROM "LUNDBECK_DW"."ANALYTICS"."CALL_ACTIVITY_LU_SF"  fca
+join "LUNDBECK_DW"."COMMON"."CALENDAR" cal
+on fca.CALL_DATE_KEY = cal.DATE_KEY
+join "LUNDBECK_DW"."COMMON"."TERRITORY" t
+on fca.TERRITORY_ID= t.TERRITORY_ID
+join "LUNDBECK_DW"."COMMON"."PRODUCTS" pg
+On pg.PRODUCT_GROUP_NAME = fca.PRODUCT_GROUP_NAME
+where fca.DETAIL_PRIORITY =1
+and fca.PDE>0
+and cal.FLAG_WEEKDAY='Y'
+and t.SALESFORCE_NAME in ('SUMMIT')
+and CALL_TYPE <> '$(vReactiveCalls)'
+group by SPLIT_WEEK_KEY,
+CONCAT(left( fca.CALL_DATE_KEY,6) ,'01'),
+fca.TERRITORY_ID,  t.TERRITORY_ID;
+
+INNER JOIN([Temp Working Days])
+LOAD Distinct TERRITORY_KEY,
+SALESFORCE_GROUP_NAME
+FROM [$(vQSBIE_ExtractQVD_Dimension)/DIM_TERRITORY$(vSpace)$(vSF).qvd]
+(qvd)
+WHERE SALESFORCE_GROUP_NAME = 'SUMMIT';
+
+Inner Join([Temp Working Days])
+LOAD Distinct SALESFORCE_GROUP_NAME, If(MaxCallDate>=DATE_KEY and MaxCallDate<=DATE_TO_KEY,DATE_KEY, Date(DAte#(DATE_TO_KEY,'YYYYMMDD')+1,'YYYYMMDD')) as TrimesterStart;
+SQL Select MAX(START_DATE_KEY) as DATE_KEY ,MAX(END_DATE_KEY) as DATE_TO_KEY, 
+"MaxCallDate", T.SALESFORCE_NAME as SALESFORCE_GROUP_NAME
+from "LUNDBECK_DW"."ANALYTICS"."CALL_PLAN_LU_SF" fp 
+INNER JOIN "LUNDBECK_DW"."COMMON"."TERRITORY" T on T.TERRITORY_ID = fp.TERRITORY_ID
+LEFT JOIN(
+    Select Max(CALL_DATE_KEY) as "MaxCallDate",  SALESFORCE_NAME as SALESFORCE_GROUP_NAME 
+    from "LUNDBECK_DW"."ANALYTICS"."CALL_ACTIVITY_LU_SF"  c
+    inner join "LUNDBECK_DW"."COMMON"."TERRITORY" t on t.TERRITORY_ID = c.TERRITORY_ID
+    inner join "LUNDBECK_DW"."COMMON"."CALENDAR" dc on dc.DATE_KEY=c.CALL_DATE_KEY
+    where t.SALESFORCE_NAME in ('SUMMIT')  and CALL_TYPE <> '$(vReactiveCalls)'
+    group by  SALESFORCE_NAME
+)fil on fil.SALESFORCE_GROUP_NAME=T.SALESFORCE_NAME
+where t.SALESFORCE_NAME in ('SUMMIT') 
+and (fp.END_DATE_KEY >= '$(vToday)' ) 
+group by T.SALESFORCE_NAME,"MaxCallDate";
+
+
+drop Field SALESFORCE_GROUP_NAME, Working_Day_Key from [Temp Working Days];
+
+[Working Days]:
+LOAD 
+*,
+'WD' AS SRC
+RESIDENT [Temp Working Days];
+
+Store [Working Days] into [$(vQSBIE_TransformQVD_Fact)/WORKING_DAYS_ALAI$(vSpace)$(vSF).qvd](Qvd);
+DROP TABLE [Temp Working Days];
+DROP TABLE [Working Days];
+///$tab Territory (uPDATE)
+// FactFinalSales:
+// LOAD *,
+// CUSTOMER_KEY&PRODUCT_GROUP_KEY as [Call Product Customer Key]
+// Resident FactSales;
+
+// Drop Table FactSales;
+
+// ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// // EXIT SCRIPT;
+// SRCTable:
+// LOAD Distinct SRC, [LU Product]
+// Resident FactFinalSales;
+
+
+// Drop Fields [LU Product] from FactFinalSales;
+
+// NoConcatenate
+// Temp:
+// LOAD DATE_KEY as [Date Key]
+//     ,UNIQUE_CUSTOMER_KEY as [Customer Writer Key]
+//     ,CUSTOMER_KEY as [Customer Key]
+//     ,num#(PRODUCT_GROUP_KEY) as [Product Key]
+//     ,TERRITORY_KEY as [Territory Key]
+//     ,CUSTOMER_TYPE_FLAG
+//     ,NEW_WRITERS as [New Writers]
+//     ,NORMALIZED_TRX as [Normalized TRx]
+//     ,NORMALIZED_NRX as [Normalized NRx]
+//     ,NORMALIZED_NBRX as [Normalized NBRx]
+//     ,NAT_TRx
+// 	,NAT_NRx
+//     ,SALES_TYPE AS [Sales Type]
+//     ,UNITS
+//     ,FORECAST_CYCLE
+//     ,TRX
+//     ,PDE
+//     ,DETAIL_PRIORITY as [Detail Priority]
+//     ,FACT_SOURCE_ID
+//     ,CALL_PLAN
+// 	,SRC
+// Resident FactFinalSales where not(Wildmatch(SRC,'FCA*')) or DATE_KEY>='20230101'
+// ;
+
+// Drop Table FactFinalSales;
+
+// Rename Table Temp to FactFinalSales;
+
+
+// Store FactFinalSales into [$(vQSBIE_TransformQVD_Fact)/FACT_FIELD_BI_NS2_ALAI_5_3_Test$(vSpace).qvd](Qvd);
+
+// Store SRCTable into [$(vQSBIE_TransformQVD_Dimension)/NS2_SRC_LINK_ALAI_5_3_Test$(vSpace).qvd](Qvd);
+
+// Drop Table SRCTable;
+
+// DROP Table FactFinalSales;
+
+// DIM_TERRITORY_FINAL:
+// LOAD TERRITORY_KEY as [Territory Key], 
+//      IF(IsNull(TERRITORY_ID),'NULL',TERRITORY_ID) as [Territory ID], 
+//      IF(IsNull(TERRITORY_NAME),'NULL',TERRITORY_NAME) as [Territory Name], 
+//      IF(IsNull(AREA_ID),'NULL',AREA_ID) as [Area ID], 
+//      IF(IsNull(AREA_NAME),'NULL',AREA_NAME) as [Area Name],
+//      AREA_NAME as AREA_NAME2,
+//      IF(IsNull(REGION_ID),'NULL',REGION_ID) as [Region ID],
+//      IF(IsNull(REGION_NAME),'NULL',REGION_NAME) as [Region Name], 
+//      ZONE_ID, 
+//      ZONE_NAME, 
+//      ACCT_MGR_FIRST_NAME, 
+//      ACCT_MGR_LAST_NAME, 
+//      If(IsNull(ACCT_MGR_FULL_NAME),'-',ACCT_MGR_FULL_NAME&'-'&ACCT_MGR_AD_ID)  as [Account Manager Full Name], 
+//      ACCT_MGR_AD_ID as [Account Manager AD ID], 
+//      AREA_MGR_FIRST_NAME, 
+//      AREA_MGR_LAST_NAME, 
+//      If(IsNull(AREA_MGR_FULL_NAME),'-',AREA_MGR_FULL_NAME) as [ASM Name],  //Confirmed by Frank on 04/10 
+//      AREA_MGR_AD_ID as [Area Manager AD ID], 
+//      RGN_MGR_FIRST_NAME, 
+//      RGN_MGR_LAST_NAME, 
+//      If(IsNull(RGN_MGR_FULL_NAME),'-',RGN_MGR_FULL_NAME) as [RBD Name],  //Confirmed by Frank on 04/10
+//      RGN_MGR_AD_ID as [Region Manager AD ID], 
+//      FRANCHISE as [Territory Franchise], 
+//      SALESFORCE_GROUP  as [Salesforce Group], 
+//      IF(IsNull(SALESFORCE_GROUP_NAME),'NULL',SALESFORCE_GROUP_NAME) as [Salesforce Group Name], 
+//      TERRITORY_NAME as [Territory Team Name],
+//      Replace(AREA_GROUP_NAME,'ASM-','') as [Area Group Name], 
+//      ORGANIZATION as [Organization], 
+//      TERR_CURRENT_IND as [Terr Current Ind]
+// FROM
+// [$(vQSBIE_ExtractQVD_Dimension)/DIM_TERRITORY$(vSpace).qvd]
+// (qvd)
+// where TERR_CURRENT_IND='Y' and 
+// ORGANIZATION='LU' and SALESFORCE_GROUP_NAME = 'SUMMIT' and REGION_ID<>'UNASSIGNED'
+// ;
+
+///$tab SF:Territory (uPDATE)
+FactFinalSales:
+LOAD *,
+CUSTOMER_KEY&PRODUCT_GROUP_KEY as [Call Product Customer Key]
+Resident FactSales;
+
+Drop Table FactSales;
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// EXIT SCRIPT;
+SRCTable:
+LOAD Distinct SRC, [LU Product]
+Resident FactFinalSales;
+
+
+Drop Fields [LU Product] from FactFinalSales;
+
+NoConcatenate
+Temp:
+LOAD DATE_KEY as [Date Key]
+    ,UNIQUE_CUSTOMER_KEY as [Customer Writer Key]
+    ,CUSTOMER_KEY as [Customer Key]
+    ,num#(PRODUCT_GROUP_KEY) as [Product Key]
+    ,TERRITORY_KEY as [Territory Key]
+    ,CUSTOMER_TYPE_FLAG
+    ,NEW_WRITERS as [New Writers]
+    ,NORMALIZED_TRX as [Normalized TRx]
+    ,NORMALIZED_NRX as [Normalized NRx]
+    ,NORMALIZED_NBRX as [Normalized NBRx]
+    ,NAT_TRx
+	,NAT_NRx
+    ,SALES_TYPE AS [Sales Type]
+    ,UNITS
+    ,FORECAST_CYCLE
+    ,TRX
+    ,PDE
+    ,DETAIL_PRIORITY as [Detail Priority]
+    ,FACT_SOURCE_ID
+    ,CALL_PLAN
+	,SRC
+Resident FactFinalSales where not(Wildmatch(SRC,'FCA*')) or DATE_KEY>='20230101'
+;
+
+Drop Table FactFinalSales;
+
+Rename Table Temp to FactFinalSales;
+
+
+Store FactFinalSales into [$(vQSBIE_TransformQVD_Fact)/FACT_FIELD_BI_NS2_ALAI_5_3_Test$(vSpace)$(vSF).qvd](Qvd);
+
+Store SRCTable into [$(vQSBIE_TransformQVD_Dimension)/NS2_SRC_LINK_ALAI_5_3_Test$(vSpace)$(vSF).qvd](Qvd);
+
+Drop Table SRCTable;
+
+DROP Table FactFinalSales;
+
+DIM_TERRITORY_FINAL:
+LOAD TERRITORY_KEY as [Territory Key], 
+     IF(IsNull(TERRITORY_ID),'NULL',TERRITORY_ID) as [Territory ID], 
+     IF(IsNull(TERRITORY_NAME),'NULL',TERRITORY_NAME) as [Territory Name], 
+     IF(IsNull(AREA_ID),'NULL',AREA_ID) as [Area ID], 
+     IF(IsNull(AREA_NAME),'NULL',AREA_NAME) as [Area Name],
+     AREA_NAME as AREA_NAME2,
+     IF(IsNull(REGION_ID),'NULL',REGION_ID) as [Region ID],
+     IF(IsNull(REGION_NAME),'NULL',REGION_NAME) as [Region Name], 
+//      ZONE_ID, 
+//      ZONE_NAME, 
+     ACCT_MGR_FIRST_NAME, 
+     ACCT_MGR_LAST_NAME, 
+     If(IsNull(ACCT_MGR_FULL_NAME),'-',ACCT_MGR_FULL_NAME&'-'&ACCT_MGR_AD_ID)  as [Account Manager Full Name], 
+     ACCT_MGR_AD_ID as [Account Manager AD ID], 
+     AREA_MGR_FIRST_NAME, 
+     AREA_MGR_LAST_NAME, 
+     If(IsNull(AREA_MGR_FULL_NAME),'-',AREA_MGR_FULL_NAME) as [ASM Name],  //Confirmed by Frank on 04/10 
+     AREA_MGR_AD_ID as [Area Manager AD ID], 
+     RGN_MGR_FIRST_NAME, 
+     RGN_MGR_LAST_NAME, 
+     If(IsNull(RGN_MGR_FULL_NAME),'-',RGN_MGR_FULL_NAME) as [RBD Name],  //Confirmed by Frank on 04/10
+     RGN_MGR_AD_ID as [Region Manager AD ID], 
+     FRANCHISE as [Territory Franchise], 
+     SALESFORCE_GROUP  as [Salesforce Group], 
+     IF(IsNull(SALESFORCE_GROUP_NAME),'NULL',SALESFORCE_GROUP_NAME) as [Salesforce Group Name], 
+     TERRITORY_NAME as [Territory Team Name],
+     Replace(AREA_GROUP_NAME,'ASM-','') as [Area Group Name], 
+     ORGANIZATION as [Organization], 
+     TERR_CURRENT_IND as [Terr Current Ind]
+FROM
+[$(vQSBIE_ExtractQVD_Dimension)/DIM_TERRITORY$(vSpace)$(vSF).qvd]
+(qvd)
+where TERR_CURRENT_IND='Y' and 
+ORGANIZATION='LU' and SALESFORCE_GROUP_NAME = 'SUMMIT' and REGION_ID<>'UNASSIGNED'
+;
+
+///$tab Working Day
+// Left Join(DIM_TERRITORY_FINAL)
+// LOAD 
+// IF(NUM#(CP_DATE_TO_KEY) < NUM#('$(vToday)'), DATE(Date#(CP_DATE_TO_KEY,'YYYYMMDD')+1,'YYYYMMDD'),CP_DATE_FROM_KEY) AS CP_DATE_FROM_KEY,
+// IF(NUM#(CP_DATE_TO_KEY) < NUM#(DATE(Date#('$(vToday)','YYYYMMDD')-1,'YYYYMMDD')),  DATE(Date#('$(vToday)','YYYYMMDD')-1,'YYYYMMDD'), date#(CP_DATE_TO_KEY,'YYYYMMDD')) AS CP_DATE_TO_KEY,
+// SALESFORCE_GROUP_NAME;
+// SQL Select MAX(DATE_KEY)  as CP_DATE_FROM_KEY,
+//  MAX(DATE_TO_KEY) as CP_DATE_TO_KEY, SALESFORCE_GROUP_NAME 
+// from luinc.fact_call_plan p
+// inner join LUINC.DIM_TERRITORY t on t.TERRITORY_KEY=p.TERRITORY_KEY and SALESFORCE_GROUP_NAME in ('SUMMIT')
+// group by SALESFORCE_GROUP_NAME;
+
+
+
+// // NoConcatenate
+// // [Temp Working Days]:
+// // Load 
+// // DATE(date#(MONTH_KEY,'YYYYMMDD'),'YYYYMMDD') AS DATE_KEY,
+// // TERRITORY_KEY as [Territory Key],
+// // num(date#(MONTH_KEY,'YYYYMMDD')) & TERRITORY_KEY as Working_Day_Key,
+// // NUMBER_WORKING_DAY AS Completed_Working_Days;
+// // SQL
+// // select fca.TERRITORY_KEY,
+// // t.TERRITORY_ID, 
+// // CONCAT(LEFT(  fca.CALL_DATE_KEY,6) ,'01') AS MONTH_KEY,
+// // count(DISTINCT fca.CALL_DATE_KEY) AS NUMBER_WORKING_DAY
+// // FROM LUINC.FACT_CALL_ACTIVITY  fca
+// // join LUINC.DIM_CLNDR cal
+// // on fca.CALL_DATE_KEY = cal.DATE_KEY
+// // join LUINC.DIM_TERRITORY t
+// // on fca.TERRITORY_KEY= t.TERRITORY_KEY
+// // join LUINC.DIM_PRODUCT_GROUP pg
+// // On pg.PRODUCT_GROUP_KEY = fca.PRODUCT_GROUP_KEY
+// // where fca.DETAIL_PRIORITY =1
+// // and fca.PDE>0
+// // and cal.FLAG_WEEKDAY='Y'
+// // and t.SALESFORCE_GROUP_NAME in ('SUMMIT')
+// // group by CONCAT(left( fca.CALL_DATE_KEY,6) ,'01'),
+// // fca.TERRITORY_KEY,  t.TERRITORY_ID;
+
+// // INNER JOIN([Temp Working Days])
+// // LOAD Distinct TERRITORY_KEY AS [Territory Key],
+// // SALESFORCE_GROUP_NAME
+// // FROM [$(vQSBIE_ExtractQVD_Dimension)/DIM_TERRITORY$(vSpace).qvd]
+// // (qvd)
+// // WHERE SALESFORCE_GROUP_NAME = 'SUMMIT';
+
+// // Inner Join([Temp Working Days])
+// // LOAD Distinct SALESFORCE_GROUP_NAME, If(MaxCallDate>=DATE_KEY and MaxCallDate<=DATE_TO_KEY,DATE_KEY, Date(DAte#(DATE_TO_KEY,'YYYYMMDD')+1,'YYYYMMDD')) as TrimesterStart;
+// // SQL Select MAX(DATE_KEY) as DATE_KEY ,MAX(DATE_TO_KEY) as DATE_TO_KEY, MaxCallDate, T.SALESFORCE_GROUP_NAME 
+// // from luinc.fact_call_plan fp 
+// // INNER JOIN LUINC.DIM_TERRITORY T on T.TERRITORY_KEY = fp.TERRITORY_KEY
+// // LEFT JOIN(
+// //     Select Max(CALL_DATE_KEY) as MaxCallDate,  SALESFORCE_GROUP_NAME from LUINC.FACT_CALL_ACTIVITY  c
+// //     inner join LUINC.DIM_TERRITORY t on t.TERRITORY_KEY = c.TERRITORY_KEY
+// //     inner join LUINC.DIM_CLNDR dc on dc.DATE_KEY=c.CALL_DATE_KEY
+// //     where t.SALESFORCE_GROUP_NAME in ('SUMMIT')
+// //     group by  SALESFORCE_GROUP_NAME
+// // )fil on fil.SALESFORCE_GROUP_NAME=T.SALESFORCE_GROUP_NAME
+// // where t.SALESFORCE_GROUP_NAME in ('SUMMIT')
+// // group by T.SALESFORCE_GROUP_NAME,MaxCallDate;
+
+
+// // Left Join(DIM_TERRITORY_FINAL)
+// // LOAD [Territory Key] ,
+// //      Sum(Completed_Working_Days) as [TTD Working Days]
+// // Resident [Temp Working Days]
+// // where Num(Date#(DATE_KEY,'YYYYMMDD'))>=Num(Date#(TrimesterStart,'YYYYMMDD')) 
+// // group by [Territory Key];
+
+// // drop table [Temp Working Days];
+
+// Store DIM_TERRITORY_FINAL into [$(vQSBIE_TransformQVD_Dimension)/DIM_TERRITORY_FIELD_BI_NS2_ALAI$(vSpace).qvd](qvd);
+
+// // drop Table DIM_TERRITORY_FINAL;
+///$tab SF: Working Day
+Left Join(DIM_TERRITORY_FINAL)
+LOAD 
+IF(NUM#(CP_DATE_TO_KEY) < NUM#('$(vToday)'), DATE(Date#(CP_DATE_TO_KEY,'YYYYMMDD')+1,'YYYYMMDD'),CP_DATE_FROM_KEY) AS CP_DATE_FROM_KEY,
+IF(NUM#(CP_DATE_TO_KEY) < NUM#(DATE(Date#('$(vToday)','YYYYMMDD')-1,'YYYYMMDD')),  DATE(Date#('$(vToday)','YYYYMMDD')-1,'YYYYMMDD'), date#(CP_DATE_TO_KEY,'YYYYMMDD')) AS CP_DATE_TO_KEY,
+SALESFORCE_GROUP_NAME;
+SQL Select MAX(START_DATE_KEY)  as CP_DATE_FROM_KEY,
+ MAX(END_DATE_KEY) as CP_DATE_TO_KEY, SALESFORCE_NAME as SALESFORCE_GROUP_NAME
+from "LUNDBECK_DW"."ANALYTICS"."CALL_PLAN_LU_SF" p
+inner join "LUNDBECK_DW"."COMMON"."TERRITORY" t on t.TERRITORY_ID=p.TERRITORY_ID and SALESFORCE_NAME in ('SUMMIT')
+group by SALESFORCE_NAME;
+
+
+
+// NoConcatenate
+// [Temp Working Days]:
+// Load 
+// DATE(date#(MONTH_KEY,'YYYYMMDD'),'YYYYMMDD') AS DATE_KEY,
+// TERRITORY_KEY as [Territory Key],
+// num(date#(MONTH_KEY,'YYYYMMDD')) & TERRITORY_KEY as Working_Day_Key,
+// NUMBER_WORKING_DAY AS Completed_Working_Days;
+// SQL
+// select fca.TERRITORY_KEY,
+// t.TERRITORY_ID, 
+// CONCAT(LEFT(  fca.CALL_DATE_KEY,6) ,'01') AS MONTH_KEY,
+// count(DISTINCT fca.CALL_DATE_KEY) AS NUMBER_WORKING_DAY
+// FROM LUINC.FACT_CALL_ACTIVITY  fca
+// join LUINC.DIM_CLNDR cal
+// on fca.CALL_DATE_KEY = cal.DATE_KEY
+// join LUINC.DIM_TERRITORY t
+// on fca.TERRITORY_KEY= t.TERRITORY_KEY
+// join LUINC.DIM_PRODUCT_GROUP pg
+// On pg.PRODUCT_GROUP_KEY = fca.PRODUCT_GROUP_KEY
+// where fca.DETAIL_PRIORITY =1
+// and fca.PDE>0
+// and cal.FLAG_WEEKDAY='Y'
+// and t.SALESFORCE_GROUP_NAME in ('SUMMIT')
+// group by CONCAT(left( fca.CALL_DATE_KEY,6) ,'01'),
+// fca.TERRITORY_KEY,  t.TERRITORY_ID;
+
+// INNER JOIN([Temp Working Days])
+// LOAD Distinct TERRITORY_KEY AS [Territory Key],
+// SALESFORCE_GROUP_NAME
+// FROM [$(vQSBIE_ExtractQVD_Dimension)/DIM_TERRITORY$(vSpace).qvd]
+// (qvd)
+// WHERE SALESFORCE_GROUP_NAME = 'SUMMIT';
+
+// Inner Join([Temp Working Days])
+// LOAD Distinct SALESFORCE_GROUP_NAME, If(MaxCallDate>=DATE_KEY and MaxCallDate<=DATE_TO_KEY,DATE_KEY, Date(DAte#(DATE_TO_KEY,'YYYYMMDD')+1,'YYYYMMDD')) as TrimesterStart;
+// SQL Select MAX(DATE_KEY) as DATE_KEY ,MAX(DATE_TO_KEY) as DATE_TO_KEY, MaxCallDate, T.SALESFORCE_GROUP_NAME 
+// from luinc.fact_call_plan fp 
+// INNER JOIN LUINC.DIM_TERRITORY T on T.TERRITORY_KEY = fp.TERRITORY_KEY
+// LEFT JOIN(
+//     Select Max(CALL_DATE_KEY) as MaxCallDate,  SALESFORCE_GROUP_NAME from LUINC.FACT_CALL_ACTIVITY  c
+//     inner join LUINC.DIM_TERRITORY t on t.TERRITORY_KEY = c.TERRITORY_KEY
+//     inner join LUINC.DIM_CLNDR dc on dc.DATE_KEY=c.CALL_DATE_KEY
+//     where t.SALESFORCE_GROUP_NAME in ('SUMMIT')
+//     group by  SALESFORCE_GROUP_NAME
+// )fil on fil.SALESFORCE_GROUP_NAME=T.SALESFORCE_GROUP_NAME
+// where t.SALESFORCE_GROUP_NAME in ('SUMMIT')
+// group by T.SALESFORCE_GROUP_NAME,MaxCallDate;
+
+
+// Left Join(DIM_TERRITORY_FINAL)
+// LOAD [Territory Key] ,
+//      Sum(Completed_Working_Days) as [TTD Working Days]
+// Resident [Temp Working Days]
+// where Num(Date#(DATE_KEY,'YYYYMMDD'))>=Num(Date#(TrimesterStart,'YYYYMMDD')) 
+// group by [Territory Key];
+
+// drop table [Temp Working Days];
+
+Store DIM_TERRITORY_FINAL into [$(vQSBIE_TransformQVD_Dimension)/DIM_TERRITORY_FIELD_BI_NS2_ALAI$(vSpace)$(vSF).qvd](qvd);
+
+// drop Table DIM_TERRITORY_FINAL;
+///$tab Geo Hierarchy 1
+// ///Territory Code/////
+
+// NoConcatenate
+// Temp:
+// LOAD  Distinct 
+//     [Territory ID]
+// RESIDENT DIM_TERRITORY_FINAL
+// WHERE Match([Salesforce Group Name],'SUMMIT');
+
+// Let vRows=NoOfRows('Temp');
+
+// NoConcatenate
+// Temp2:
+// LOAD 0 as Dummy AutoGenerate(0);
+
+// For j=1 to $(vRows) 
+
+// Let i=FieldValue('Territory ID',$(j));
+
+// NoConcatenate
+// Temp3:
+// LOAD Distinct [Area ID]
+// RESIDENT DIM_TERRITORY_FINAL
+// WHERE [Territory ID]='$(i)';
+
+// LET vAREA=Peek('Area ID');
+
+// Drop Table Temp3;
+
+// NoConcatenate
+// Temp3:
+// LOAD Distinct [Region ID]
+// RESIDENT DIM_TERRITORY_FINAL
+// WHERE [Territory ID]='$(i)';
+
+// LET vREGION=Peek('Region ID');
+
+// Drop Table Temp3;
+
+
+// Concatenate(Temp2)
+// LOAD Distinct '$(i)' as Geo_Filter,
+// 	[Territory Name] & ' - '& IF(IsNull([Salesforce Group Name]),'NULL',[Salesforce Group Name]) as Geo_Name,
+//     [Account Manager Full Name] as Geo_Manager,
+// 	'$(i)' as [National Territory ID],
+//     1 as Table_Filter
+// RESIDENT DIM_TERRITORY_FINAL
+// WHERE [Territory ID]='$(i)';
+
+// Concatenate(Temp2)
+// LOAD  Distinct 
+//     '$(i)' as Geo_Filter,
+//     [Area Name] as Geo_Name,
+//     [ASM Name] as Geo_Manager,
+//     [Territory ID] as [National Territory ID],
+//     2 as Table_Filter
+// RESIDENT DIM_TERRITORY_FINAL
+// WHERE [Area ID]='$(vAREA)';
+
+// Concatenate(Temp2)
+// LOAD  Distinct 
+//     '$(i)' as Geo_Filter,
+//     [Region Name] as Geo_Name,
+//     [RBD Name] as Geo_Manager,
+//     [Territory ID] as [National Territory ID],
+//     3 as Table_Filter
+// RESIDENT DIM_TERRITORY_FINAL
+// WHERE [Region ID]='$(vREGION)';
+
+// Concatenate(Temp2)
+// LOAD  Distinct 
+//     '$(i)' as Geo_Filter,
+//     'NATION' as Geo_Name,
+//     '-' as Geo_Manager,
+//     [Territory ID] as [National Territory ID],
+//     4 as Table_Filter
+// RESIDENT DIM_TERRITORY_FINAL
+// Where Match([Salesforce Group Name],'SUMMIT');
+
+// Next 
+
+// drop table Temp;
+
+// ////Area Code///////
+
+// NoConcatenate
+// Temp:
+// LOAD  Distinct 
+//     [Area ID]
+// RESIDENT DIM_TERRITORY_FINAL
+// WHERE Match([Salesforce Group Name],'SUMMIT');
+
+// Let vRows=NoOfRows('Temp');
+
+// For j=1 to $(vRows) 
+
+// Let i=FieldValue('Area ID',$(j));
+
+// NoConcatenate
+// Temp3:
+// LOAD Distinct [Region ID]
+// RESIDENT DIM_TERRITORY_FINAL
+// WHERE [Area ID]='$(i)';
+
+// LET vREGION=Peek('Region ID');
+
+// Drop Table Temp3;
+
+
+// Concatenate(Temp2)
+// LOAD Distinct '$(i)' as Geo_Filter,
+// 	[Area Name] as Geo_Name,
+//     [ASM Name] as Geo_Manager,
+// 	[Territory ID] as [National Territory ID],
+//     2 as Table_Filter
+// RESIDENT DIM_TERRITORY_FINAL
+// WHERE [Area ID]='$(i)';
+
+// Concatenate(Temp2)
+// LOAD  Distinct 
+//     '$(i)' as Geo_Filter,
+//     'Area' as G_LEVEL,
+//     [Region Name] as Geo_Name,
+//     [RBD Name] as Geo_Manager,
+//     [Territory ID] as [National Territory ID],
+//     3 as Table_Filter
+// RESIDENT DIM_TERRITORY_FINAL
+// WHERE [Region ID]='$(vREGION)';
+
+// Concatenate(Temp2)
+// LOAD  Distinct 
+//     '$(i)' as Geo_Filter,
+//     'Area' as G_LEVEL,
+//     'NATION' as Geo_Name,
+//     '-' as Geo_Manager,
+//     [Territory ID] as [National Territory ID],
+//     4 as Table_Filter
+// RESIDENT DIM_TERRITORY_FINAL
+// Where Match([Salesforce Group Name],'SUMMIT');
+
+// Next 
+
+// drop table Temp;
+
+// ///Region Code//////
+
+// NoConcatenate
+// Temp:
+// LOAD  Distinct 
+//     [Region ID]
+// RESIDENT DIM_TERRITORY_FINAL
+// WHERE Match([Salesforce Group Name],'SUMMIT');
+
+// Let vRows=NoOfRows('Temp');
+
+// For j=1 to $(vRows) 
+
+// Let i=FieldValue('Region ID',$(j));
+
+// Concatenate(Temp2)
+// LOAD  Distinct 
+//     '$(i)' as Geo_Filter,
+//     [Region ID] as Geo_Name,
+//     [RBD Name] as Geo_Manager,
+//     [Territory ID] as [National Territory ID],
+//     3 as Table_Filter
+// RESIDENT DIM_TERRITORY_FINAL
+// WHERE [Region ID]='$(i)';
+
+// Concatenate(Temp2)
+// LOAD  Distinct 
+//     '$(i)' as Geo_Filter,
+//     'NATION' as Geo_Name,
+//     '-' as Geo_Manager,
+//     [Territory ID] as [National Territory ID],
+//     3 as Table_Filter
+// RESIDENT DIM_TERRITORY_FINAL
+// Where Match([Salesforce Group Name],'SUMMIT');
+
+// Next 
+
+// drop table Temp;
+
+///$tab SF:Geo Hierarchy 1
+///Territory Code/////
+
+NoConcatenate
+Temp:
+LOAD  Distinct 
+    [Territory ID]
+RESIDENT DIM_TERRITORY_FINAL
+WHERE Match([Salesforce Group Name],'SUMMIT');
+
+Let vRows=NoOfRows('Temp');
+
+NoConcatenate
+Temp2:
+LOAD 0 as Dummy AutoGenerate(0);
+
+For j=1 to $(vRows) 
+
+Let i=FieldValue('Territory ID',$(j));
+
+NoConcatenate
+Temp3:
+LOAD Distinct [Area ID]
+RESIDENT DIM_TERRITORY_FINAL
+WHERE [Territory ID]='$(i)';
+
+LET vAREA=Peek('Area ID');
+
+Drop Table Temp3;
+
+NoConcatenate
+Temp3:
+LOAD Distinct [Region ID]
+RESIDENT DIM_TERRITORY_FINAL
+WHERE [Territory ID]='$(i)';
+
+LET vREGION=Peek('Region ID');
+
+Drop Table Temp3;
+
+
+Concatenate(Temp2)
+LOAD Distinct '$(i)' as Geo_Filter,
+	[Territory Name] & ' - '& IF(IsNull([Salesforce Group Name]),'NULL',[Salesforce Group Name]) as Geo_Name,
+    [Account Manager Full Name] as Geo_Manager,
+	'$(i)' as [National Territory ID],
+    1 as Table_Filter
+RESIDENT DIM_TERRITORY_FINAL
+WHERE [Territory ID]='$(i)';
+
+Concatenate(Temp2)
+LOAD  Distinct 
+    '$(i)' as Geo_Filter,
+    [Area Name] as Geo_Name,
+    [ASM Name] as Geo_Manager,
+    [Territory ID] as [National Territory ID],
+    2 as Table_Filter
+RESIDENT DIM_TERRITORY_FINAL
+WHERE [Area ID]='$(vAREA)';
+
+Concatenate(Temp2)
+LOAD  Distinct 
+    '$(i)' as Geo_Filter,
+    [Region Name] as Geo_Name,
+    [RBD Name] as Geo_Manager,
+    [Territory ID] as [National Territory ID],
+    3 as Table_Filter
+RESIDENT DIM_TERRITORY_FINAL
+WHERE [Region ID]='$(vREGION)';
+
+Concatenate(Temp2)
+LOAD  Distinct 
+    '$(i)' as Geo_Filter,
+    'NATION' as Geo_Name,
+    '-' as Geo_Manager,
+    [Territory ID] as [National Territory ID],
+    4 as Table_Filter
+RESIDENT DIM_TERRITORY_FINAL
+Where Match([Salesforce Group Name],'SUMMIT');
+
+Next 
+
+drop table Temp;
+
+////Area Code///////
+
+NoConcatenate
+Temp:
+LOAD  Distinct 
+    [Area ID]
+RESIDENT DIM_TERRITORY_FINAL
+WHERE Match([Salesforce Group Name],'SUMMIT');
+
+Let vRows=NoOfRows('Temp');
+
+For j=1 to $(vRows) 
+
+Let i=FieldValue('Area ID',$(j));
+
+NoConcatenate
+Temp3:
+LOAD Distinct [Region ID]
+RESIDENT DIM_TERRITORY_FINAL
+WHERE [Area ID]='$(i)';
+
+LET vREGION=Peek('Region ID');
+
+Drop Table Temp3;
+
+
+Concatenate(Temp2)
+LOAD Distinct '$(i)' as Geo_Filter,
+	[Area Name] as Geo_Name,
+    [ASM Name] as Geo_Manager,
+	[Territory ID] as [National Territory ID],
+    2 as Table_Filter
+RESIDENT DIM_TERRITORY_FINAL
+WHERE [Area ID]='$(i)';
+
+Concatenate(Temp2)
+LOAD  Distinct 
+    '$(i)' as Geo_Filter,
+    'Area' as G_LEVEL,
+    [Region Name] as Geo_Name,
+    [RBD Name] as Geo_Manager,
+    [Territory ID] as [National Territory ID],
+    3 as Table_Filter
+RESIDENT DIM_TERRITORY_FINAL
+WHERE [Region ID]='$(vREGION)';
+
+Concatenate(Temp2)
+LOAD  Distinct 
+    '$(i)' as Geo_Filter,
+    'Area' as G_LEVEL,
+    'NATION' as Geo_Name,
+    '-' as Geo_Manager,
+    [Territory ID] as [National Territory ID],
+    4 as Table_Filter
+RESIDENT DIM_TERRITORY_FINAL
+Where Match([Salesforce Group Name],'SUMMIT');
+
+Next 
+
+drop table Temp;
+
+///Region Code//////
+
+NoConcatenate
+Temp:
+LOAD  Distinct 
+    [Region ID]
+RESIDENT DIM_TERRITORY_FINAL
+WHERE Match([Salesforce Group Name],'SUMMIT');
+
+Let vRows=NoOfRows('Temp');
+
+For j=1 to $(vRows) 
+
+Let i=FieldValue('Region ID',$(j));
+
+Concatenate(Temp2)
+LOAD  Distinct 
+    '$(i)' as Geo_Filter,
+    [Region ID] as Geo_Name,
+    [RBD Name] as Geo_Manager,
+    [Territory ID] as [National Territory ID],
+    3 as Table_Filter
+RESIDENT DIM_TERRITORY_FINAL
+WHERE [Region ID]='$(i)';
+
+Concatenate(Temp2)
+LOAD  Distinct 
+    '$(i)' as Geo_Filter,
+    'NATION' as Geo_Name,
+    '-' as Geo_Manager,
+    [Territory ID] as [National Territory ID],
+    3 as Table_Filter
+RESIDENT DIM_TERRITORY_FINAL
+Where Match([Salesforce Group Name],'SUMMIT');
+
+Next 
+
+drop table Temp;
+
+///$tab Geo Hierarchy 2
+// ///Territory Code/////////
+// NoConcatenate
+// Temp:
+// LOAD  Distinct 
+//     [Territory ID]
+// RESIDENT DIM_TERRITORY_FINAL
+// WHERE Match([Salesforce Group Name],'SUMMIT');
+
+// Let vRows=NoOfRows('Temp');
+
+// //Temp2:
+// //LOAD 0 as Dummy AutoGenerate(0);
+
+// For j=1 to $(vRows) 
+
+// Let i=FieldValue('Territory ID',$(j));
+
+// NoConcatenate
+// Temp3:
+// LOAD Distinct [Area ID]
+// RESIDENT DIM_TERRITORY_FINAL
+// WHERE [Territory ID]='$(i)';
+
+// LET vAREA=Peek('Area ID');
+
+// Drop Table Temp3;
+
+// NoConcatenate
+// Temp3:
+// LOAD Distinct [Region ID]
+// RESIDENT DIM_TERRITORY_FINAL
+// WHERE [Territory ID]='$(i)';
+
+// LET vREGION=Peek('Region ID');
+
+// Drop Table Temp3;
+
+// NoConcatenate
+// Temp3:
+// LOAD Distinct [Salesforce Group Name] as TEAM
+// RESIDENT DIM_TERRITORY_FINAL
+// WHERE [Territory ID]='$(i)';
+
+// LET vTEAM=Peek('TEAM');
+
+// Drop Table Temp3;
+
+
+// Concatenate(Temp2)
+// LOAD Distinct '$(i)' as _Geo_Filter,
+// 	[Territory Name] as _Geo_Name,
+//     [Account Manager Full Name] as _Geo_Manager,
+// 	'$(i)' as [National Territory ID],
+//     [Salesforce Group Name] as _Geo_Team,
+//     1 as _Table_Filter
+// RESIDENT DIM_TERRITORY_FINAL
+// WHERE [Territory ID]='$(i)';
+
+// Concatenate(Temp2)
+// LOAD  Distinct 
+//     '$(i)' as _Geo_Filter,
+//     [Area Name] as _Geo_Name,
+//     [ASM Name] as _Geo_Manager,
+//     [Territory ID] as [National Territory ID],
+//     [Salesforce Group Name] as _Geo_Team,
+//     2 as _Table_Filter
+// RESIDENT DIM_TERRITORY_FINAL
+// WHERE [Area ID]='$(vAREA)'and Match([Salesforce Group Name],'$(vTEAM)');
+
+// Concatenate(Temp2)
+// LOAD  Distinct 
+//     '$(i)' as _Geo_Filter,
+//     [Region Name] as _Geo_Name,
+//     [RBD Name] as _Geo_Manager,
+//     [Territory ID] as [National Territory ID],
+//     [Salesforce Group Name] as _Geo_Team,
+//     3 as _Table_Filter
+// RESIDENT DIM_TERRITORY_FINAL
+// WHERE [Region ID]='$(vREGION)' and Match([Salesforce Group Name],'$(vTEAM)');
+
+// Concatenate(Temp2)
+// LOAD  Distinct 
+//     '$(i)' as _Geo_Filter,
+//     'NATION' as _Geo_Name,
+//     '-' as _Geo_Manager,
+//     [Territory ID] as [National Territory ID],
+//     [Salesforce Group Name] as _Geo_Team,
+//     4 as _Table_Filter
+// RESIDENT DIM_TERRITORY_FINAL
+// Where Match([Salesforce Group Name],'$(vTEAM)');
+
+// Next 
+
+// drop table Temp;
+
+// ////Area Code//////
+
+// NoConcatenate
+// Temp:
+// LOAD  Distinct 
+//     [Area ID]
+// RESIDENT DIM_TERRITORY_FINAL
+// WHERE Match([Salesforce Group Name],'SUMMIT');
+
+// Let vRows=NoOfRows('Temp');
+
+// For j=1 to $(vRows) 
+
+// Let i=FieldValue('Area ID',$(j));
+
+// NoConcatenate
+// Temp3:
+// LOAD Distinct [Region ID]
+// RESIDENT DIM_TERRITORY_FINAL
+// WHERE [Area ID]='$(i)';
+
+// LET vREGION=Peek('Region ID');
+
+// Drop Table Temp3;
+
+// NoConcatenate
+// Temp3:
+// LOAD Distinct [Area Group Name] as AREA_GROUP
+// RESIDENT DIM_TERRITORY_FINAL
+// WHERE [Area ID]='$(i)';
+
+// LET vAREA_GROUP=Peek('AREA_GROUP');
+
+// Drop Table Temp3;
+
+// Concatenate(Temp2)
+// LOAD Distinct '$(i)' as _Geo_Filter,
+// 	[Territory Name]  as _Geo_Name,
+//     [Account Manager Full Name] as _Geo_Manager,
+//     [Salesforce Group Name] as _Geo_Team,
+// 	[Territory ID] as [National Territory ID],
+//     1 as _Table_Filter
+// RESIDENT DIM_TERRITORY_FINAL
+// WHERE [Area ID]='$(i)';
+
+
+// Concatenate(Temp2)
+// LOAD Distinct '$(i)' as _Geo_Filter,
+// 	[Area Name] as _Geo_Name,
+//     [ASM Name] as _Geo_Manager,
+//     [Salesforce Group Name] as _Geo_Team,
+// 	[Territory ID] as [National Territory ID],
+//     2 as _Table_Filter
+// RESIDENT DIM_TERRITORY_FINAL
+// WHERE [Area ID]='$(i)';
+
+// Concatenate(Temp2)
+// LOAD  Distinct 
+//     '$(i)' as _Geo_Filter,
+//     [Region Name] as _Geo_Name,
+//     [RBD Name] as _Geo_Manager,
+//     [Territory ID] as [National Territory ID],
+//     [Salesforce Group Name] as _Geo_Team,
+//     3 as _Table_Filter
+// RESIDENT DIM_TERRITORY_FINAL
+// WHERE [Region ID]='$(vREGION)' and  Match([Area Group Name],'$(vAREA_GROUP)');
+
+// Concatenate(Temp2)
+// LOAD  Distinct 
+//     '$(i)' as _Geo_Filter,
+//      'NATION' as _Geo_Name,
+//     '-' as _Geo_Manager,
+//     [Salesforce Group Name] as _Geo_Team,
+//     [Territory ID] as [National Territory ID],
+//     4 as _Table_Filter
+// RESIDENT DIM_TERRITORY_FINAL
+// Where Match([Area Group Name],'$(vAREA_GROUP)');
+
+// Next 
+
+// drop table Temp;
+
+// ////Region Code/////////////
+
+// NoConcatenate
+// Temp:
+// LOAD  Distinct 
+//     [Region ID]
+// RESIDENT DIM_TERRITORY_FINAL
+// WHERE Match([Salesforce Group Name],'SUMMIT') ;
+
+// Let vRows=NoOfRows('Temp');
+
+// For j=1 to $(vRows) 
+
+// Let i=FieldValue('Region ID',$(j));
+
+// Concatenate(Temp2)
+// LOAD Distinct '$(i)' as _Geo_Filter,
+// 	[Area Name] as _Geo_Name,
+//     [ASM Name] as _Geo_Manager,
+//     [Salesforce Group Name] as _Geo_Team,
+// 	[Territory ID] as [National Territory ID],
+//     2 as _Table_Filter
+// RESIDENT DIM_TERRITORY_FINAL
+// WHERE [Region ID]='$(i)';
+
+// Concatenate(Temp2)
+// LOAD  Distinct 
+//     '$(i)' as _Geo_Filter,
+//     [Region Name] as _Geo_Name,
+//     [RBD Name] as _Geo_Manager,
+//     [Territory ID] as [National Territory ID],
+//     [Salesforce Group Name] as _Geo_Team,
+//     3 as _Table_Filter
+// RESIDENT DIM_TERRITORY_FINAL
+// WHERE [Region ID]='$(i)';
+
+// Concatenate(Temp2)
+// LOAD  Distinct 
+//     '$(i)' as _Geo_Filter,
+//     'NATION' as _Geo_Name,
+//     '-' as _Geo_Manager,
+//     [Territory ID] as [National Territory ID],
+//     [Salesforce Group Name] as _Geo_Team,
+//     3 as _Table_Filter
+// RESIDENT DIM_TERRITORY_FINAL
+// Where Match([Salesforce Group Name],'SUMMIT');
+
+// Next 
+
+// drop table Temp;
+
+// Store Temp2 into  [$(vQSBIE_TransformQVD_Dimension)/DIM_TERRITORY_FIELD_BI_NS2_ALAI_MAPPING_5_3$(vSpace).qvd](qvd);
+
+// drop table Temp2;
+
+///$tab SF:Geo Hierarchy 2
+///Territory Code/////////
+NoConcatenate
+Temp:
+LOAD  Distinct 
+    [Territory ID]
+RESIDENT DIM_TERRITORY_FINAL
+WHERE Match([Salesforce Group Name],'SUMMIT');
+
+Let vRows=NoOfRows('Temp');
+
+//Temp2:
+//LOAD 0 as Dummy AutoGenerate(0);
+
+For j=1 to $(vRows) 
+
+Let i=FieldValue('Territory ID',$(j));
+
+NoConcatenate
+Temp3:
+LOAD Distinct [Area ID]
+RESIDENT DIM_TERRITORY_FINAL
+WHERE [Territory ID]='$(i)';
+
+LET vAREA=Peek('Area ID');
+
+Drop Table Temp3;
+
+NoConcatenate
+Temp3:
+LOAD Distinct [Region ID]
+RESIDENT DIM_TERRITORY_FINAL
+WHERE [Territory ID]='$(i)';
+
+LET vREGION=Peek('Region ID');
+
+Drop Table Temp3;
+
+NoConcatenate
+Temp3:
+LOAD Distinct [Salesforce Group Name] as TEAM
+RESIDENT DIM_TERRITORY_FINAL
+WHERE [Territory ID]='$(i)';
+
+LET vTEAM=Peek('TEAM');
+
+Drop Table Temp3;
+
+
+Concatenate(Temp2)
+LOAD Distinct '$(i)' as _Geo_Filter,
+	[Territory Name] as _Geo_Name,
+    [Account Manager Full Name] as _Geo_Manager,
+	'$(i)' as [National Territory ID],
+    [Salesforce Group Name] as _Geo_Team,
+    1 as _Table_Filter
+RESIDENT DIM_TERRITORY_FINAL
+WHERE [Territory ID]='$(i)';
+
+Concatenate(Temp2)
+LOAD  Distinct 
+    '$(i)' as _Geo_Filter,
+    [Area Name] as _Geo_Name,
+    [ASM Name] as _Geo_Manager,
+    [Territory ID] as [National Territory ID],
+    [Salesforce Group Name] as _Geo_Team,
+    2 as _Table_Filter
+RESIDENT DIM_TERRITORY_FINAL
+WHERE [Area ID]='$(vAREA)'and Match([Salesforce Group Name],'$(vTEAM)');
+
+Concatenate(Temp2)
+LOAD  Distinct 
+    '$(i)' as _Geo_Filter,
+    [Region Name] as _Geo_Name,
+    [RBD Name] as _Geo_Manager,
+    [Territory ID] as [National Territory ID],
+    [Salesforce Group Name] as _Geo_Team,
+    3 as _Table_Filter
+RESIDENT DIM_TERRITORY_FINAL
+WHERE [Region ID]='$(vREGION)' and Match([Salesforce Group Name],'$(vTEAM)');
+
+Concatenate(Temp2)
+LOAD  Distinct 
+    '$(i)' as _Geo_Filter,
+    'NATION' as _Geo_Name,
+    '-' as _Geo_Manager,
+    [Territory ID] as [National Territory ID],
+    [Salesforce Group Name] as _Geo_Team,
+    4 as _Table_Filter
+RESIDENT DIM_TERRITORY_FINAL
+Where Match([Salesforce Group Name],'$(vTEAM)');
+
+Next 
+
+drop table Temp;
+
+////Area Code//////
+
+NoConcatenate
+Temp:
+LOAD  Distinct 
+    [Area ID]
+RESIDENT DIM_TERRITORY_FINAL
+WHERE Match([Salesforce Group Name],'SUMMIT');
+
+Let vRows=NoOfRows('Temp');
+
+For j=1 to $(vRows) 
+
+Let i=FieldValue('Area ID',$(j));
+
+NoConcatenate
+Temp3:
+LOAD Distinct [Region ID]
+RESIDENT DIM_TERRITORY_FINAL
+WHERE [Area ID]='$(i)';
+
+LET vREGION=Peek('Region ID');
+
+Drop Table Temp3;
+
+NoConcatenate
+Temp3:
+LOAD Distinct [Area Group Name] as AREA_GROUP
+RESIDENT DIM_TERRITORY_FINAL
+WHERE [Area ID]='$(i)';
+
+LET vAREA_GROUP=Peek('AREA_GROUP');
+
+Drop Table Temp3;
+
+Concatenate(Temp2)
+LOAD Distinct '$(i)' as _Geo_Filter,
+	[Territory Name]  as _Geo_Name,
+    [Account Manager Full Name] as _Geo_Manager,
+    [Salesforce Group Name] as _Geo_Team,
+	[Territory ID] as [National Territory ID],
+    1 as _Table_Filter
+RESIDENT DIM_TERRITORY_FINAL
+WHERE [Area ID]='$(i)';
+
+
+Concatenate(Temp2)
+LOAD Distinct '$(i)' as _Geo_Filter,
+	[Area Name] as _Geo_Name,
+    [ASM Name] as _Geo_Manager,
+    [Salesforce Group Name] as _Geo_Team,
+	[Territory ID] as [National Territory ID],
+    2 as _Table_Filter
+RESIDENT DIM_TERRITORY_FINAL
+WHERE [Area ID]='$(i)';
+
+Concatenate(Temp2)
+LOAD  Distinct 
+    '$(i)' as _Geo_Filter,
+    [Region Name] as _Geo_Name,
+    [RBD Name] as _Geo_Manager,
+    [Territory ID] as [National Territory ID],
+    [Salesforce Group Name] as _Geo_Team,
+    3 as _Table_Filter
+RESIDENT DIM_TERRITORY_FINAL
+WHERE [Region ID]='$(vREGION)' and  Match([Area Group Name],'$(vAREA_GROUP)');
+
+Concatenate(Temp2)
+LOAD  Distinct 
+    '$(i)' as _Geo_Filter,
+     'NATION' as _Geo_Name,
+    '-' as _Geo_Manager,
+    [Salesforce Group Name] as _Geo_Team,
+    [Territory ID] as [National Territory ID],
+    4 as _Table_Filter
+RESIDENT DIM_TERRITORY_FINAL
+Where Match([Area Group Name],'$(vAREA_GROUP)');
+
+Next 
+
+drop table Temp;
+
+////Region Code/////////////
+
+NoConcatenate
+Temp:
+LOAD  Distinct 
+    [Region ID]
+RESIDENT DIM_TERRITORY_FINAL
+WHERE Match([Salesforce Group Name],'SUMMIT') ;
+
+Let vRows=NoOfRows('Temp');
+
+For j=1 to $(vRows) 
+
+Let i=FieldValue('Region ID',$(j));
+
+Concatenate(Temp2)
+LOAD Distinct '$(i)' as _Geo_Filter,
+	[Area Name] as _Geo_Name,
+    [ASM Name] as _Geo_Manager,
+    [Salesforce Group Name] as _Geo_Team,
+	[Territory ID] as [National Territory ID],
+    2 as _Table_Filter
+RESIDENT DIM_TERRITORY_FINAL
+WHERE [Region ID]='$(i)';
+
+Concatenate(Temp2)
+LOAD  Distinct 
+    '$(i)' as _Geo_Filter,
+    [Region Name] as _Geo_Name,
+    [RBD Name] as _Geo_Manager,
+    [Territory ID] as [National Territory ID],
+    [Salesforce Group Name] as _Geo_Team,
+    3 as _Table_Filter
+RESIDENT DIM_TERRITORY_FINAL
+WHERE [Region ID]='$(i)';
+
+Concatenate(Temp2)
+LOAD  Distinct 
+    '$(i)' as _Geo_Filter,
+    'NATION' as _Geo_Name,
+    '-' as _Geo_Manager,
+    [Territory ID] as [National Territory ID],
+    [Salesforce Group Name] as _Geo_Team,
+    3 as _Table_Filter
+RESIDENT DIM_TERRITORY_FINAL
+Where Match([Salesforce Group Name],'SUMMIT');
+
+Next 
+
+drop table Temp;
+
+Store Temp2 into  [$(vQSBIE_TransformQVD_Dimension)/DIM_TERRITORY_FIELD_BI_NS2_ALAI_MAPPING_5_3$(vSpace)$(vSF).qvd](qvd);
+
+drop table Temp2;
