@@ -1,0 +1,29 @@
+
+SHEETS
+
+OBJECTS ON SHEETS
+
+DIMENSIONS
+
+MEASURES
+
+VARIABLES
+{"qName":"NumFormat","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"81512c39-5e84-40ae-9184-bc6110bae5da","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vQSBIE_ExtractQVD_Dimension","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/QlikSense BI Evolution\/QVDs\/Extract\/Dimensions","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"d3dd85ca-5bca-4bd9-bc59-bf2fde88f146","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vQSBIE_ExtractQVD_Fact","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/QlikSense BI Evolution\/QVDs\/Extract\/Facts","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"f64c49d4-4112-44de-8730-02f4bbddbe5d","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vQSBIE_TransformQVD_Dimension","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/QlikSense BI Evolution\/QVDs\/Transform\/Dimensions","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"ba82b0aa-65c7-4ce1-9302-b2409cdade40","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vQSBIE_TransformQVD_Fact","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/QlikSense BI Evolution\/QVDs\/Transform\/Facts","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"a2fe2ca3-6769-4e7f-a106-1e5550bc0ee1","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vQSBIE_OfflineFiles","qDefinition":"lib:\/\/LuUS_DATA:LuUS_SharePoint\/Shared Documents\/Qlik Sense Data Files","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"66b52348-aeb5-4dd0-a9d2-5f65feefd343","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vConfidentialMessage","qDefinition":"*Prescriber data acquired by the Lundbeck are to be treated as confidential information. Sales representatives (and other employees and agents) must not disclose those data to any party outside of the Company without the express permission of the Legal Division. In addition, sales representatives (and other employees and agents) cannot ask co-promotion colleagues to share prescriber data with them.","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"46dfd63e-4877-4aa3-9fbc-46cf93e481fd","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vSF","qDefinition":"_SF","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"4e261044-f00f-4364-b48c-86ff0168b759","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vSpace","qDefinition":"_DEV","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"999431f5-1552-403d-9570-d83e1301e1e6","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vToday","qDefinition":"20250414","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"847fb58b-5bc7-42b9-b51f-7196ecf6563f","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vDW2RefreshDate","qDefinition":"20250328","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"34f6f675-df29-4865-95e0-448a6293c2f0","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vCurrentDataWeek","qDefinition":"03\/28\/2025","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"43d79482-f0fb-4e07-ae93-8f9b9392f61b","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vCurrentDataWeekCalKey","qDefinition":"20250328","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"cc1dccab-63d4-447e-be75-1ac419746c06","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vCurrentSFYear","qDefinition":"2025","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"62b7abae-dba8-406c-af01-1ba94ed77e14","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vStartingDateCalKey","qDefinition":"20231101","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"06f688da-d458-407a-9cc4-dc849e91baeb","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vGoalSFTrimester","qDefinition":"92","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"0a187b13-347e-40a1-a901-52f97ea703e6","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"QVDLocation","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"749f31ea-7ca8-4c6d-86ec-11fb7ffb8c99","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+
+FIELDS
