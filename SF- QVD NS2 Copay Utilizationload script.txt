@@ -1,0 +1,686 @@
+///$tab Main
+SET ThousandSep='.';
+SET DecimalSep=',';
+SET MoneyThousandSep='.';
+SET MoneyDecimalSep=',';
+SET MoneyFormat='#.##0,00 kr.;-#.##0,00 kr.';
+SET TimeFormat='hh.mm.ss';
+SET DateFormat='DD/MM/YYYY';
+SET TimestampFormat='DD/MM/YYYY hh.mm.ss[.fff]';
+SET FirstWeekDay=0;
+SET BrokenWeeks=0;
+SET ReferenceDay=4;
+SET FirstMonthOfYear=1;
+SET CollationLocale='da-DK';
+SET CreateSearchIndexOnReload=1;
+SET MonthNames='jan.;feb.;mar.;apr.;maj;jun.;jul.;aug.;sep.;okt.;nov.;dec.';
+SET LongMonthNames='januar;februar;marts;april;maj;juni;juli;august;september;oktober;november;december';
+SET DayNames='man.;tir.;ons.;tor.;fre.;lør.;søn.';
+SET LongDayNames='mandag;tirsdag;onsdag;torsdag;fredag;lørdag;søndag';
+SET NumericalAbbreviation='3:k;6:M;9:G;12:T;15:P;18:E;21:Z;24:Y;-3:m;-6:μ;-9:n;-12:p;-15:f;-18:a;-21:z;-24:y';
+
+SET QVDLocation = 'lib://LuUS_DATA:DataFiles/Production/';
+LET vToday=DATE(TODAY(),'YYYYMMDD'); 
+
+LIB CONNECT TO 'LuUS_DATA:SNOWFLAKE_LuUS_BI_Reader';
+
+//LIB CONNECT TO 'LuUS_DATA:vAZ_MSSQL_LuUS_DW_2.0';
+
+LET vSpace=if(upper(GetSysAttr('spaceType'))='SHARED' or (GetSysAttr('spaceType'))='','_DEV');
+Trace '$(vSpace)';
+
+LET vSF='_SF';
+Trace '$(vSF)';
+
+$(Must_Include=[lib://LuUS_DATA:LuUS_SharePoint/Shared Documents/Qlik Sense Data Files/Include/Qlik Cloud/FolderConnections.txt]); 
+///$tab DW Date
+// DW2_SUMMARY:
+// Load
+//  END_DATE as DW2_REFRESH_DATE
+// ;
+
+// SELECT ls.END_DATE
+// FROM   luinc.LOAD_SUMMARY ls
+// WHERE  ls.COMPONENT_NAME  = 'LAST DW2 REFRESH'
+// ;
+
+// LET vDW2RefreshDate = num(Peek('DW2_REFRESH_DATE'));
+
+// DROP TABLE DW2_SUMMARY;
+
+
+///$tab PSY Copay Control
+// // Get Trintellix Starting and Ending dates
+// TrintellixControl:
+// SELECT MAX(TRINTELLIX_WEEK_ENDING_DATE_KEY) as TRINTELLIX_ENDING_DATE_KEY
+// ,      MAX(TRINTELLIX_WEEK_ENDING) as TRINTELLIX_END_DATE
+// ,      MIN(cal_start.DATE_KEY) as TRINTELLIX_START_DATE_KEY
+// ,      MIN(cal_start.DATE_FULL) as TRINTELLIX_START_DATE
+// FROM (
+// SELECT MAX(cd.DATE_KEY) as TRINTELLIX_WEEK_ENDING_DATE_KEY
+// ,      MAX(cal.DATE_FULL) as TRINTELLIX_WEEK_ENDING
+// FROM   luinc.FACT_COPAY_DETAIL cd
+// INNER JOIN luinc.DIM_PRODUCT_GROUP pg
+//    ON pg.PRODUCT_GROUP_KEY = cd.PRODUCT_GROUP_KEY
+// INNER JOIN luinc.DIM_CLNDR cal
+//   On cal.DATE_KEY = cd.DATE_KEY
+// WHERE pg.BRAND = 'TRINTELLIX'
+// AND   cal.DAY_OF_WEEK_SHORT_NAME  = 'FRI'
+// ) end_week
+// INNER JOIN luinc.DIM_CLNDR cal_start
+//   on cal_start.DATE_WEEK_END = DATEADD(wk, -11, end_week.TRINTELLIX_WEEK_ENDING)
+// ;
+
+// LET vTrintellixEndingDateKey = Peek('TRINTELLIX_ENDING_DATE_KEY');
+// LET vTrintellixEndingDate = num(Peek('TRINTELLIX_END_DATE'));
+// LET vTrintellixStartingDateKey = Peek('TRINTELLIX_START_DATE_KEY');
+// LET vTrintellixStartingDate = num(Peek('TRINTELLIX_START_DATE'));
+
+// DROP TABLE TrintellixControl;
+
+
+// // Get Rexulti Starting and Ending dates
+// RexultiControl:
+// SELECT MAX(REXULTI_WEEK_ENDING_DATE_KEY) as REXULTI_ENDING_DATE_KEY
+// ,      MAX(REXULTI_WEEK_ENDING) as REXULTI_END_DATE
+// ,      MIN(cal_start.DATE_KEY) as REXULTI_START_DATE_KEY
+// ,      MIN(cal_start.DATE_FULL) as REXULTI_START_DATE
+// FROM (
+// SELECT MAX(cd.DATE_KEY) as REXULTI_WEEK_ENDING_DATE_KEY
+// ,      MAX(cal.DATE_FULL) as REXULTI_WEEK_ENDING
+// FROM   luinc.FACT_COPAY_DETAIL cd
+// INNER JOIN luinc.DIM_PRODUCT_GROUP pg
+//    ON pg.PRODUCT_GROUP_KEY = cd.PRODUCT_GROUP_KEY
+// INNER JOIN luinc.DIM_CLNDR cal
+//   On cal.DATE_KEY = cd.DATE_KEY
+// WHERE pg.BRAND = 'REXULTI'
+// AND   cal.DAY_OF_WEEK_SHORT_NAME  = 'FRI'
+// ) end_week
+// INNER JOIN luinc.DIM_CLNDR cal_start
+//   on cal_start.DATE_WEEK_END = DATEADD(wk, -11, end_week.REXULTI_WEEK_ENDING)
+// ;
+
+// LET vRexultiEndingDateKey = Peek('REXULTI_ENDING_DATE_KEY');
+// LET vRexultiEndingDate = NUM(Peek('REXULTI_END_DATE'));
+// LET vRexultiStartingDateKey = Peek('REXULTI_START_DATE_KEY');
+// LET vRexultiStartingDate = NUM(Peek('REXULTI_START_DATE'));
+
+// DROP TABLE RexultiControl;
+///$tab SF : PSY Copay Control
+// Get Trintellix Starting and Ending dates
+
+NoConcatenate
+TrintellixControl:
+SELECT MAX(TRINTELLIX_WEEK_ENDING_DATE_KEY) as TRINTELLIX_ENDING_DATE_KEY
+,      MAX(TRINTELLIX_WEEK_ENDING) as TRINTELLIX_END_DATE
+,      MIN(cal_start.DATE_KEY) as TRINTELLIX_START_DATE_KEY
+,      MIN(cal_start.DATE_FULL) as TRINTELLIX_START_DATE
+FROM (
+SELECT MAX(cd.DATE_KEY) as TRINTELLIX_WEEK_ENDING_DATE_KEY
+,      MAX(cal.DATE_FULL) as TRINTELLIX_WEEK_ENDING
+FROM   LUNDBECK_DW.ANALYTICS.COPAY_DETAIL cd
+INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" pg
+   ON pg.PRODUCT_GROUP_CODE = cd.PRODUCT_GROUP_CODE
+INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" cal
+  On cal.DATE_KEY = cd.DATE_KEY
+WHERE pg.BRAND = 'TRINTELLIX'
+AND   cal.DAY_OF_WEEK_SHORT_NAME  = 'FRI'
+) end_week
+INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" cal_start
+  on cal_start.DATE_WEEK_END = DATEADD(wk, -11, end_week.TRINTELLIX_WEEK_ENDING)
+;
+
+LET vTrintellixEndingDateKey = Peek('TRINTELLIX_ENDING_DATE_KEY');
+LET vTrintellixEndingDate = num(Peek('TRINTELLIX_END_DATE'));
+LET vTrintellixStartingDateKey = Peek('TRINTELLIX_START_DATE_KEY');
+LET vTrintellixStartingDate = num(Peek('TRINTELLIX_START_DATE'));
+
+DROP TABLE TrintellixControl;
+
+NoConcatenate
+// Get Rexulti Starting and Ending dates
+RexultiControl:
+SELECT MAX(REXULTI_WEEK_ENDING_DATE_KEY) as REXULTI_ENDING_DATE_KEY
+,      MAX(REXULTI_WEEK_ENDING) as REXULTI_END_DATE
+,      MIN(cal_start.DATE_KEY) as REXULTI_START_DATE_KEY
+,      MIN(cal_start.DATE_FULL) as REXULTI_START_DATE
+FROM (
+SELECT MAX(cd.DATE_KEY) as REXULTI_WEEK_ENDING_DATE_KEY
+,      MAX(cal.DATE_FULL) as REXULTI_WEEK_ENDING
+FROM   LUNDBECK_DW.ANALYTICS.COPAY_DETAIL cd
+INNER JOIN  "LUNDBECK_DW"."COMMON"."PRODUCTS" pg
+   ON pg.PRODUCT_GROUP_CODE = cd.PRODUCT_GROUP_CODE
+INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" cal
+  On cal.DATE_KEY = cd.DATE_KEY
+WHERE pg.BRAND = 'REXULTI'
+AND   cal.DAY_OF_WEEK_SHORT_NAME  = 'FRI'
+) end_week
+INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" cal_start
+  on cal_start.DATE_WEEK_END = DATEADD(wk, -11, end_week.REXULTI_WEEK_ENDING)
+;
+
+LET vRexultiEndingDateKey = Peek('REXULTI_ENDING_DATE_KEY');
+LET vRexultiEndingDate = NUM(Peek('REXULTI_END_DATE'));
+LET vRexultiStartingDateKey = Peek('REXULTI_START_DATE_KEY');
+LET vRexultiStartingDate = NUM(Peek('REXULTI_START_DATE'));
+
+DROP TABLE RexultiControl;
+////////////////////////////////////////////////////////////////
+NoConcatenate
+// Get Abilify Starting and Ending dates
+AbilifyControl:
+SELECT MAX(ABILIFY_WEEK_ENDING_DATE_KEY) as ABILIFY_ENDING_DATE_KEY
+,      MAX(ABILIFY_WEEK_ENDING) as ABILIFY_END_DATE
+,      MIN(cal_start.DATE_KEY) as ABILIFY_START_DATE_KEY
+,      MIN(cal_start.DATE_FULL) as ABILIFY_START_DATE
+FROM (
+SELECT MAX(cd.DATE_KEY) as ABILIFY_WEEK_ENDING_DATE_KEY
+,      MAX(cal.DATE_FULL) as ABILIFY_WEEK_ENDING
+FROM   LUNDBECK_DW.ANALYTICS.COPAY_DETAIL cd
+INNER JOIN  "LUNDBECK_DW"."COMMON"."PRODUCTS" pg
+   ON pg.PRODUCT_GROUP_CODE = cd.PRODUCT_GROUP_CODE
+INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" cal
+  On cal.DATE_KEY = cd.DATE_KEY
+WHERE pg.BRAND IN ('ABILIFY MAINTENA')
+AND   cal.DAY_OF_WEEK_SHORT_NAME  = 'FRI'
+) end_week
+INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" cal_start
+  on cal_start.DATE_WEEK_END = DATEADD(wk, -11, end_week.ABILIFY_WEEK_ENDING)
+;
+
+LET vAbilifyEndingDateKey = Peek('ABILIFY_ENDING_DATE_KEY');
+LET vAbilifyEndingDate = NUM(Peek('ABILIFY_END_DATE'));
+LET vAbilifyStartingDateKey = Peek('ABILIFY_START_DATE_KEY');
+LET vAbilifyStartingDate = NUM(Peek('ABILIFY_START_DATE'));
+
+DROP TABLE AbilifyControl;
+NoConcatenate
+// Get Abilify Starting and Ending dates
+AbilifyControl:
+SELECT MAX(ABILIFY_WEEK_ENDING_DATE_KEY) as ABILIFY_ENDING_DATE_KEY
+,      MAX(ABILIFY_WEEK_ENDING) as ABILIFY_END_DATE
+,      MIN(cal_start.DATE_KEY) as ABILIFY_START_DATE_KEY
+,      MIN(cal_start.DATE_FULL) as ABILIFY_START_DATE
+FROM (
+SELECT MAX(cd.DATE_KEY) as ABILIFY_WEEK_ENDING_DATE_KEY
+,      MAX(cal.DATE_FULL) as ABILIFY_WEEK_ENDING
+FROM   LUNDBECK_DW.ANALYTICS.COPAY_DETAIL cd
+INNER JOIN  "LUNDBECK_DW"."COMMON"."PRODUCTS" pg
+   ON pg.PRODUCT_GROUP_CODE = cd.PRODUCT_GROUP_CODE
+INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" cal
+  On cal.DATE_KEY = cd.DATE_KEY
+WHERE pg.BRAND IN ('ABILIFY ASIMTUFII')
+AND   cal.DAY_OF_WEEK_SHORT_NAME  = 'FRI'
+) end_week
+INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" cal_start
+  on cal_start.DATE_WEEK_END = DATEADD(wk, -11, end_week.ABILIFY_WEEK_ENDING)
+;
+
+LET vAbilifyASMEndingDateKey = Peek('ABILIFY_ENDING_DATE_KEY');
+LET vAbilifyASMEndingDate = NUM(Peek('ABILIFY_END_DATE'));
+LET vAbilifyASMStartingDateKey = Peek('ABILIFY_START_DATE_KEY');
+LET vAbilifyASMStartingDate = NUM(Peek('ABILIFY_START_DATE'));
+
+DROP TABLE AbilifyControl;
+
+
+///$tab SF:PSY COPAY CALENDAR
+LET vTrintellixEndingDateString = DATE(vTrintellixEndingDate, 'YYYY-MM-DD');
+LET vRexultiEndingDateString = DATE(vRexultiEndingDate, 'YYYY-MM-DD');
+LET vAbilifyEndingDateString = DATE(vAbilifyEndingDate, 'YYYY-MM-DD');
+LET vAbilifyASMEndingDateString = DATE(vAbilifyASMEndingDate, 'YYYY-MM-DD');
+
+NoConcatenate
+Calendar:
+LOAD DATE_KEY
+,     'TRINTELLIX' as Brand
+,    DATE_WEEK_END as [Date Week End]
+,    WEEKS_BACK as [Weeks Back]
+,    $(vTrintellixStartingDate) as TRINTELLIX_START_DATE
+,    $(vTrintellixEndingDate) as TRINTELLIX_END_DATE
+,    $(vRexultiStartingDate) as REXULTI_START_DATE
+,    $(vRexultiEndingDate) as REXULTI_END_DATE
+,    $(vAbilifyStartingDate) as ABILIFY_START_DATE
+,    $(vAbilifyEndingDate) as ABILIFY_END_DATE
+,    $(vAbilifyASMStartingDate) as ABILIFYASM_START_DATE
+,    $(vAbilifyASMEndingDate) as ABILIFYASM_END_DATE
+
+;
+SQL SELECT cal.DATE_KEY
+,      cal.DATE_WEEK_END
+,      DATEDIFF(wk, cal.DATE_WEEK_END, '$(vTrintellixEndingDateString)') as WEEKS_BACK
+FROM   "LUNDBECK_DW"."COMMON"."CALENDAR" cal
+WHERE  cal.DATE_KEY BETWEEN $(vTrintellixStartingDateKey) and $(vTrintellixEndingDateKey)
+;
+
+
+///////////////////////////////////
+Concatenate
+
+LOAD DATE_KEY
+,    'ABILIFY MAINTENA' as Brand
+,    DATE_WEEK_END as [Date Week End]
+,    WEEKS_BACK as [Weeks Back]
+,    $(vTrintellixStartingDate) as TRINTELLIX_START_DATE
+,    $(vTrintellixEndingDate) as TRINTELLIX_END_DATE
+,    $(vRexultiStartingDate) as REXULTI_START_DATE
+,    $(vRexultiEndingDate) as REXULTI_END_DATE
+,    $(vAbilifyStartingDate) as ABILIFY_START_DATE
+,    $(vAbilifyEndingDate) as ABILIFY_END_DATE
+,    $(vAbilifyASMStartingDate) as ABILIFYASM_START_DATE
+,    $(vAbilifyASMEndingDate) as ABILIFYASM_END_DATE
+;
+SQL SELECT cal.DATE_KEY
+,      cal.DATE_WEEK_END
+,      DATEDIFF(wk, cal.DATE_WEEK_END, '$(vAbilifyEndingDateString)') as WEEKS_BACK
+FROM   "LUNDBECK_DW"."COMMON"."CALENDAR" cal
+WHERE  cal.DATE_KEY BETWEEN $(vAbilifyStartingDateKey) and $(vAbilifyEndingDateKey)
+;
+Concatenate
+
+LOAD DATE_KEY
+,    'ABILIFY ASIMTUFII' as Brand
+,    DATE_WEEK_END as [Date Week End]
+,    WEEKS_BACK as [Weeks Back]
+,    $(vTrintellixStartingDate) as TRINTELLIX_START_DATE
+,    $(vTrintellixEndingDate) as TRINTELLIX_END_DATE
+,    $(vRexultiStartingDate) as REXULTI_START_DATE
+,    $(vRexultiEndingDate) as REXULTI_END_DATE
+,    $(vAbilifyStartingDate) as ABILIFY_START_DATE
+,    $(vAbilifyEndingDate) as ABILIFY_END_DATE
+,    $(vAbilifyASMStartingDate) as ABILIFYASM_START_DATE
+,    $(vAbilifyASMEndingDate) as ABILIFYASM_END_DATE
+;
+SQL SELECT cal.DATE_KEY
+,      cal.DATE_WEEK_END
+,      DATEDIFF(wk, cal.DATE_WEEK_END, '$(vAbilifyASMEndingDateString)') as WEEKS_BACK
+FROM   "LUNDBECK_DW"."COMMON"."CALENDAR" cal
+WHERE  cal.DATE_KEY BETWEEN $(vAbilifyASMStartingDateKey) and $(vAbilifyASMEndingDateKey)
+;
+
+Concatenate
+
+LOAD DATE_KEY
+,    'REXULTI' as Brand
+,    DATE_WEEK_END as [Date Week End]
+,    WEEKS_BACK as [Weeks Back]
+,    $(vTrintellixStartingDate) as TRINTELLIX_START_DATE
+,    $(vTrintellixEndingDate) as TRINTELLIX_END_DATE
+,    $(vRexultiStartingDate) as REXULTI_START_DATE
+,    $(vRexultiEndingDate) as REXULTI_END_DATE
+,    $(vTrintellixStartingDateKey) as TRINTELLIX_START_DATE_KEY
+,    $(vRexultiStartingDateKey) as REXULTI_START_DATE_KEY
+,    $(vAbilifyStartingDate) as ABILIFY_START_DATE
+,    $(vAbilifyEndingDate) as ABILIFY_END_DATE
+,    $(vAbilifyASMStartingDate) as ABILIFYASM_START_DATE
+,    $(vAbilifyASMEndingDate) as ABILIFYASM_END_DATE
+,    $(vAbilifyStartingDateKey) as ABILIFY_START_DATE_KEY
+,    $(vAbilifyASMStartingDateKey) as ABILIFYASM_START_DATE_KEY
+
+;
+SQL SELECT cal.DATE_KEY
+,      cal.DATE_WEEK_END
+,      DATEDIFF(wk, cal.DATE_WEEK_END, '$(vRexultiEndingDateString)') as WEEKS_BACK
+FROM   "LUNDBECK_DW"."COMMON"."CALENDAR" cal
+WHERE  cal.DATE_KEY BETWEEN $(vRexultiStartingDateKey) and $(vRexultiEndingDateKey)
+;
+STORE Calendar INTO '$(QVDLocation)Dimensions/SALES_PSY_COPAY_CALENDAR$(vSpace)$(vSF).qvd' (qvd);
+DROP TABLE Calendar;
+///$tab PSY COPAY FACT
+// PSY_COPAY_FACT:
+// LOAD  
+//       DATE_KEY
+// ,     CLAIM_COUNT
+// ,     GROUP_NUMBER
+// ,     SF1_TERRITORY_KEY
+// ,     SF2_TERRITORY_KEY
+// ,     CUSTOMER_KEY
+// ,     BRAND
+// ,     '$(vDW2RefreshDate)' as  DW2_REFRESH_DATE
+// ;
+
+// SELECT cd.DATE_KEY
+// ,      cd.CLAIM_COUNT
+// ,      cd.GROUP_NUMBER
+// ,      cd.SF1_TERRITORY_KEY
+// ,      cd.SF2_TERRITORY_KEY
+// ,      IIF(cust.PDRP_IND ='Y', -1, cd.CUSTOMER_KEY) as CUSTOMER_KEY
+// ,      pg.BRAND
+// FROM   LUINC.FACT_COPAY_DETAIL cd
+// INNER JOIN luinc.DIM_PRODUCT_GROUP pg
+//   ON pg.PRODUCT_GROUP_KEY = cd.PRODUCT_GROUP_KEY
+// INNER JOIN luinc.DIM_CUSTOMER cust
+//   ON cust.CUSTOMER_KEY = cd.CUSTOMER_KEY
+// INNER JOIN luinc.DIM_COPAY_CARD_TYPE cdt
+//   ON cdt.COPAY_CARD_TYPE_KEY = cd.COPAY_CARD_TYPE_KEY
+// WHERE pg.BRAND IN ( 'TRINTELLIX', 'REXULTI')
+//  AND 
+//  ISNULL(cust.LU_NO_CONTACT_FLAG, 'N') <> 'Y'
+//   AND ISNULL(cust.DATA_STEWARDSHIP_EXCLUSION_FLAG, 'N') <> 'Y'
+//   AND  CASE pg.BRAND
+//          WHEN 'TRINTELLIX' THEN cust.TRINTELLIX_EXCLUSION_IND
+//          ELSE cust.REXULTI_EXCLUSION_IND 
+//         END = 'N'
+//   AND  (cust.PSYCH_SPECIALTY_IND = 'Y' or  cust.REXULTI_SALES_BI_VISIBILITY = 'Y')
+// ;
+
+// STORE PSY_COPAY_FACT INTO '$(QVDLocation)Facts/SALES_PSY_COPAY_FACT$(vSpace)$(vSF).qvd' (qvd);
+
+///$tab SF:PSY COPAY FACT
+NoConcatenate
+
+
+PSY_COPAY_FACT:
+LOAD  
+      DATE_KEY
+,     CLAIM_COUNT
+,     GROUP_NUMBER
+,     SF1_TERRITORY_KEY
+,     SF2_TERRITORY_KEY
+,     SF3_TERRITORY_KEY
+,     CUSTOMER_KEY
+,     BRAND
+// ,     '$(vDW2RefreshDate)' as  DW2_REFRESH_DATE
+;
+
+SELECT cd.DATE_KEY
+,      cd.COPAY_CARD_COUNT as CLAIM_COUNT
+,      cd.GROUP_NUMBER
+,      '0' as SF1_TERRITORY_KEY
+,	   ifnull(ZT2.TERRITORY_ID,'0') as SF2_TERRITORY_KEY
+,	   '0' as SF3_TERRITORY_KEY
+,      IFF(cust.PDRP_IND ='Y', '-1', cd.LUNDBECK_ID) as CUSTOMER_KEY
+,      pg.BRAND
+FROM   LUNDBECK_DW.ANALYTICS.COPAY_DETAIL cd
+INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" pg
+  ON pg.PRODUCT_GROUP_CODE = cd.PRODUCT_GROUP_CODE
+INNER JOIN "LUNDBECK_DW"."COMMON".CUSTOMERS cust
+  ON cust.LUNDBECK_ID = cd.LUNDBECK_ID
+  LEFT JOIN LUNDBECK_DW.COMMON.ZIP_TO_TERRITORY ZT2 ON ZT2.ZIP = cust.CUSTOMER_ZIP 
+and ZT2.CURRENT_IND = 'Y' AND ZT2.SALESFORCE_NAME = 'SIERRA'
+INNER JOIN 
+(
+SELECT DISTINCT cp.LUNDBECK_ID, cp.TERRITORY_ID
+FROM "LUNDBECK_DW"."ANALYTICS"."CALL_PLAN_LU_SF" cp
+INNER JOIN LUNDBECK_DW.COMMON.TERRITORY t  ON t.TERRITORY_ID = cp.TERRITORY_ID  AND t.FRANCHISE = 'PSY'
+where cp.END_DATE_KEY>='$(vToday)'
+// and product_group_name = 'TRINTELLIX'
+and SALESFORCE_NAME IN ('SIERRA')
+) CP
+ON cp.LUNDBECK_ID = cd.LUNDBECK_ID
+and cp.TERRITORY_ID = ZT2.TERRITORY_ID
+
+WHERE pg.BRAND IN ('TRINTELLIX')
+ AND 
+ IFNULL(cust.LU_NO_CONTACT_FLAG, 'N') <> 'Y'
+  AND IFNULL(cust.DATA_STEWARDSHIP_EXCLUSION_FLAG, 'N') <> 'Y'
+  AND  cust.TRINTELLIX_EXCLUSION_IND = 'N'
+
+union all
+
+SELECT cd.DATE_KEY
+,      cd.COPAY_CARD_COUNT as CLAIM_COUNT
+,      cd.GROUP_NUMBER
+,      ifnull(ZT1.TERRITORY_ID,'0') as SF1_TERRITORY_KEY
+,	   '0' as SF2_TERRITORY_KEY
+,	   '0' as SF3_TERRITORY_KEY
+,      IFF(cust.PDRP_IND ='Y', '-1', cd.LUNDBECK_ID) as CUSTOMER_KEY
+,      pg.BRAND
+FROM   LUNDBECK_DW.ANALYTICS.COPAY_DETAIL cd
+INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" pg
+  ON pg.PRODUCT_GROUP_CODE = cd.PRODUCT_GROUP_CODE
+INNER JOIN "LUNDBECK_DW"."COMMON".CUSTOMERS cust
+  ON cust.LUNDBECK_ID = cd.LUNDBECK_ID 
+left JOIN LUNDBECK_DW.COMMON.ZIP_TO_TERRITORY ZT1 ON ZT1.ZIP = cust.CUSTOMER_ZIP 
+and ZT1.CURRENT_IND = 'Y' AND ZT1.SALESFORCE_NAME = 'SUMMIT'
+WHERE pg.BRAND IN ('ABILIFY MAINTENA','ABILIFY ASIMTUFII')
+ AND 
+ IFNULL(cust.LU_NO_CONTACT_FLAG, 'N') <> 'Y'
+  AND IFNULL(cust.DATA_STEWARDSHIP_EXCLUSION_FLAG, 'N') <> 'Y'
+  AND  cust.ABILIFY_MAINTENA_EXCLUSION_IND = 'N'
+  AND cd.COPAY_VOUCHER = 'COPAY CARD'
+  
+
+union all
+
+SELECT cd.DATE_KEY
+,      cd.COPAY_CARD_COUNT as CLAIM_COUNT
+,      cd.GROUP_NUMBER
+,      ifnull(ZT1.TERRITORY_ID,'0') as SF1_TERRITORY_KEY
+,	   '0' as SF2_TERRITORY_KEY
+,	   '0' as SF3_TERRITORY_KEY
+,      IFF(cust.PDRP_IND ='Y', '-1', cd.LUNDBECK_ID) as CUSTOMER_KEY
+,      pg.BRAND
+FROM   LUNDBECK_DW.ANALYTICS.COPAY_DETAIL cd
+INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" pg
+  ON pg.PRODUCT_GROUP_CODE = cd.PRODUCT_GROUP_CODE
+INNER JOIN "LUNDBECK_DW"."COMMON".CUSTOMERS cust
+  ON cust.LUNDBECK_ID = cd.LUNDBECK_ID
+  LEFT JOIN LUNDBECK_DW.COMMON.ZIP_TO_TERRITORY ZT1 ON ZT1.ZIP = cust.CUSTOMER_ZIP 
+and ZT1.CURRENT_IND = 'Y' AND ZT1.SALESFORCE_NAME = 'SUMMIT'
+WHERE pg.BRAND IN ('REXULTI')
+ AND 
+ IFNULL(cust.LU_NO_CONTACT_FLAG, 'N') <> 'Y'
+  AND IFNULL(cust.DATA_STEWARDSHIP_EXCLUSION_FLAG, 'N') <> 'Y'
+  AND   cust.REXULTI_EXCLUSION_IND = 'N'
+  AND  (cust.REXULTI_SCZ_EXCLUSION_IND = 'N' or cust.REXULTI_MDD_EXCLUSION_IND = 'N')
+  AND  (cust.PSYCH_SPECIALTY_IND = 'Y')
+  AND GERIATRIC_SPECIALTY_IND = 'N'
+
+union all
+
+SELECT cd.DATE_KEY
+,      cd.COPAY_CARD_COUNT as CLAIM_COUNT
+,      cd.GROUP_NUMBER
+,      '0' as SF1_TERRITORY_KEY
+,	   ifnull(ZT2.TERRITORY_ID,'0') as SF2_TERRITORY_KEY
+,	   '0' as  SF3_TERRITORY_KEY
+,      IFF(cust.PDRP_IND ='Y', '-1', cd.LUNDBECK_ID) as CUSTOMER_KEY
+,      pg.BRAND
+FROM   LUNDBECK_DW.ANALYTICS.COPAY_DETAIL cd
+INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" pg
+  ON pg.PRODUCT_GROUP_CODE = cd.PRODUCT_GROUP_CODE
+INNER JOIN "LUNDBECK_DW"."COMMON".CUSTOMERS cust
+  ON cust.LUNDBECK_ID = cd.LUNDBECK_ID
+  LEFT JOIN LUNDBECK_DW.COMMON.ZIP_TO_TERRITORY ZT2 ON ZT2.ZIP = cust.CUSTOMER_ZIP 
+and ZT2.CURRENT_IND = 'Y' AND ZT2.SALESFORCE_NAME = 'SIERRA'
+WHERE pg.BRAND IN ('REXULTI')
+ AND 
+ IFNULL(cust.LU_NO_CONTACT_FLAG, 'N') <> 'Y'
+  AND IFNULL(cust.DATA_STEWARDSHIP_EXCLUSION_FLAG, 'N') <> 'Y'
+  AND   cust.REXULTI_EXCLUSION_IND = 'N'
+  AND  (cust.REXULTI_SCZ_EXCLUSION_IND = 'N' or cust.REXULTI_MDD_EXCLUSION_IND = 'N')
+  AND GERIATRIC_SPECIALTY_IND = 'N'
+union all
+
+SELECT cd.DATE_KEY
+,      cd.COPAY_CARD_COUNT as CLAIM_COUNT
+,      cd.GROUP_NUMBER
+,      '0' as SF1_TERRITORY_KEY
+,	   '0' as SF2_TERRITORY_KEY
+,	   ifnull(ZT3.TERRITORY_ID,'0') as SF3_TERRITORY_KEY
+,      IFF(cust.PDRP_IND ='Y', '-1', cd.LUNDBECK_ID) as CUSTOMER_KEY
+,      pg.BRAND
+FROM   LUNDBECK_DW.ANALYTICS.COPAY_DETAIL cd
+INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" pg
+  ON pg.PRODUCT_GROUP_CODE = cd.PRODUCT_GROUP_CODE
+INNER JOIN "LUNDBECK_DW"."COMMON".CUSTOMERS cust
+  ON cust.LUNDBECK_ID = cd.LUNDBECK_ID
+  LEFT JOIN LUNDBECK_DW.COMMON.ZIP_TO_TERRITORY ZT3 ON ZT3.ZIP = cust.CUSTOMER_ZIP 
+and ZT3.CURRENT_IND = 'Y' AND ZT3.SALESFORCE_NAME = 'ALTITUDE'
+WHERE pg.BRAND IN ('REXULTI')
+ AND 
+ IFNULL(cust.LU_NO_CONTACT_FLAG, 'N') <> 'Y'
+  AND IFNULL(cust.DATA_STEWARDSHIP_EXCLUSION_FLAG, 'N') <> 'Y'
+  AND   cust.REXULTI_EXCLUSION_IND = 'N'
+  AND  (cust.REXULTI_SCZ_EXCLUSION_IND = 'N' or cust.REXULTI_MDD_EXCLUSION_IND = 'N')
+
+;
+STORE PSY_COPAY_FACT INTO '$(QVDLocation)Facts/SALES_PSY_COPAY_FACT$(vSpace)$(vSF).qvd' (qvd);
+
+///$tab Section
+// NoConcatenate
+
+// PSY_COPAY_FACT:
+// LOAD  
+//       DATE_KEY
+// ,     CLAIM_COUNT
+// ,     GROUP_NUMBER
+// ,     SF1_TERRITORY_KEY
+// ,     SF2_TERRITORY_KEY
+// ,     SF3_TERRITORY_KEY
+// ,     CUSTOMER_KEY
+// ,     BRAND
+// ,     '$(vDW2RefreshDate)' as  DW2_REFRESH_DATE
+// ;
+
+// SELECT cd.DATE_KEY
+// ,      cd.COPAY_CARD_COUNT as CLAIM_COUNT
+// ,      cd.GROUP_NUMBER
+// ,      '0' as SF1_TERRITORY_KEY
+// ,	   ZT2.TERRITORY_ID as SF2_TERRITORY_KEY
+// ,	   '0' as SF3_TERRITORY_KEY
+// ,      IFF(cust.PDRP_IND ='Y', '-1', cd.LUNDBECK_ID) as CUSTOMER_KEY
+// ,      pg.BRAND
+// FROM   LUNDBECK_DW.ANALYTICS.COPAY_DETAIL cd
+// INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" pg
+//   ON pg.PRODUCT_GROUP_CODE = cd.PRODUCT_GROUP_CODE
+// INNER JOIN "LUNDBECK_DW"."COMMON".CUSTOMERS cust
+//   ON cust.LUNDBECK_ID = cd.LUNDBECK_ID
+// //   LEFT JOIN LUNDBECK_DW.COMMON.ZIP_TO_TERRITORY ZT1 ON ZT1.ZIP = cust.CUSTOMER_ZIP 
+// // and ZT1.CURRENT_IND = 'Y' AND ZT1.SALESFORCE_NAME = 'SUMMIT'
+//   LEFT JOIN LUNDBECK_DW.COMMON.ZIP_TO_TERRITORY ZT2 ON ZT2.ZIP = cust.CUSTOMER_ZIP 
+// and ZT2.CURRENT_IND = 'Y' AND ZT2.SALESFORCE_NAME = 'SIERRA'
+// // LEFT JOIN LUNDBECK_DW.COMMON.ZIP_TO_TERRITORY ZT3 ON ZT3.ZIP = cust.CUSTOMER_ZIP 
+// // and ZT3.CURRENT_IND = 'Y' AND ZT3.SALESFORCE_NAME = 'ALTITUDE'
+// // INNER JOIN luinc.DIM_COPAY_CARD_TYPE cdt
+// //   ON cdt.COPAY_CARD_TYPE_KEY = cd.COPAY_CARD_TYPE_KEY
+// WHERE pg.BRAND IN ('TRINTELLIX')
+//   AND  IFNULL(cust.LU_NO_CONTACT_FLAG, 'N') <> 'Y'
+//   AND IFNULL(cust.DATA_STEWARDSHIP_EXCLUSION_FLAG, 'N') <> 'Y'
+//   AND cust.TRINTELLIX_EXCLUSION_IND = 'N'
+//   AND COPAY_VOUCHER = 'COPAY CARD' 
+
+
+///$tab SF:PSY COPAY DIM
+NoConcatenate
+
+COPAY_DIM:
+LOAD Distinct
+     BRAND
+,    GROUP_NUMBER
+RESIDENT PSY_COPAY_FACT
+;
+
+LEFT JOIN (COPAY_DIM)
+LOAD
+    BRAND,
+    GROUP_NUMBER,
+    GROUP_NAME,
+    SALES_COPAY_CARD_TYPE
+FROM [lib://LuUS_DATA_Marketing_Analytics:DataFiles/Coupon_Group_Mapping.xlsx]
+(ooxml, embedded labels, table is QlikSense);
+
+
+STORE COPAY_DIM INTO '$(QVDLocation)Dimensions/SALES_PSY_COPAY_DIM$(vSpace)$(vSF).qvd' (qvd);
+DROP TABLE COPAY_DIM;
+DROP TABLE PSY_COPAY_FACT;
+
+
+
+
+
+
+
+
+///$tab SF: PSYCH_TERRITORY
+PSYCH_TERRITORY:
+LOAD   TERRITORY_KEY
+,      TERRITORY_ID as [Territory ID]
+,      TERRITORY_NAME & ' - ' & SALESFORCE_GROUP_NAME as [Territory]
+,      SALESFORCE_GROUP_NAME as [Sales Team]
+,      AREA_GROUP_NAME as [Area Sales Team]
+,      AREA_ID as [Area ID]
+,      AREA_NAME as [Area]
+,      REGION_ID as [Region ID]
+,      REGION_NAME as [Region]
+,      if(isnull(ACCT_MGR_FULL_NAME), 'Vacant - ' 
+         & TERRITORY_NAME & ' - ' & SALESFORCE_GROUP_NAME,  ACCT_MGR_FULL_NAME) 
+         as [Account Manager]
+,      if(isnull(RGN_MGR_FULL_NAME), 'Vacant - ' & REGION_NAME,  RGN_MGR_FULL_NAME) as [Regional Manager]
+,      if(isnull(AREA_MGR_FULL_NAME),'Vacant - ' & AREA_NAME & ' - ' & AREA_GROUP_NAME,  AREA_MGR_FULL_NAME) as [Area Manager]
+// ,      '$(vDW2RefreshDate)' as [PSY Territory DW2 Refresh Date]
+// ,      '$(vTerritoryRefresh)' as [PSY Territory Refresh Date]
+;
+
+SQL
+SELECT DISTINCT
+TERRITORY_ID as TERRITORY_KEY 
+,      TERRITORY_ID 
+,      TERRITORY_NAME
+,      'Place Holder' as SALESFORCE_GROUP
+,      SALESFORCE_NAME as SALESFORCE_GROUP_NAME
+,      AREA_ID
+,      AREA_NAME
+,       AREA_SALESFORCE_NAME as AREA_GROUP_NAME
+,      REGION_ID
+,      REGION_NAME
+,      concat(FIRST_NAME,' ',LAST_NAME) as ACCT_MGR_FULL_NAME
+,      concat(REGION_FIRST_NAME,' ',REGION_LAST_NAME) as RGN_MGR_FULL_NAME
+,      concat(AREA_FIRST_NAME,' ',AREA_LAST_NAME) as AREA_MGR_FULL_NAME
+FROM "LUNDBECK_DW"."COMMON"."TERRITORY"
+WHERE FRANCHISE <> 'NRO' AND
+   ( CURRENT_IND = 'Y' OR TERRITORY_ID = 'UNK')
+
+
+;
+
+STORE PSYCH_TERRITORY INTO '$(QVDLocation)Dimensions/PSY Territory Psych Payer$(vSpace)$(vSF).qvd' (qvd);
+
+Drop Table PSYCH_TERRITORY;
+///$tab SF: SALES_CUSTOMER_COPAY
+NoConcatenate
+Customer:
+SELECT Distinct LUNDBECK_ID
+,	   CUSTOMER_ZIP
+,	   SUMMIT_TERRITORY_ID
+,      SIERRA_TERRITORY_ID
+,      ALTITUDE_TERRITORY_ID
+,	   SUMMIT_ACCOUNT_MANAGER
+,	   SIERRA_ACCOUNT_MANAGER
+,	   ALTITUDE_ACCOUNT_MANAGER
+FROM LUNDBECK_DW.COMMON.CUSTOMERS C 
+LEFT OUTER JOIN (
+  SELECT zt.ZIP
+  ,      MAX(IFF(t.SALESFORCE_NAME = 'SUMMIT',  IFF(t.TERRITORY_ID = 'UNK', 'UNK', CONCAT(T.FIRST_NAME,' ',T.LAST_NAME)) , NULL)) as SUMMIT_ACCOUNT_MANAGER
+  ,      MAX(IFF(t.SALESFORCE_NAME = 'SIERRA',  IFF(t.TERRITORY_ID = 'UNK', 'UNK', CONCAT(T.FIRST_NAME,' ',T.LAST_NAME)) , NULL)) as SIERRA_ACCOUNT_MANAGER
+  ,      MAX(IFF(t.SALESFORCE_NAME = 'ALTITUDE',IFF(t.TERRITORY_ID = 'UNK', 'UNK', CONCAT(T.FIRST_NAME,' ',T.LAST_NAME)) , NULL)) as ALTITUDE_ACCOUNT_MANAGER
+  ,      MAX(IFF(t.SALESFORCE_NAME = 'SUMMIT',  t.TERRITORY_ID , NULL)) as SUMMIT_TERRITORY_ID
+  ,      MAX(IFF(t.SALESFORCE_NAME = 'SIERRA',  t.TERRITORY_ID , NULL)) as SIERRA_TERRITORY_ID
+  ,      MAX(IFF(t.SALESFORCE_NAME = 'ALTITUDE',t.TERRITORY_ID , NULL)) as ALTITUDE_TERRITORY_ID
+  FROM   LUNDBECK_DW.COMMON.ZIP_TO_TERRITORY zt
+  INNER JOIN LUNDBECK_DW.COMMON.TERRITORY  t
+    ON t.TERRITORY_ID = zt.TERRITORY_ID
+    AND t.CURRENT_IND = 'Y'
+  WHERE  zt.CURRENT_IND = 'Y'
+  GROUP BY zt.ZIP
+) zt
+ON zt.ZIP  = c.CUSTOMER_ZIP;
+
+// NoConcatenate
+// Customer:
+// select distinct
+// CONCAT(T1.FIRST_NAME,' ',T1.LAST_NAME) as SUMMIT_ACCOUNT_MANAGER,
+// CONCAT(T2.FIRST_NAME,' ',T2.LAST_NAME) as SIERRA_ACCOUNT_MANAGER,
+// CONCAT(T3.FIRST_NAME,' ',T3.LAST_NAME) as ALTITUDE_ACCOUNT_MANAGER,
+// CUSTOMER_ZIP
+// FROM LUNDBECK_DW.COMMON.CUSTOMERS C 
+// LEFT JOIN LUNDBECK_DW.COMMON.ZIP_TO_TERRITORY ZT1 ON ZT1.ZIP=C.CUSTOMER_ZIP AND ZT1.CURRENT_IND = 'Y'
+// LEFT JOIN LUNDBECK_DW.COMMON.ZIP_TO_TERRITORY ZT2 ON ZT2.ZIP=C.CUSTOMER_ZIP AND ZT2.CURRENT_IND = 'Y'
+// LEFT JOIN LUNDBECK_DW.COMMON.ZIP_TO_TERRITORY ZT3 ON ZT3.ZIP=C.CUSTOMER_ZIP AND ZT3.CURRENT_IND = 'Y'
+// LEFT JOIN LUNDBECK_DW.COMMON.TERRITORY T1 ON T1.TERRITORY_ID=ZT1.TERRITORY_ID AND T1.SALESFORCE_NAME='SUMMIT' AND T1.CURRENT_IND = 'Y'
+// LEFT JOIN LUNDBECK_DW.COMMON.TERRITORY T2 ON T2.TERRITORY_ID=ZT2.TERRITORY_ID AND T2.SALESFORCE_NAME='SIERRA' AND T2.CURRENT_IND = 'Y'
+// LEFT JOIN LUNDBECK_DW.COMMON.TERRITORY T3 ON T3.TERRITORY_ID=ZT3.TERRITORY_ID AND T3.SALESFORCE_NAME='ALTITUDE'AND T3.CURRENT_IND = 'Y'
+// ;
+
+STORE Customer INTO '$(QVDLocation)Facts/SALES_CUSTOMER_COPAY$(vSpace)$(vSF).qvd' (qvd);
