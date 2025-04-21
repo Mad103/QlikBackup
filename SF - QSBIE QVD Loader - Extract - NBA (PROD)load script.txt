@@ -1,0 +1,457 @@
+///$tab Main
+SET ThousandSep=',';
+SET DecimalSep='.';
+SET MoneyThousandSep=',';
+SET MoneyDecimalSep='.';
+SET MoneyFormat='$#,##0.00;-$#,##0.00';
+SET TimeFormat='h:mm:ss TT';
+SET DateFormat='M/D/YYYY';
+SET TimestampFormat='M/D/YYYY h:mm:ss[.fff] TT';
+SET FirstWeekDay=6;
+SET BrokenWeeks=1;
+SET ReferenceDay=0;
+SET FirstMonthOfYear=1;
+SET CollationLocale='en-US';
+SET CreateSearchIndexOnReload=1;
+SET MonthNames='Jan;Feb;Mar;Apr;May;Jun;Jul;Aug;Sep;Oct;Nov;Dec';
+SET LongMonthNames='January;February;March;April;May;June;July;August;September;October;November;December';
+SET DayNames='Mon;Tue;Wed;Thu;Fri;Sat;Sun';
+SET LongDayNames='Monday;Tuesday;Wednesday;Thursday;Friday;Saturday;Sunday';
+SET NumericalAbbreviation='3:k;6:M;9:G;12:T;15:P;18:E;21:Z;24:Y;-3:m;-6:μ;-9:n;-12:p;-15:f;-18:a;-21:z;-24:y';
+
+// LIB CONNECT TO 'LuUS_DATA:vAZ_MSSQL_LuUS_DW_2.0';
+
+ //LIB CONNECT TO 'LuUS_DATA:MSSQL_LuUS_DW_2.0';
+
+LIB CONNECT TO 'LuUS_DATA:SNOWFLAKE_LuUS_BI_Reader';
+
+
+$(Must_Include=[lib://LuUS_DATA:DataFiles/Production/QlikSense BI Evolution/Offline Files/Include/FolderConnections.txt]); 
+LET vSpace=if(upper(GetSysAttr('spaceType'))='SHARED' or (GetSysAttr('spaceType'))='','_DEV');
+
+Trace '$(vSpace)';
+
+LET vSF = '_SF';
+
+trace '$(vSF)';
+
+// NoConcatenate
+// Retail:
+// SQL Select Max(DATE_KEY) as Retail_Max_date 
+// FROM LUINC.FACT_RETAIL_SALES f
+// Join LUINC.DIM_PRODUCT_GROUP pg on pg.PRODUCT_GROUP_KEY = f.PRODUCT_GROUP_KEY
+// Where PRODUCT_NAME = 'LATUDA';
+// Let vMinDate=Date(AddMonths(MonthStart(Date#(Peek('Retail_Max_date') ,'YYYYMMDD')),-23),'YYYYMMDD');
+// drop table Retail;
+
+// LET vToday=DATE(TODAY(),'YYYYMMDD');
+
+
+// SF Part :
+NoConcatenate
+Retail:
+SQL Select Max(DATE_KEY) as RETAIL_MAX_DATE 
+FROM "LUNDBECK_DW"."ANALYTICS"."RETAIL_SALES" fRS
+INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" pg
+  ON pg.PRODUCT_GROUP_CODE = frs.PRODUCT_GROUP_CODE
+Where BRAND = 'REXULTI';
+Let vMinDate=Date(AddMonths(MonthStart(Date#(Peek('RETAIL_MAX_DATE') ,'YYYYMMDD')),-23),'YYYYMMDD');
+drop table Retail;
+Trace '$(vMinDate)';
+
+LET vToday=DATE(TODAY(),'YYYYMMDD');
+
+
+
+
+
+///$tab SF : Fact Retail Product Name
+ MaxDate:
+SQL
+select max(DATE_WEEK_END_KEY) as MAX_DATE FROM "LUNDBECK_DW"."COMMON"."CALENDAR" cl1 where cl1.DATE_WEEK_END = (
+select case when max(frs.DATE_KEY)  < max(cl.DATE_WEEK_END_KEY) then 
+dateadd(DD,-7,max(cl.DATE_WEEK_END))
+else max(cl.DATE_WEEK_END) end AS DATE_WEEK_END FROM "LUNDBECK_DW"."ANALYTICS"."RETAIL_SALES" frs
+INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" pg
+  ON pg.PRODUCT_GROUP_CODE = frs.PRODUCT_GROUP_CODE
+INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" cl on frs.DATE_KEY = cl.DATE_KEY
+where pg.BRAND ='REXULTI');
+
+LET vMaxDate=Peek('MAX_DATE');  
+Trace '$(vMaxDate)';
+Drop Table MaxDate;
+
+
+NoConcatenate
+FactSalesNBA:
+select 
+frs.DATE_KEY
+,CASE WHEN dc.PDRP_IND = 'Y'  and dc.PSYCH_SPECIALTY_IND = 'Y'THEN '-1'   WHEN dc.PDRP_IND = 'Y'  and dc.PSYCH_SPECIALTY_IND = 'N' THEN '-2' 				ELSE	 frs.LUNDBECK_ID END  as CUSTOMER_KEY
+,frs.LUNDBECK_ID as UNIQUE_CUSTOMER_KEY
+,frs.PRODUCT_GROUP_CODE as PRODUCT_GROUP_KEY
+,Sum(frs.T_QTY) as T_QTY
+,Sum(frs.NORMALIZED_TRX) as NORMALIZED_TRX
+,Sum(frs.NORMALIZED_NRX) as NORMALIZED_NRX
+,'FRSR' as SRC
+, 'REXULTI' as "LU Product"
+FROM "LUNDBECK_DW"."ANALYTICS"."RETAIL_SALES" frs
+Inner join "LUNDBECK_DW"."COMMON"."CUSTOMERS" dc on frs.LUNDBECK_ID = dc.LUNDBECK_ID
+Inner join "LUNDBECK_DW"."COMMON"."AGE_GROUP_INCLUSIONS" ag on frs.AGE_GROUP_NAME = ag.AGE_GROUP
+INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" pg
+  ON pg.PRODUCT_GROUP_CODE = frs.PRODUCT_GROUP_CODE
+where IFNULL(ag.REXULTI_INCLUSION_IND, 'Y')  = 'Y'
+  AND  dc.REXULTI_EXCLUSION_IND = 'N' 
+  AND  IFNULL(dc.DATA_STEWARDSHIP_EXCLUSION_FLAG, 'N') = 'N'
+  AND  IFNULL(dc.LU_NO_CONTACT_FLAG, 'N') <> 'Y'
+  AND  ((dc.CUSTOMER_TYPE <> 'HCO' //and (dc.PSYCH_SPECIALTY_IND = 'Y' or dc.REXULTI_SALES_BI_VISIBILITY = 'Y' or CUSTOMER_NAME like 'IQVIA%'))  //comment
+  )
+      OR (dc.CUSTOMER_TYPE = 'HCO' and IFNULL(dc.REXULTI_RETAIL_HCO_AAD_EXCL_IND, 'N') <> 'Y'))											   //comment	
+and frs.DATE_KEY > '$(vMinDate)'
+and frs.DATE_KEY <= '$(vMaxDate)'
+and frs.PRODUCT_GROUP_CODE in
+  (select PRODUCT_GROUP_CODE FROM "LUNDBECK_DW"."COMMON".MB_REXULTI_AAD_IC)
+AND pg.BRAND = 'REXULTI'
+and frs.CHANNEL_NAME<>'UNKNOWN'
+group by 
+frs.DATE_KEY
+,frs.LUNDBECK_ID
+,frs.PRODUCT_GROUP_CODE
+,CASE WHEN dc.PDRP_IND = 'Y'  and dc.PSYCH_SPECIALTY_IND = 'Y'THEN '-1'   WHEN dc.PDRP_IND = 'Y'  and dc.PSYCH_SPECIALTY_IND = 'N' THEN '-2' 				ELSE	 frs.LUNDBECK_ID END 
+
+;
+
+
+Concatenate(FactSalesNBA)
+select 
+frs.DATE_KEY
+,CASE WHEN dc.PDRP_IND = 'Y'  and dc.PSYCH_SPECIALTY_IND = 'Y'THEN '-1'  WHEN dc.PDRP_IND = 'Y'  and dc.PSYCH_SPECIALTY_IND = 'N' THEN '-2'	ELSE frs.LUNDBECK_ID END as CUSTOMER_KEY
+,frs.LUNDBECK_ID as UNIQUE_CUSTOMER_KEY
+,pg.PRODUCT_GROUP_CODE as PRODUCT_GROUP_KEY
+,Sum(frs.T_QTY) as T_QTY
+,Sum(frs.NORMALIZED_TRX) as NORMALIZED_TRX
+,Sum(frs.NORMALIZED_NRX) as NORMALIZED_NRX
+,'FRST' as SRC
+, 'TRINTELLIX' as "LU Product"
+FROM "LUNDBECK_DW"."ANALYTICS"."RETAIL_SALES" frs
+Inner join "LUNDBECK_DW"."COMMON"."CUSTOMERS"  dc on frs.LUNDBECK_ID = dc.LUNDBECK_ID
+Inner join "LUNDBECK_DW"."COMMON"."AGE_GROUP_INCLUSIONS"  ag on frs.AGE_GROUP_NAME = ag.AGE_GROUP
+INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS"  pg
+  ON pg.PRODUCT_GROUP_CODE = frs.PRODUCT_GROUP_CODE
+where dc.TRINTELLIX_EXCLUSION_IND = 'N'
+  AND  IFNULL(dc.DATA_STEWARDSHIP_EXCLUSION_FLAG, 'N') = 'N'
+  AND  IFNULL(ag.TRINTELLIX_INCLUSION_IND, 'Y') = 'Y'
+  AND  IFNULL(dc.LU_NO_CONTACT_FLAG, 'N') <> 'Y'
+  AND  ((dc.CUSTOMER_TYPE <> 'HCO' )//and (dc.PSYCH_SPECIALTY_IND = 'Y'))// or dc.REXULTI_SALES_BI_VISIBILITY = 'Y' or CUSTOMER_NAME like 'IQVIA%'))
+        OR (dc.CUSTOMER_TYPE = 'HCO' and IFNULL(dc.TRINTELLIX_RETAIL_HCO_EXCL_IND, 'N') <> 'Y'))
+and frs.DATE_KEY > '$(vMinDate)'
+and frs.DATE_KEY <= '$(vMaxDate)'
+and frs.PRODUCT_GROUP_CODE in
+  (SELECT PRODUCT_GROUP_CODE  FROM  "LUNDBECK_DW"."COMMON"."MB_TRINTELLIX_IC")   AND pg.BRAND = 'TRINTELLIX'
+and frs.CHANNEL_NAME <> 'UNKNOWN'
+group by 
+frs.DATE_KEY
+,frs.LUNDBECK_ID
+,pg.PRODUCT_GROUP_CODE
+,CASE WHEN dc.PDRP_IND = 'Y'  and dc.PSYCH_SPECIALTY_IND = 'Y'THEN '-1'   WHEN dc.PDRP_IND = 'Y'  and dc.PSYCH_SPECIALTY_IND = 'N' THEN '-2' ELSE frs.LUNDBECK_ID END 
+;
+
+Concatenate(FactSalesNBA)
+SQL
+select 
+frs.DATE_KEY
+,CASE WHEN dc.PDRP_IND = 'Y'  and dc.PSYCH_SPECIALTY_IND = 'Y'THEN '-1'   WHEN dc.PDRP_IND = 'Y'  and dc.PSYCH_SPECIALTY_IND = 'N' THEN '-2'
+				ELSE	 frs.LUNDBECK_ID END as CUSTOMER_KEY
+,frs.LUNDBECK_ID as UNIQUE_CUSTOMER_KEY
+,pg.PRODUCT_GROUP_CODE as PRODUCT_GROUP_KEY
+,Sum(frs.T_QTY) as T_QTY
+,Sum(frs.NORMALIZED_TRX) as NORMALIZED_TRX
+,Sum(frs.NORMALIZED_NRX) as NORMALIZED_NRX
+,'FRSAM' as SRC
+, 'ABILIFY MAINTENA' as "LU Product"
+FROM "LUNDBECK_DW"."ANALYTICS"."RETAIL_SALES" frs
+Inner join "LUNDBECK_DW"."COMMON"."CUSTOMERS" dc on frs.LUNDBECK_ID = dc.LUNDBECK_ID
+Inner join "LUNDBECK_DW"."COMMON"."AGE_GROUP_INCLUSIONS" ag on frs.AGE_GROUP_NAME = ag.AGE_GROUP
+INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" pg
+   ON pg.PRODUCT_GROUP_CODE = frs.PRODUCT_GROUP_CODE
+where IFNULL(dc.LU_NO_CONTACT_FLAG,'N') <> 'Y' 
+and IFNULL(dc.DATA_STEWARDSHIP_EXCLUSION_FLAG,'N') <> 'Y'
+and dc.ABILIFY_MAINTENA_EXCLUSION_IND ='N' 
+and IFNULL(ag.ABILIFY_MAINTENA_INCLUSION_IND,'Y') = 'Y'
+and IFNULL(dc.ABILIFY_MAINTENA_RETAIL_HCO_EXCL_IND,'N') <> 'Y'
+and frs.DATE_KEY > '$(vMinDate)'
+and frs.DATE_KEY <= '$(vMaxDate)' AND pg.BRAND in ('ABILIFY MAINTENA') 
+group by 
+frs.DATE_KEY
+,pg.PRODUCT_GROUP_CODE
+,frs.LUNDBECK_ID
+,CASE WHEN dc.PDRP_IND = 'Y'  and dc.PSYCH_SPECIALTY_IND = 'Y'THEN '-1'   WHEN dc.PDRP_IND = 'Y'  and dc.PSYCH_SPECIALTY_IND = 'N' THEN '-2' 				ELSE	 frs.LUNDBECK_ID END 
+;
+
+$(Must_Include=[lib://LuUS_DATA:LuUS_SharePoint/Shared Documents/Qlik Sense Data Files/Include/Qlik Cloud/FolderConnections.txt]); 
+
+store FactSalesNBA into [$(vQSBIE_TransformQVD_Fact)/TEST_SALES_NBA$(vSpace)$(vSF).qvd](qvd);
+///$tab exit script;
+exit script;
+
+///$tab Fact Retail Product Name
+// //  Sales:
+// // LOAD
+// //     "Date Key",
+// //     "Customer Key",
+// //     "Product Key" as [Product Key],
+// //         "Normalized TRx",
+// //    SRC
+// // //FROM [$(vQSBIE_TransformQVD_Fact)\FACT_FIELD_BI_NS2_NEW$(vSpace).qvd](qvd)
+// // FROM [$(vQSBIE_TransformQVD_Fact)\TEST SALES NBA$(vSpace).qvd](qvd)
+// // ;
+
+
+
+// //Let vFactMinDate=Date(Addmonths(Today(),-19),'YYYYMMDD');
+
+// //exit script;
+ 
+ 
+//  MaxDate:
+// SQL
+// select max(DATE_WEEK_END_KEY) as MAX_DATE FROM LUINC.DIM_CLNDR cl1 where cl1.DATE_WEEK_END = (
+// select case when max(frs.DATE_KEY)  < max(cl.DATE_WEEK_END_KEY) then 
+// dateadd(DD,-7,max(cl.DATE_WEEK_END))
+// else max(cl.DATE_WEEK_END) end FROM LUINC.FACT_RETAIL_SALES frs
+// join LUINC.DIM_PRODUCT_GROUP pg on frs.PRODUCT_GROUP_KEY = pg.PRODUCT_GROUP_KEY
+// join LUINC.DIM_CLNDR cl on frs.DATE_KEY = cl.DATE_KEY
+// where pg.PRODUCT_NAME ='LATUDA');
+
+// LET vMaxDate=Peek('MAX_DATE');  Trace 'Maxdate : $(vMaxDate)';
+// Drop Table MaxDate;
+
+ 
+// //  FactSalesNBA:
+// // load DATE_KEY AS "Date Key",
+// //    NORMALIZED_TRX as [Normalized TRx],
+// //   PRODUCT_GROUP_KEY as [Product Key],
+// //   SRC,
+// //    CUSTOMER_KEY as [Customer Key]
+
+  
+// //   ;
+  
+// FactSalesNBA:
+// //Concatenate(FactSales)
+// SQL
+// select 
+// frs.DATE_KEY
+// ,CASE WHEN dc.PDRP_IND = 'Y'  and dc.PSYCH_SPECIALTY_IND = 'Y'THEN -1   WHEN dc.PDRP_IND = 'Y'  and dc.PSYCH_SPECIALTY_IND = 'N' THEN -2
+// 				ELSE	 frs.CUSTOMER_KEY END as CUSTOMER_KEY
+// ,frs.CUSTOMER_KEY as UNIQUE_CUSTOMER_KEY
+// ,frs.PRODUCT_GROUP_KEY
+// //,dp.PLAN_KEY
+// // ,frs.SF1_TERRITORY_KEY
+// // ,'0' as SF2_TERRITORY_KEY
+// // ,'0' as SF3_TERRITORY_KEY
+// //,      IIF(dc.PDRP_IND = 'Y', 'N', ISNULL(cpc.SF1_CALL_PLAN_IND, 'N')) as SF1_CALL_PLAN_IND
+// //,      'N' as SF2_CALL_PLAN_IND
+// //,      'N' as SF3_CALL_PLAN_IND
+// ,Sum(frs.T_QTY) as T_QTY
+// ,Sum(frs.NORMALIZED_TRX) as NORMALIZED_TRX
+// ,Sum(frs.NORMALIZED_NRX) as NORMALIZED_NRX
+// ,'FRSAM' as SRC
+// , 'ABILIFY MAINTENA' as [LU Product]
+// //, max(CASE WHEN rsw.DATE_KEY = frs.DATE_KEY  AND dc.CUSTOMER_TYPE<>'HCO' THEN 1 ELSE 0 END) as NEW_WRITERS
+//  FROM LUINC.FACT_RETAIL_SALES frs
+// Inner join LUINC.DIM_CUSTOMER dc on frs.CUSTOMER_KEY = dc.CUSTOMER_KEY
+// Inner join LUINC.DIM_AGE_GROUP ag on frs.AGE_GROUP_KEY = ag.AGE_GROUP_KEY
+//   INNER JOIN LUINC.DIM_CHANNEL cha
+//   on cha.CHANNEL_KEY=frs.CHANNEL_KEY and CHANNEL_NAME<>'UNKNOWN'
+// INNER JOIN LUINC.DIM_PRODUCT_GROUP pg
+//   ON pg.PRODUCT_GROUP_KEY = frs.PRODUCT_GROUP_KEY
+// INNER JOIN LUINC.DIM_BRAND b
+//   ON b.BRAND_CODE = pg.BRAND_CODE
+// //INNER JOIN LUINC.DIM_PLAN dp
+// //  ON dp.PLAN_KEY = frs.PLAN_KEY
+// // LEFT OUTER JOIN LUINC.FACT_RETAIL_SUMMARY_WKLY rsw
+// //  ON   rsw.brand_key = b.BRAND_KEY
+// //  AND  rsw.CUSTOMER_KEY = frs.CUSTOMER_KEY
+// //  AND  rsw.NEW_WRITERS = 1
+// // LEFT OUTER JOIN luinc.FACT_CALL_PLAN_CUSTOMER cpc
+// //   ON cpc.SF1_TERRITORY_KEY = frs.SF1_TERRITORY_KEY
+// //   AND cpc.SF2_TERRITORY_KEY = 0
+// //   AND cpc.SF3_TERRITORY_KEY = 0
+// //   AND cpc.CUSTOMER_KEY = frs.CUSTOMER_KEY
+// //   AND cpc.PRODUCT_GROUP_KEY IN (SELECT pg1.PRODUCT_GROUP_KEY FROM luinc.DIM_PRODUCT_GROUP pg1 WHERE pg1.BRAND = 'ABILIFY MAINTENA')
+
+// where isnull(dc.LU_NO_CONTACT_FLAG,'N') <> 'Y' 
+// and isnull(dc.DATA_STEWARDSHIP_EXCLUSION_FLAG,'N') <> 'Y'
+// and dc.ABILIFY_MAINTENA_EXCLUSION_IND ='N' 
+// and isnull(ag.ABILIFY_MAINTENA_INCLUSION_IND,'Y') = 'Y'
+// and isnull(dc.ABILIFY_MAINTENA_RETAIL_HCO_EXCL_IND,'N') <> 'Y'
+// and frs.DATE_KEY > '$(vMinDate)'
+// and frs.DATE_KEY <= '$(vMaxDate)'
+// and frs.PRODUCT_GROUP_KEY in
+//   (select PRODUCT_GROUP_KEY FROM LUINC.DIM_MB_ABILIFY_MAINTENA_IC) AND pg.BRAND = 'ABILIFY MAINTENA'
+// group by 
+// frs.DATE_KEY
+// //,rsw.DATE_KEY
+// ,frs.CUSTOMER_KEY
+// ,frs.PRODUCT_GROUP_KEY
+// //,dp.PLAN_KEY
+// //,frs.SF1_TERRITORY_KEY
+// //,      IIF(dc.PDRP_IND = 'Y', 'N', ISNULL(cpc.SF1_CALL_PLAN_IND, 'N')) 
+// //,dc.CUSTOMER_TYPE
+// ,CASE WHEN dc.PDRP_IND = 'Y'  and dc.PSYCH_SPECIALTY_IND = 'Y'THEN -1   WHEN dc.PDRP_IND = 'Y'  and dc.PSYCH_SPECIALTY_IND = 'N' THEN -2 				ELSE	 frs.CUSTOMER_KEY END 
+
+// union
+
+// select 
+// frs.DATE_KEY
+// ,CASE WHEN dc.PDRP_IND = 'Y'  and dc.PSYCH_SPECIALTY_IND = 'Y'THEN -1   WHEN dc.PDRP_IND = 'Y'  and dc.PSYCH_SPECIALTY_IND = 'N' THEN -2 				ELSE	 frs.CUSTOMER_KEY END as CUSTOMER_KEY
+// ,frs.CUSTOMER_KEY as UNIQUE_CUSTOMER_KEY
+// ,frs.PRODUCT_GROUP_KEY
+// //,dp.PLAN_KEY
+// // ,'0' as SF1_TERRITORY_KEY
+// // ,frs.SF2_TERRITORY_KEY
+// // ,frs.SF3_TERRITORY_KEY
+// //,      'N' as SF1_CALL_PLAN_IND
+// //,      IIF(dc.PDRP_IND = 'Y', 'N', ISNULL(cpc.SF2_CALL_PLAN_IND, 'N')) as SF2_CALL_PLAN_IND
+// //,      IIF(dc.PDRP_IND = 'Y', 'N', ISNULL(cpc.SF3_CALL_PLAN_IND, 'N')) as SF3_CALL_PLAN_IND
+// ,Sum(frs.T_QTY) as T_QTY
+// ,Sum(frs.NORMALIZED_TRX) as NORMALIZED_TRX
+// ,Sum(frs.NORMALIZED_NRX) as NORMALIZED_NRX
+// ,'FRST' as SRC
+// , 'TRINTELLIX' as [LU Product]
+// //, max(CASE WHEN rsw.DATE_KEY = frs.DATE_KEY  AND dc.CUSTOMER_TYPE<>'HCO' THEN 1 ELSE 0 END) as NEW_WRITERS
+//  FROM LUINC.FACT_RETAIL_SALES frs
+// Inner join LUINC.DIM_CUSTOMER dc on frs.CUSTOMER_KEY = dc.CUSTOMER_KEY
+// Inner join LUINC.DIM_AGE_GROUP ag on frs.AGE_GROUP_KEY = ag.AGE_GROUP_KEY
+//   INNER JOIN LUINC.DIM_CHANNEL cha
+//   on cha.CHANNEL_KEY=frs.CHANNEL_KEY and CHANNEL_NAME<>'UNKNOWN'
+// INNER JOIN LUINC.DIM_PRODUCT_GROUP pg
+//   ON pg.PRODUCT_GROUP_KEY = frs.PRODUCT_GROUP_KEY
+// INNER JOIN LUINC.DIM_BRAND b
+//   ON b.BRAND_CODE = pg.BRAND_CODE
+// //INNER JOIN LUINC.DIM_PLAN dp
+// //  ON dp.PLAN_KEY = frs.PLAN_KEY
+// // LEFT OUTER JOIN LUINC.FACT_RETAIL_SUMMARY_WKLY rsw
+// //  ON   rsw.brand_key = b.BRAND_KEY
+// //  AND  rsw.CUSTOMER_KEY = frs.CUSTOMER_KEY
+// //  AND  rsw.NEW_WRITERS = 1
+// // LEFT OUTER JOIN luinc.FACT_CALL_PLAN_CUSTOMER cpc
+// //   ON cpc.SF1_TERRITORY_KEY = 0
+// //   AND cpc.SF2_TERRITORY_KEY = frs.SF2_TERRITORY_KEY
+// //   AND cpc.SF3_TERRITORY_KEY = frs.SF3_TERRITORY_KEY
+// //   AND cpc.CUSTOMER_KEY = frs.CUSTOMER_KEY
+// //   AND cpc.PRODUCT_GROUP_KEY IN (SELECT pg1.PRODUCT_GROUP_KEY FROM luinc.DIM_PRODUCT_GROUP pg1 WHERE pg1.BRAND = 'TRINTELLIX')
+
+// where dc.TRINTELLIX_EXCLUSION_IND = 'N'
+//   AND  ISNULL(dc.DATA_STEWARDSHIP_EXCLUSION_FLAG, 'N') = 'N'
+//   AND  ISNULL(ag.TRINTELLIX_INCLUSION_IND, 'Y') = 'Y'
+//   AND  ISNULL(dc.LU_NO_CONTACT_FLAG, 'N') <> 'Y'
+//   AND  ((dc.CUSTOMER_TYPE <> 'HCO' and (dc.PSYCH_SPECIALTY_IND = 'Y' or dc.REXULTI_SALES_BI_VISIBILITY = 'Y'))
+//         OR (dc.CUSTOMER_TYPE = 'HCO' and ISNULL(dc.TRINTELLIX_RETAIL_HCO_EXCL_IND, 'N') <> 'Y'))
+// and frs.DATE_KEY > '$(vMinDate)'
+// and frs.DATE_KEY <= '$(vMaxDate)'
+// and frs.PRODUCT_GROUP_KEY in
+//   (select PRODUCT_GROUP_KEY FROM LUINC.DIM_MB_TRINTELLIX_IC) AND pg.BRAND = 'TRINTELLIX'
+// group by 
+// frs.DATE_KEY
+// //,rsw.DATE_KEY
+// ,frs.CUSTOMER_KEY
+// ,frs.PRODUCT_GROUP_KEY
+// //,dp.PLAN_KEY
+// // ,frs.SF2_TERRITORY_KEY
+// // ,frs.SF3_TERRITORY_KEY
+// //,      IIF(dc.PDRP_IND = 'Y', 'N', ISNULL(cpc.SF2_CALL_PLAN_IND, 'N'))
+// //,      IIF(dc.PDRP_IND = 'Y', 'N', ISNULL(cpc.SF3_CALL_PLAN_IND, 'N'))
+// //,dc.CUSTOMER_TYPE
+// ,CASE WHEN dc.PDRP_IND = 'Y'  and dc.PSYCH_SPECIALTY_IND = 'Y'THEN -1   WHEN dc.PDRP_IND = 'Y'  and dc.PSYCH_SPECIALTY_IND = 'N' THEN -2 				ELSE	 frs.CUSTOMER_KEY END 
+
+// union
+
+// select 
+// frs.DATE_KEY
+// ,CASE WHEN dc.PDRP_IND = 'Y'  and dc.PSYCH_SPECIALTY_IND = 'Y'THEN -1   WHEN dc.PDRP_IND = 'Y'  and dc.PSYCH_SPECIALTY_IND = 'N' THEN -2 				ELSE	 frs.CUSTOMER_KEY END  as CUSTOMER_KEY
+// ,frs.CUSTOMER_KEY as UNIQUE_CUSTOMER_KEY
+// ,frs.PRODUCT_GROUP_KEY
+// //,dp.PLAN_KEY
+// // ,frs.SF1_TERRITORY_KEY
+// // ,frs.SF2_TERRITORY_KEY
+// // ,frs.SF3_TERRITORY_KEY
+// // ,      IIF(dc.PDRP_IND = 'Y', 'N', ISNULL(cpc.SF1_CALL_PLAN_IND, 'N')) as SF1_CALL_PLAN_IND
+// // ,      IIF(dc.PDRP_IND = 'Y', 'N', ISNULL(cpc.SF2_CALL_PLAN_IND, 'N')) as SF2_CALL_PLAN_IND
+// // ,      IIF(dc.PDRP_IND = 'Y', 'N', ISNULL(cpc.SF3_CALL_PLAN_IND, 'N')) as SF3_CALL_PLAN_IND
+// ,Sum(frs.T_QTY) as T_QTY
+// ,Sum(frs.NORMALIZED_TRX) as NORMALIZED_TRX
+// ,Sum(frs.NORMALIZED_NRX) as NORMALIZED_NRX
+// ,'FRSR' as SRC
+// , 'REXULTI' as [LU Product]
+// //,Max( CASE WHEN rsw.DATE_KEY = frs.DATE_KEY  AND dc.CUSTOMER_TYPE<>'HCO' THEN 1 ELSE 0 END) as NEW_WRITERS
+// FROM LUINC.FACT_RETAIL_SALES frs
+// Inner join LUINC.DIM_CUSTOMER dc on frs.CUSTOMER_KEY = dc.CUSTOMER_KEY
+// Inner join LUINC.DIM_AGE_GROUP ag on frs.AGE_GROUP_KEY = ag.AGE_GROUP_KEY
+// 	  INNER JOIN LUINC.DIM_CHANNEL cha
+//   on cha.CHANNEL_KEY=frs.CHANNEL_KEY and CHANNEL_NAME<>'UNKNOWN'
+// INNER JOIN LUINC.DIM_PRODUCT_GROUP pg
+//   ON pg.PRODUCT_GROUP_KEY = frs.PRODUCT_GROUP_KEY
+// INNER JOIN LUINC.DIM_BRAND b
+//   ON b.BRAND_CODE = pg.BRAND_CODE
+// //INNER JOIN LUINC.DIM_PLAN dp
+// //  ON dp.PLAN_KEY = frs.PLAN_KEY
+// // LEFT OUTER JOIN LUINC.FACT_RETAIL_SUMMARY_WKLY rsw
+// //  ON   rsw.brand_key = b.BRAND_KEY
+// //  AND  rsw.CUSTOMER_KEY = frs.CUSTOMER_KEY
+// //  AND  rsw.NEW_WRITERS = 1
+// // LEFT OUTER JOIN luinc.FACT_CALL_PLAN_CUSTOMER cpc
+// //   ON cpc.SF1_TERRITORY_KEY = frs.SF1_TERRITORY_KEY
+// //   AND cpc.SF2_TERRITORY_KEY = frs.SF2_TERRITORY_KEY
+// //   AND cpc.SF3_TERRITORY_KEY = frs.SF3_TERRITORY_KEY
+// //   AND cpc.CUSTOMER_KEY = frs.CUSTOMER_KEY
+// //   AND cpc.PRODUCT_GROUP_KEY IN (SELECT pg1.PRODUCT_GROUP_KEY FROM luinc.DIM_PRODUCT_GROUP pg1 WHERE pg1.BRAND = 'REXULTI')
+// where ISNULL(ag.REXULTI_INCLUSION_IND, 'Y') = 'Y'
+//   AND  dc.REXULTI_EXCLUSION_IND = 'N'
+//   AND  ISNULL(dc.DATA_STEWARDSHIP_EXCLUSION_FLAG, 'N') = 'N'
+//   AND  ISNULL(dc.LU_NO_CONTACT_FLAG, 'N') <> 'Y'
+//   AND  ((dc.CUSTOMER_TYPE <> 'HCO' and (dc.PSYCH_SPECIALTY_IND = 'Y' or dc.REXULTI_SALES_BI_VISIBILITY = 'Y'))
+//         OR (dc.CUSTOMER_TYPE = 'HCO' and ISNULL(dc.REXULTI_RETAIL_HCO_EXCL_IND, 'N') <> 'Y'))
+// and frs.DATE_KEY > '$(vMinDate)'
+// and frs.DATE_KEY <= '$(vMaxDate)'
+// and frs.PRODUCT_GROUP_KEY in
+//   (select PRODUCT_GROUP_KEY FROM LUINC.DIM_MB_REXULTI_IC)
+// AND pg.BRAND = 'REXULTI'
+// group by 
+// frs.DATE_KEY
+// //,rsw.DATE_KEY
+// ,frs.CUSTOMER_KEY
+// ,frs.PRODUCT_GROUP_KEY
+// //,dp.PLAN_KEY
+// // ,frs.SF1_TERRITORY_KEY
+// // ,frs.SF2_TERRITORY_KEY
+// // ,frs.SF3_TERRITORY_KEY
+// // ,      IIF(dc.PDRP_IND = 'Y', 'N', ISNULL(cpc.SF1_CALL_PLAN_IND, 'N'))
+// // ,      IIF(dc.PDRP_IND = 'Y', 'N', ISNULL(cpc.SF2_CALL_PLAN_IND, 'N'))
+// // ,      IIF(dc.PDRP_IND = 'Y', 'N', ISNULL(cpc.SF3_CALL_PLAN_IND, 'N'))
+// // ,dc.CUSTOMER_TYPE
+// ,CASE WHEN dc.PDRP_IND = 'Y'  and dc.PSYCH_SPECIALTY_IND = 'Y'THEN -1   WHEN dc.PDRP_IND = 'Y'  and dc.PSYCH_SPECIALTY_IND = 'N' THEN -2 				ELSE	 frs.CUSTOMER_KEY END 
+// ;
+
+// //store FactSalesNBA into [$(vQSBIE_TransformQVD_Fact)/TEST SALES NBA.qvd](qvd);
+
+// store FactSalesNBA into [lib://LuUS_DATA:DataFiles/Production/QlikSense BI Evolution/QVDs/Transform/Facts/TEST SALES NBA$(vSpace).qvd](qvd);
+
+
+// exit script;
+
+
+
+
+// // LOAD
+// //     DATE_KEY,
+// //     CUSTOMER_KEY,
+// //     UNIQUE_CUSTOMER_KEY,
+// //     PRODUCT_GROUP_KEY,
+// //     T_QTY,
+// //     NORMALIZED_TRX,
+// //     NORMALIZED_NRX,
+// //     SRC,
+// //     "LU Product"
+// // FROM [lib://LuUS_DATA:DataFiles/Production/QlikSense BI Evolution/QVDs/Transform/Facts/TEST SALES NBA.qvd]
+// // (qvd);
