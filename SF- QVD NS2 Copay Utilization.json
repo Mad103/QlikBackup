@@ -1,0 +1,57 @@
+
+SHEETS
+
+OBJECTS ON SHEETS
+
+DIMENSIONS
+
+MEASURES
+
+VARIABLES
+{"qName":"vSpace","qDefinition":"_DEV","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"77254cbd-0f05-4ebd-8ec1-80b3cbe3fa51","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"QVDLocation","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"a22600f6-f5c6-4c3c-9332-31a5da7b7038","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vSF","qDefinition":"_SF","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"d677a7e2-7447-4614-9462-c0c8ac2784f9","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vQSBIE_ExtractQVD_Dimension","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/QlikSense BI Evolution\/QVDs\/Extract\/Dimensions","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"81b12c13-ab47-4080-a000-cc357629cdf7","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vQSBIE_ExtractQVD_Fact","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/QlikSense BI Evolution\/QVDs\/Extract\/Facts","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"1104a919-e8e4-4dca-a456-1c6ce5d1f175","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vQSBIE_TransformQVD_Dimension","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/QlikSense BI Evolution\/QVDs\/Transform\/Dimensions","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"b2861284-88ac-449d-85b3-5fc4ced4263d","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vQSBIE_TransformQVD_Fact","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/QlikSense BI Evolution\/QVDs\/Transform\/Facts","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"c6282e50-ca79-48be-99cb-0e3b14c74347","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vQSBIE_OfflineFiles","qDefinition":"lib:\/\/LuUS_DATA:LuUS_SharePoint\/Shared Documents\/Qlik Sense Data Files","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"49ba0525-6964-46f7-ad6d-42176a354a27","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vConfidentialMessage","qDefinition":"*Prescriber data acquired by the Lundbeck are to be treated as confidential information. Sales representatives (and other employees and agents) must not disclose those data to any party outside of the Company without the express permission of the Legal Division. In addition, sales representatives (and other employees and agents) cannot ask co-promotion colleagues to share prescriber data with them.","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"3b928765-9271-4501-b86e-827c7c012585","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vTrintellixEndingDateKey","qDefinition":"20250404","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"e918aaf9-f2ea-4493-883c-d4685785813c","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vTrintellixEndingDate","qDefinition":"45751","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"5612fd48-47fa-4180-b8c8-d2e875d1af8d","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vTrintellixStartingDateKey","qDefinition":"20250111","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"3fc0161d-7c52-4f04-8b62-6646c41a6b04","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vTrintellixStartingDate","qDefinition":"45668","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"2249f86e-d1da-4486-9df9-0c969a584826","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vRexultiEndingDateKey","qDefinition":"20250411","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"a00b8d94-4f76-40e4-b52f-4082aca24db7","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vRexultiEndingDate","qDefinition":"45758","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"a416a1cc-decb-401a-a9cc-fde9cb775430","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vRexultiStartingDateKey","qDefinition":"20250118","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"b8f7398e-64ec-427c-996a-399374d31298","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vRexultiStartingDate","qDefinition":"45675","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"9836c9db-4a57-4168-b46e-e96572b3c96b","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vTrintellixEndingDateString","qDefinition":"2025-04-04","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"4fe297ad-2983-4f62-94a1-c7a2588ad4d0","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vRexultiEndingDateString","qDefinition":"2025-04-11","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"2ca1e716-adaf-4de0-8cb6-5e7ee4debd22","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vAbilifyEndingDateKey","qDefinition":"20250411","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"8cee33e9-3b5a-4984-ad28-df0efa5b1c58","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vAbilifyEndingDate","qDefinition":"45758","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"ef0bda5e-fd9e-410f-8e5a-c6caacd0da46","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vAbilifyStartingDateKey","qDefinition":"20250118","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"c2b74fe9-58b5-4b07-89d3-5eae27ee58e7","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vAbilifyStartingDate","qDefinition":"45675","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"e06f0e52-0a1a-42f2-b144-9aae3f8e6e44","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vAbilifyASMEndingDateKey","qDefinition":"20250411","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"92d3e5e5-5d4f-4855-a407-12aa92e69159","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vAbilifyASMEndingDate","qDefinition":"45758","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"be2f547a-649a-492f-89f4-0de7c38e7576","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vAbilifyASMStartingDateKey","qDefinition":"20250118","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"e0822149-756b-42d2-93fa-63059579a893","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vAbilifyASMStartingDate","qDefinition":"45675","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"49f53435-48c3-4604-b7db-4ab68f20cd03","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vAbilifyEndingDateString","qDefinition":"2025-04-11","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"ccd90c54-e52a-4011-b833-de81c4f2a4b2","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vAbilifyASMEndingDateString","qDefinition":"2025-04-11","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"a0157bc9-ee42-4cd7-936b-681e1a4757c5","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vToday","qDefinition":"20250418","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"c47fb80a-c20b-44e5-9bf9-c89171019af6","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vDW2RefreshDate","qDefinition":"20240522","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"fb021233-1d8b-4958-aebd-1eeca95a7dd0","qType":"variable"},"qData":[]}
+
+FIELDS
+{"qIsHidden":true,"qIsSystem":true,"qName":"$Field","qCardinal":8,"qTags":["$hidden","$system","$ascii","$text","$key"],"qSrcTables":[]}
+{"qIsHidden":true,"qIsSystem":true,"qName":"$Table","qCardinal":1,"qTags":["$hidden","$system","$ascii","$text","$key"],"qSrcTables":[]}
+{"qIsHidden":true,"qIsSystem":true,"qName":"$Rows","qCardinal":1,"qTags":["$hidden","$system","$numeric","$integer"],"qSrcTables":[]}
+{"qIsHidden":true,"qIsSystem":true,"qName":"$Fields","qCardinal":1,"qTags":["$hidden","$system","$numeric","$integer"],"qSrcTables":[]}
+{"qIsHidden":true,"qIsSystem":true,"qName":"$FieldNo","qCardinal":8,"qTags":["$hidden","$system","$numeric","$integer"],"qSrcTables":[]}
+{"qIsHidden":true,"qIsSystem":true,"qName":"$Info","qCardinal":1,"qTags":["$hidden","$system","$ascii","$text"],"qSrcTables":[]}
+{"qName":"LUNDBECK_ID","qCardinal":4654908,"qTags":["$ascii","$text"],"qSrcTables":["Customer"]}
+{"qName":"CUSTOMER_ZIP","qCardinal":31707,"qTags":["$ascii","$text"],"qSrcTables":["Customer"]}
+{"qName":"SUMMIT_TERRITORY_ID","qCardinal":48,"qTags":["$ascii","$text"],"qSrcTables":["Customer"]}
+{"qName":"SIERRA_TERRITORY_ID","qCardinal":260,"qTags":["$ascii","$text"],"qSrcTables":["Customer"]}
+{"qName":"ALTITUDE_TERRITORY_ID","qCardinal":118,"qTags":["$ascii","$text"],"qSrcTables":["Customer"]}
+{"qName":"SUMMIT_ACCOUNT_MANAGER","qCardinal":43,"qTags":["$ascii","$text"],"qSrcTables":["Customer"]}
+{"qName":"SIERRA_ACCOUNT_MANAGER","qCardinal":247,"qTags":["$ascii","$text"],"qSrcTables":["Customer"]}
+{"qName":"ALTITUDE_ACCOUNT_MANAGER","qCardinal":115,"qTags":["$ascii","$text"],"qSrcTables":["Customer"]}
