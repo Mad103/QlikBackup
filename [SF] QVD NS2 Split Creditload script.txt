@@ -1,0 +1,1070 @@
+///$tab Main
+SET ThousandSep=',';
+SET DecimalSep='.';
+SET MoneyThousandSep=',';
+SET MoneyDecimalSep='.';
+SET NumFormat='';
+SET MoneyFormat='#.##0,00 kr.;-#.##0,00 kr.';
+SET TimeFormat='hh.mm.ss';
+SET DateFormat='MM/DD/YYYY';
+SET TimestampFormat='MM/DD/YYYY h:mm:ss[.fff] TT';
+SET FirstWeekDay=0;
+SET BrokenWeeks=0;
+SET ReferenceDay=4;
+SET FirstMonthOfYear=1;
+SET CollationLocale='en-US';
+SET CreateSearchIndexOnReload=1;
+SET MonthNames='Jan;Feb;Mar;Apr;May;Jun;Jul;Aug;Sep;Oct;Nov;Dec';
+SET LongMonthNames='January;February;March;April;May;June;July;August;September;October;November;December';
+SET DayNames='Mon;Tue;Wed;Thu;Fri;Sat;Sun';
+SET LongDayNames='Monday;Tuesday;Wednesday;Thursday;Friday;Saturday;Sunday';
+SET NumericalAbbreviation='3:k;6:M;9:G;12:T;15:P;18:E;21:Z;24:Y;-3:m;-6:μ;-9:n;-12:p;-15:f;-18:a;-21:z;-24:y';
+
+
+
+
+
+
+///$tab Note
+/*
+1. 24-Jun-2024
+- vGoalSFTrimester = 90 is hardcoded as T3'24 starts from 20240701 and 
+  relative trimester number for this trimester is 90. Uncomment it after 07/01
+- vSF variable has been updated to create test QVDs
+*/
+///$tab Variable Declaration
+LIB CONNECT TO 'LuUS_DATA:SNOWFLAKE_LuUS_BI_Reader';
+
+$(Must_Include='lib://LuUS_DATA:LuUS_SharePoint/Shared Documents/Qlik Sense Data Files/Include/Qlik Cloud/FolderConnections.txt');
+
+SET vSF = '_SF';
+
+LET vSpace=if(upper(GetSysAttr('spaceType'))='SHARED' or (GetSysAttr('spaceType'))='','_DEV');
+ 
+LET vToday = DATE(TODAY(), 'YYYYMMDD');
+
+SET QVDLocation = 'lib://LuUS_DATA:DataFiles/Production/';
+///$tab DW Date
+SELECT max(DATE_KEY) as DW2_REFRESH_DATE
+	   FROM LUNDBECK_DW.ANALYTICS.RETAIL_SALES;
+
+LET vDW2RefreshDate = num(Peek('DW2_REFRESH_DATE'));
+
+
+
+///$tab SF:Control Dates
+//==============================================================================
+// PhyControlDates - This handles important dates for the data. This is stored
+// for use in the front end.
+//==============================================================================
+CURRENT_DATA_WEEK_TEMP:
+Load 
+	CurrentDataWeekKey
+,   CurrentDataWeek
+,   num#(date(date#(NextWeekStartKey, 'YYYYMMDD'),'YYYYMMDD')) as NextWeekStartKey
+,   CurrentSFYear
+,   CurrentSFTrimester
+,   CurrentSFWeek
+,   CurrentSFRelativeTrimester
+,   CurrentSFRelativeWeek   
+,   CurrentSFTrimesterWeek
+,   CurrentSFWeekOfYear
+,   CurrentDataMonth
+;
+
+
+//Find the last RX data week from the retail file
+
+SELECT DATE_WEEK_END_KEY as "CurrentDataWeekKey"
+,      DATE_WEEK_END as "CurrentDataWeek"
+,      DATE_WEEK_END as "NextWeekStartKey"
+,      SF_YEAR as "CurrentSFYear"
+,      SF_TRIMESTER as "CurrentSFTrimester"
+,      SF_YEAR as "CurrentSFWeek"
+,      SF_RELATIVE_TRIMESTER as "CurrentSFRelativeTrimester"
+,      SF_RELATIVE_WEEK as "CurrentSFRelativeWeek"   
+,      SF_TRIMESTER_WEEK as "CurrentSFTrimesterWeek"
+,      SF_WEEK_OF_YEAR as "CurrentSFWeekOfYear"
+,      DateFromParts(YEAR(DATE_FULL), MONTH(DATE_FULL), 1) as "CurrentDataMonth"
+FROM  "LUNDBECK_DW"."COMMON"."CALENDAR" WHERE DATE_KEY = 
+    (SELECT MAX(DATE_KEY)
+     FROM   "LUNDBECK_DW"."ANALYTICS"."RETAIL_SALES" rs
+     INNER JOIN LUNDBECK_DW.COMMON.ZIP_TO_TERRITORY ztt
+      ON rs.customer_zip = ztt.zip
+        where ztt.salesforce_name in ('SUMMIT', 'SIERRA' , 'ALTITUDE')
+     )
+;
+
+LET vCurrentDataWeek = Peek('CurrentDataWeek') ;
+LET vCurrentDataWeekCalKey  = Peek('CurrentDataWeekKey')      
+;
+LET vCurrentSFYear = Peek('CurrentSFYear');
+DROP TABLE CURRENT_DATA_WEEK_TEMP;
+
+//Find the start of the previous year
+STARTING_DATE_TEMP:
+SELECT MIN(DATE_KEY) as "StartDataCalKey"
+,      MIN(DATE_FULL) as "StartDataDate"
+FROM   "LUNDBECK_DW"."COMMON"."CALENDAR" WHERE SF_YEAR = ($(vCurrentSFYear) - 1)
+;
+
+LET vStartingDateCalKey = Peek('StartDataCalKey') ;
+
+DROP TABLE STARTING_DATE_TEMP;
+
+// ==============================================================================
+// Goal Trimester - Based on the current date
+// ==============================================================================
+GOAL_TRIMESTER:
+SELECT MIN(c.DATE_KEY) as "GOAL_TRI_START_KEY"
+,      MAX(c.DATE_KEY) as "GOAL_TRI_END_KEY"
+,      c.SF_RELATIVE_TRIMESTER as GOAL_SF_TRIMESTER 
+FROM   "LUNDBECK_DW"."COMMON"."CALENDAR" c
+WHERE  c.SF_TRIMESTER = (
+					SELECT cw.SF_TRIMESTER 
+                    FROM  "LUNDBECK_DW"."COMMON"."CALENDAR" cw 
+					WHERE cw.DATE_KEY = '$(vToday)')  
+GROUP BY  c.SF_RELATIVE_TRIMESTER
+;
+
+LET vGoalSFTrimester = Peek('GOAL_SF_TRIMESTER');//uncomment before publishing
+
+DROP TABLE GOAL_TRIMESTER;
+
+
+
+
+///$tab SF:Calendar
+//==============================================================================
+// PsyCalendar - Sales Calendar for PSY
+//==============================================================================
+
+PSY_CALENDAR:
+LOAD   
+       DATE_KEY
+,      DATE_FULL as [Calendar Date]
+,      DATE_WEEK_END as 'Week Ending'
+,      SF_TRIMESTER as 'SF Trimester'
+,      SF_TRIMESTER_WEEK as 'SF Trimester Week'
+,      SF_TRI_START_DATE
+,      SF_TRI_END_DATE
+;
+
+SQL SELECT DATE_KEY
+,      DATE_FULL
+,      DATE_WEEK_END
+,      c.SF_TRIMESTER
+,      SF_TRIMESTER_WEEK
+,      sftri.SF_TRI_START_DATE
+,      sftri.SF_TRI_END_DATE
+FROM   "LUNDBECK_DW"."COMMON"."CALENDAR" c
+LEFT OUTER JOIN (
+  SELECT c.SF_TRIMESTER
+  ,      MIN(c.DATE_FULL) as "SF_TRI_START_DATE"
+  ,      MAX(c.DATE_FULL) as "SF_TRI_END_DATE"
+  FROM  "LUNDBECK_DW"."COMMON"."CALENDAR" c
+  GROUP BY c.SF_TRIMESTER
+  ) sftri
+ON sftri.SF_TRIMESTER = c.SF_TRIMESTER
+WHERE  DATE_KEY BETWEEN $(vStartingDateCalKey) AND $(vCurrentDataWeekCalKey)
+;
+
+STORE PSY_CALENDAR INTO $(QVDLocation)Dimensions/NS2_SPLIT_CREDIT_CALENDAR$(vSpace)$(vSF).qvd (qvd);
+DROP TABLE PSY_CALENDAR;
+///$tab SF: Split Credit Territory Dimension
+// 2020-11-20 - New Territory Code
+
+PSY_TERRITORY:
+LOAD   TERRITORY_KEY 
+,      TERRITORY_ID  as  [Territory ID]
+,      TERRITORY_NAME & '-' & SALESFORCE_GROUP_NAME as [Territory]
+,      SALESFORCE_GROUP_NAME as [Sales Team]
+,      AREA_ID as  [Area ID]
+,      AREA_NAME as [Area]
+,      REGION_ID as [Region ID]
+,      REGION_NAME as [Region]
+,      FRANCHISE
+,      ACCT_MGR_FULL_NAME as  [Account Manager]
+,      RGN_MGR_FULL_NAME as [Regional Manager]
+,      AREA_MGR_FULL_NAME as  [Area Manager]
+,     '$(vDW2RefreshDate)' as  [PSY Territory DW2 Refresh Date]
+;
+
+SELECT t.TERRITORY_ID AS TERRITORY_KEY
+,      TERRITORY_ID 
+,      TERRITORY_NAME 
+,      SALESFORCE_NAME AS SALESFORCE_GROUP_NAME 
+,      AREA_ID 
+,      AREA_NAME 
+,      REGION_ID 
+,      REGION_NAME
+,       FRANCHISE
+,      concat(FIRST_NAME,' ',LAST_NAME) as ACCT_MGR_FULL_NAME
+,      concat(REGION_FIRST_NAME,' ',REGION_LAST_NAME) as RGN_MGR_FULL_NAME
+,      concat(AREA_FIRST_NAME,' ',AREA_LAST_NAME) AS AREA_MGR_FULL_NAME 
+FROM   "LUNDBECK_DW"."COMMON"."TERRITORY" t
+WHERE    t.FRANCHISE IN ('PSY')  
+AND    IFNULL(t.EXP_DATE, '12/31/9999') >= (SELECT MIN(cal.DATE_FULL)
+                           FROM   "LUNDBECK_DW"."COMMON"."CALENDAR" cal
+                           WHERE  cal.SF_RELATIVE_TRIMESTER =  $(vGoalSFTrimester)-2)
+AND    t.EFF_DATE <= (SELECT MAX(cal.DATE_FULL)
+                          FROM   "LUNDBECK_DW"."COMMON"."CALENDAR" cal
+                           WHERE  cal.SF_RELATIVE_TRIMESTER = $(vGoalSFTrimester))
+;
+
+
+STORE PSY_TERRITORY INTO $(QVDLocation)Dimensions/SPLIT_CREDIT_TERRITORY$(vSpace)$(vSF).qvd (qvd); 
+DROP TABLE PSY_TERRITORY;
+
+///$tab SF:Split Credit Customer
+//Split Credit
+PSY_RX_SPLIT_CREDIT:
+LOAD
+       CUSTOMER_KEY
+,      BRAND_KEY
+,      PRODUCT_GROUP_KEY
+,      AutoNumberHash128(CUSTOMER_KEY, BRAND, TRIMESTER) as CustomerLUBrandTrimester
+,      BRAND
+,      TERRITORY_KEY
+,      SPLIT_SHARE
+,      TRIMESTER
+,	   RX_TYPE
+,     '$(vDW2RefreshDate)' as  DW2_REFRESH_DATE
+;
+
+SQL SELECT sc.LUNDBECK_ID AS CUSTOMER_KEY
+,      product_group_code as BRAND_KEY
+,      product_group_code as PRODUCT_GROUP_KEY
+,      TERRITORY_ID AS TERRITORY_KEY
+,      SPLIT_PERCENTAGE AS SPLIT_SHARE
+,      iff(sc.product_group_name = 'REXULTI AADAD','REXULTI AADAD',BRAND) as BRAND
+,      CASE CUST.customer_type
+       WHEN 'HCO' THEN  'Non-Retail'
+	   ELSE 'Retail' END as RX_TYPE
+,      PERFORMANCE_PERIOD as TRIMESTER
+FROM  "LUNDBECK_DW"."ANALYTICS"."SPLIT_CREDITS" sc
+INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" pg
+  ON pg.PRODUCT_GROUP_NAME = sc.PRODUCT_GROUP_NAME
+INNER JOIN LUNDBECK_DW.COMMON.CUSTOMERS CUST ON CUST.LUNDBECK_ID = sc.LUNDBECK_ID  
+WHERE sc.PERFORMANCE_PERIOD IN (SELECT cal.SF_TRIMESTER
+                       FROM  "LUNDBECK_DW"."COMMON"."CALENDAR" cal
+                       WHERE cal.SF_RELATIVE_TRIMESTER IN ($(vGoalSFTrimester)-2,$(vGoalSFTrimester)-1,$(vGoalSFTrimester)))
+AND   pg.brand IN ('REXULTI', 'ABILIFY MAINTENA','ABILIFY ASIMTUFII')  //'TRINTELLIX',   madhur
+;
+
+
+STORE PSY_RX_SPLIT_CREDIT INTO $(QVDLocation)Facts/SALES_PSY_SPLIT_CREDIT_CUSTOMER$(vSpace)$(vSF).qvd (qvd);
+Drop Table PSY_RX_SPLIT_CREDIT;
+///$tab SF:Split Credit Data
+PSY_RX_SPLI_CREDIT_RX:           
+
+//madhur
+// Trintellix Retail Rx
+// LOAD
+//        CUSTOMER_KEY
+// ,      AutoNumberHash128(CUSTOMER_KEY, LU_BRAND, TRIMESTER) as CustomerLUBrandTrimester
+// ,      LU_BRAND
+// ,      TRIMESTER
+// ,      BRAND
+// ,      LU_PRODUCT_FLAG
+// ,      GENERIC_AVAILABILITY_IND
+// ,      DATE_KEY
+// ,      "TRx"
+// ,     '$(vDW2RefreshDate)' as  DW2_REFRESH_DATE
+// ;
+
+// SELECT rs.LUNDBECK_ID  AS CUSTOMER_KEY
+// ,      rs.DATE_KEY
+// ,      mb.MARKET_BASKET_NAME as LU_BRAND
+// ,      mb.MARKET_BASKET_GROUP as  BRAND
+// ,      ifnull(pg.BRAND_LU_PRODUCT_FLAG, 'N') as LU_PRODUCT_FLAG
+// ,      ifnull(pg.BRAND_LU_GENERIC_FLAG, 'Y') as GENERIC_AVAILABILITY_IND
+// ,      cal.sf_TRIMESTER as TRIMESTER
+// ,      SUM(rs.NORMALIZED_TRX) as "TRx"
+// FROM   "LUNDBECK_DW"."ANALYTICS"."RETAIL_SALES" rs 
+// INNER JOIN "LUNDBECK_DW"."COMMON"."MB_TRINTELLIX_IC" mb
+//   ON mb.product_group_code = rs.PRODUCT_GROUP_CODE
+// INNER JOIN "LUNDBECK_DW"."COMMON"."AGE_GROUP_INCLUSIONS" ag
+//  ON ag.AGE_GROUP = rs.AGE_GROUP_NAME
+// INNER JOIN "LUNDBECK_DW"."COMMON"."CUSTOMERS" c
+//   On c.LUNDBECK_ID = rs.LUNDBECK_ID
+// INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" cal
+//   ON cal.date_key = rs.DATE_KEY
+// INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" pg
+//   ON pg.PRODUCT_GROUP_CODE = rs.PRODUCT_GROUP_CODE
+// WHERE mb.MARKET_BASKET_NAME = 'TRINTELLIX'
+// AND rs.CHANNEL_NAME <> 'UNKNOWN'
+// AND (ifnull(TRINTELLIX_EXCLUSION_IND, 'N') <> 'Y')
+// AND  ifnull(c.DATA_STEWARDSHIP_EXCLUSION_FLAG, 'N') = 'N'
+// AND  ifnull(ag.TRINTELLIX_INCLUSION_IND, 'Y') = 'Y'
+// AND  ((c.CUSTOMER_TYPE <> 'HCO' and (c.PSYCH_SPECIALTY_IND = 'Y'))
+//         OR (c.CUSTOMER_TYPE = 'HCO' and IFNULL(c.TRINTELLIX_RETAIL_HCO_EXCL_IND, 'N') <> 'Y'))
+// AND  ifnull(c.LU_NO_CONTACT_FLAG, 'N') <> 'Y'
+// AND  cal.SF_RELATIVE_TRIMESTER  IN ($(vGoalSFTrimester)-2,$(vGoalSFTrimester)-1, $(vGoalSFTrimester))
+// AND  rs.DATE_KEY <= $(vCurrentDataWeekCalKey)
+// AND  EXISTS (SELECT sc.LUNDBECK_ID
+//              FROM   "LUNDBECK_DW"."ANALYTICS"."SPLIT_CREDITS" sc
+// 			 INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" sc_pg
+// 			   On sc_pg.BRAND = sc.PRODUCT_GROUP_NAME
+// 			 INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" sc_cal
+//                ON  sc.PERFORMANCE_PERIOD = sc_cal.SF_TRIMESTER
+// 			 WHERE sc.LUNDBECK_ID = rs.LUNDBECK_ID
+// 			 AND  sc_pg.BRAND = 'TRINTELLIX'
+// 			 AND  sc_cal.SF_RELATIVE_TRIMESTER IN ($(vGoalSFTrimester)-2,$(vGoalSFTrimester)-1, $(vGoalSFTrimester))
+			 
+// 			 )
+// GROUP BY 
+//        rs.LUNDBECK_ID
+// ,      rs.DATE_KEY
+// ,      mb.MARKET_BASKET_NAME 
+// ,      mb.MARKET_BASKET_GROUP
+// ,      ifnull(pg.BRAND_LU_PRODUCT_FLAG, 'N') 
+// ,      ifnull(pg.BRAND_LU_GENERIC_FLAG, 'Y') 
+// ,      cal.sf_TRIMESTER
+// ;
+
+// Concatenate
+
+// Rexulti Retail Rx
+
+LOAD
+       CUSTOMER_KEY
+,      AutoNumberHash128(CUSTOMER_KEY, LU_BRAND, TRIMESTER) as CustomerLUBrandTrimester
+,      LU_BRAND
+,      TRIMESTER
+,      BRAND
+,      LU_PRODUCT_FLAG
+,      GENERIC_AVAILABILITY_IND
+,      DATE_KEY
+,      "TRx"
+;
+
+SELECT rs.LUNDBECK_ID  AS CUSTOMER_KEY
+,      rs.DATE_KEY
+,      mb.MARKET_BASKET_NAME as LU_BRAND
+,      mb.MARKET_BASKET_GROUP as  BRAND
+,      ifnull(pg.BRAND_LU_PRODUCT_FLAG, 'N') as LU_PRODUCT_FLAG
+,      ifnull(pg.BRAND_LU_GENERIC_FLAG, 'Y') as GENERIC_AVAILABILITY_IND
+,      cal.sf_TRIMESTER as TRIMESTER
+,      SUM(rs.NORMALIZED_TRX) as "TRx"
+FROM   "LUNDBECK_DW"."ANALYTICS"."RETAIL_SALES" rs
+INNER JOIN "LUNDBECK_DW"."COMMON"."MB_REXULTI_IC" mb
+  ON mb.product_group_code = rs.PRODUCT_GROUP_CODE
+INNER JOIN "LUNDBECK_DW"."COMMON"."AGE_GROUP_INCLUSIONS" ag
+ ON ag.AGE_GROUP = rs.AGE_GROUP_NAME
+INNER JOIN "LUNDBECK_DW"."COMMON"."CUSTOMERS" c
+  On c.LUNDBECK_ID = rs.LUNDBECK_ID
+INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" cal
+  ON cal.date_key = rs.DATE_KEY
+INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" pg
+  ON pg.PRODUCT_GROUP_CODE = rs.PRODUCT_GROUP_CODE
+WHERE mb.MARKET_BASKET_NAME = 'REXULTI'
+AND rs.CHANNEL_NAME <> 'UNKNOWN'
+
+AND  ifnull(c.DATA_STEWARDSHIP_EXCLUSION_FLAG, 'N') = 'N'
+AND (ifnull(ag.REXULTI_SCZ_INCLUSION_IND, 'Y')= 'Y' or ifnull(ag.REXULTI_MDD_INCLUSION_IND, 'Y')= 'Y') 
+AND  (c.REXULTI_SCZ_EXCLUSION_IND = 'N' or c.REXULTI_MDD_EXCLUSION_IND = 'N')
+AND  ((c.CUSTOMER_TYPE <> 'HCO' )
+        OR (c.CUSTOMER_TYPE = 'HCO' and (IFNULL(c.REXULTI_RETAIL_HCO_SCZ_EXCL_IND, 'N') <> 'Y' or IFNULL(c.REXULTI_RETAIL_HCO_MDD_EXCL_IND, 'N') <> 'Y')))
+AND  ifnull(c.LU_NO_CONTACT_FLAG, 'N') <> 'Y'
+AND  cal.SF_RELATIVE_TRIMESTER IN ($(vGoalSFTrimester)-2,$(vGoalSFTrimester)-1, $(vGoalSFTrimester))
+AND  rs.DATE_KEY <= $(vCurrentDataWeekCalKey)
+AND  EXISTS (SELECT sc.LUNDBECK_ID
+             FROM   "LUNDBECK_DW"."ANALYTICS"."SPLIT_CREDITS" sc
+			 INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" sc_pg
+			   On sc_pg.BRAND = sc.PRODUCT_GROUP_NAME
+			 INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" sc_cal
+               ON  sc.PERFORMANCE_PERIOD = sc_cal.SF_TRIMESTER
+			 WHERE sc.LUNDBECK_ID = rs.LUNDBECK_ID
+			 AND  sc_pg.BRAND = 'REXULTI'
+			 AND  sc_cal.SF_RELATIVE_TRIMESTER  IN ($(vGoalSFTrimester)-2,$(vGoalSFTrimester)-1, $(vGoalSFTrimester))
+			
+			 )
+GROUP BY 
+       rs.LUNDBECK_ID
+,      rs.DATE_KEY
+,      mb.MARKET_BASKET_NAME 
+,      mb.MARKET_BASKET_GROUP
+,      ifnull(pg.BRAND_LU_PRODUCT_FLAG, 'N') 
+,      ifnull(pg.BRAND_LU_GENERIC_FLAG, 'Y') 
+,      cal.sf_TRIMESTER
+;
+
+Concatenate
+
+// Rexulti AADAD Retail Rx
+
+LOAD
+       CUSTOMER_KEY
+,      AutoNumberHash128(CUSTOMER_KEY, LU_BRAND, TRIMESTER) as CustomerLUBrandTrimester
+,      LU_BRAND
+,      TRIMESTER
+,      BRAND
+,      LU_PRODUCT_FLAG
+,      GENERIC_AVAILABILITY_IND
+,      DATE_KEY
+,      "TRx"
+;
+
+SELECT rs.LUNDBECK_ID  AS CUSTOMER_KEY
+,      rs.DATE_KEY
+,      mb.MARKET_BASKET_NAME as LU_BRAND
+,      mb.MARKET_BASKET_GROUP as  BRAND
+,      ifnull(pg.BRAND_LU_PRODUCT_FLAG, 'N') as LU_PRODUCT_FLAG
+,      ifnull(pg.BRAND_LU_GENERIC_FLAG, 'Y') as GENERIC_AVAILABILITY_IND
+,      cal.sf_TRIMESTER as TRIMESTER
+,      SUM(rs.NORMALIZED_TRX) as "TRx"
+FROM   "LUNDBECK_DW"."ANALYTICS"."RETAIL_SALES" rs
+INNER JOIN "LUNDBECK_DW"."COMMON"."MB_REXULTI_AAD_IC" mb
+  ON mb.product_group_code = rs.PRODUCT_GROUP_CODE
+INNER JOIN "LUNDBECK_DW"."COMMON"."AGE_GROUP_INCLUSIONS" ag
+ ON ag.AGE_GROUP = rs.AGE_GROUP_NAME
+INNER JOIN "LUNDBECK_DW"."COMMON"."CUSTOMERS" c
+  On c.LUNDBECK_ID = rs.LUNDBECK_ID
+INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" cal
+  ON cal.date_key = rs.DATE_KEY
+INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" pg
+  ON pg.PRODUCT_GROUP_CODE = rs.PRODUCT_GROUP_CODE
+WHERE mb.MARKET_BASKET_NAME = 'REXULTI AADAD'
+AND rs.CHANNEL_NAME <> 'UNKNOWN'
+
+AND  ifnull(c.DATA_STEWARDSHIP_EXCLUSION_FLAG, 'N') = 'N'
+AND  ifnull(ag.REXULTI_AADAD_INCLUSION_IND, 'Y')  = 'Y'
+AND  REXULTI_AAD_EXCLUSION_IND = 'N' 
+AND  ((c.CUSTOMER_TYPE <> 'HCO') OR ((c.CUSTOMER_TYPE = 'HCO') and ifnull(REXULTI_RETAIL_HCO_AAD_EXCL_IND, 'N') <> 'Y'))	
+AND  ifnull(c.LU_NO_CONTACT_FLAG, 'N') <> 'Y'
+AND  cal.SF_RELATIVE_TRIMESTER  IN ($(vGoalSFTrimester)-2,$(vGoalSFTrimester)-1, $(vGoalSFTrimester))
+AND  rs.DATE_KEY <= $(vCurrentDataWeekCalKey)
+AND  EXISTS (SELECT sc.LUNDBECK_ID
+             FROM   "LUNDBECK_DW"."ANALYTICS"."SPLIT_CREDITS" sc
+			 INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" sc_pg
+			   On sc_pg.PRODUCT_GROUP_NAME = sc.PRODUCT_GROUP_NAME
+			 INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" sc_cal
+               ON  sc.PERFORMANCE_PERIOD = sc_cal.SF_TRIMESTER
+			 WHERE sc.LUNDBECK_ID = rs.LUNDBECK_ID
+			 AND  sc_pg.BRAND = 'REXULTI'
+			 AND  sc_cal.SF_RELATIVE_TRIMESTER  IN ($(vGoalSFTrimester)-2,$(vGoalSFTrimester)-1, $(vGoalSFTrimester))
+			
+			 )
+GROUP BY 
+       rs.LUNDBECK_ID
+,      rs.DATE_KEY
+,      mb.MARKET_BASKET_NAME 
+,      mb.MARKET_BASKET_GROUP
+,      ifnull(pg.BRAND_LU_PRODUCT_FLAG, 'N') 
+,      ifnull(pg.BRAND_LU_GENERIC_FLAG, 'Y') 
+,      cal.sf_TRIMESTER
+;
+
+Concatenate
+
+// Abilify Maintena Retail Rx
+
+LOAD
+       CUSTOMER_KEY
+,      AutoNumberHash128(CUSTOMER_KEY, LU_BRAND, TRIMESTER) as CustomerLUBrandTrimester
+,      LU_BRAND
+,      TRIMESTER
+,      BRAND
+,      LU_PRODUCT_FLAG
+,      GENERIC_AVAILABILITY_IND
+,      DATE_KEY
+,      "TRx"
+,      "TQty"
+;
+
+SELECT rs.LUNDBECK_ID  AS CUSTOMER_KEY
+,      rs.DATE_KEY
+,      mb.MARKET_BASKET_NAME as LU_BRAND
+,      mb.MARKET_BASKET_GROUP as  BRAND
+,      ifnull(pg.BRAND_LU_PRODUCT_FLAG, 'N') as LU_PRODUCT_FLAG
+,      ifnull(pg.BRAND_LU_GENERIC_FLAG, 'Y') as GENERIC_AVAILABILITY_IND
+,      cal.sf_TRIMESTER as TRIMESTER
+,      SUM(rs.NORMALIZED_TRX) as "TRx"
+,      SUM(rs.T_QTY) as "TQty"
+FROM   "LUNDBECK_DW"."ANALYTICS"."RETAIL_SALES" rs 
+INNER JOIN "LUNDBECK_DW"."COMMON"."MB_ABILIFY_MAINTENA_IC" mb
+  ON mb.product_group_code = rs.PRODUCT_GROUP_CODE
+INNER JOIN "LUNDBECK_DW"."COMMON"."AGE_GROUP_INCLUSIONS" ag
+ ON ag.AGE_GROUP = rs.AGE_GROUP_NAME
+INNER JOIN "LUNDBECK_DW"."COMMON"."CUSTOMERS" c
+  On c.LUNDBECK_ID = rs.LUNDBECK_ID
+INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" cal
+  ON cal.date_key = rs.DATE_KEY
+INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" pg
+  ON pg.PRODUCT_GROUP_CODE = rs.PRODUCT_GROUP_CODE
+WHERE mb.MARKET_BASKET_NAME = 'ABILIFY MAINTENA'
+AND rs.CHANNEL_NAME <> 'UNKNOWN'
+
+AND  ifnull(c.DATA_STEWARDSHIP_EXCLUSION_FLAG, 'N') = 'N'
+and c.ABILIFY_MAINTENA_EXCLUSION_IND ='N' 
+and IFNULL(ag.ABILIFY_MAINTENA_INCLUSION_IND,'Y') = 'Y'
+and IFNULL(c.ABILIFY_MAINTENA_RETAIL_HCO_EXCL_IND,'N') <> 'Y'
+AND  ifnull(c.LU_NO_CONTACT_FLAG, 'N') <> 'Y'
+AND  cal.SF_RELATIVE_TRIMESTER IN ($(vGoalSFTrimester)-2,$(vGoalSFTrimester)-1, $(vGoalSFTrimester))
+AND  rs.DATE_KEY <= $(vCurrentDataWeekCalKey)
+AND  EXISTS (SELECT sc.LUNDBECK_ID
+             FROM   "LUNDBECK_DW"."ANALYTICS"."SPLIT_CREDITS" sc
+			 INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" sc_pg
+			   On sc_pg.BRAND = sc.PRODUCT_GROUP_NAME
+			 INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" sc_cal
+               ON  sc.PERFORMANCE_PERIOD = sc_cal.SF_TRIMESTER
+			 WHERE sc.LUNDBECK_ID = rs.LUNDBECK_ID
+			 AND  sc_pg.BRAND = 'ABILIFY MAINTENA'
+			 AND  sc_cal.SF_RELATIVE_TRIMESTER IN ($(vGoalSFTrimester)-2,$(vGoalSFTrimester)-1, $(vGoalSFTrimester))
+			 
+			 )
+GROUP BY 
+       rs.LUNDBECK_ID
+,      rs.DATE_KEY
+,      mb.MARKET_BASKET_NAME 
+,      mb.MARKET_BASKET_GROUP
+,      ifnull(pg.BRAND_LU_PRODUCT_FLAG, 'N') 
+,      ifnull(pg.BRAND_LU_GENERIC_FLAG, 'Y') 
+,      cal.sf_TRIMESTER
+;
+
+Concatenate
+
+// Abilify ASIMTUFII Retail Rx
+
+LOAD
+       CUSTOMER_KEY
+,      AutoNumberHash128(CUSTOMER_KEY, LU_BRAND, TRIMESTER) as CustomerLUBrandTrimester
+,      LU_BRAND
+,      TRIMESTER
+,      BRAND
+,      LU_PRODUCT_FLAG
+,      GENERIC_AVAILABILITY_IND
+,      DATE_KEY
+,      "TRx"
+,      "TQty"
+;
+
+SELECT rs.LUNDBECK_ID  AS CUSTOMER_KEY
+,      rs.DATE_KEY
+,      mb.MARKET_BASKET_NAME as LU_BRAND
+,      mb.MARKET_BASKET_GROUP as  BRAND
+,      ifnull(pg.BRAND_LU_PRODUCT_FLAG, 'N') as LU_PRODUCT_FLAG
+,      ifnull(pg.BRAND_LU_GENERIC_FLAG, 'Y') as GENERIC_AVAILABILITY_IND
+,      cal.sf_TRIMESTER as TRIMESTER
+,      SUM(rs.NORMALIZED_TRX) as "TRx"
+,      SUM(rs.T_QTY) as "TQty"
+FROM   "LUNDBECK_DW"."ANALYTICS"."RETAIL_SALES" rs 
+INNER JOIN "LUNDBECK_DW"."COMMON"."MB_ABILIFY_ASIMTUFII_IC" mb
+  ON mb.product_group_code = rs.PRODUCT_GROUP_CODE
+INNER JOIN "LUNDBECK_DW"."COMMON"."AGE_GROUP_INCLUSIONS" ag
+ ON ag.AGE_GROUP = rs.AGE_GROUP_NAME
+INNER JOIN "LUNDBECK_DW"."COMMON"."CUSTOMERS" c
+  On c.LUNDBECK_ID = rs.LUNDBECK_ID
+INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" cal
+  ON cal.date_key = rs.DATE_KEY
+INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" pg
+  ON pg.PRODUCT_GROUP_CODE = rs.PRODUCT_GROUP_CODE
+WHERE mb.MARKET_BASKET_NAME = 'ABILIFY ASIMTUFII'
+AND rs.CHANNEL_NAME <> 'UNKNOWN'
+
+AND  ifnull(c.DATA_STEWARDSHIP_EXCLUSION_FLAG, 'N') = 'N'
+and c.ABILIFY_MAINTENA_EXCLUSION_IND ='N' 
+and IFNULL(ag.ABILIFY_MAINTENA_INCLUSION_IND,'Y') = 'Y'
+and IFNULL(c.ABILIFY_MAINTENA_RETAIL_HCO_EXCL_IND,'N') <> 'Y'
+AND  ifnull(c.LU_NO_CONTACT_FLAG, 'N') <> 'Y'
+AND  cal.SF_RELATIVE_TRIMESTER IN ($(vGoalSFTrimester)-2,$(vGoalSFTrimester)-1, $(vGoalSFTrimester))
+AND  rs.DATE_KEY <= $(vCurrentDataWeekCalKey)
+AND  EXISTS (SELECT sc.LUNDBECK_ID
+             FROM   "LUNDBECK_DW"."ANALYTICS"."SPLIT_CREDITS" sc
+			 INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" sc_pg
+			   On sc_pg.BRAND = sc.PRODUCT_GROUP_NAME
+			 INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" sc_cal
+               ON  sc.PERFORMANCE_PERIOD = sc_cal.SF_TRIMESTER
+			 WHERE sc.LUNDBECK_ID = rs.LUNDBECK_ID
+			 AND  sc_pg.BRAND = 'ABILIFY ASIMTUFII'
+			 AND  sc_cal.SF_RELATIVE_TRIMESTER IN ($(vGoalSFTrimester)-2,$(vGoalSFTrimester)-1, $(vGoalSFTrimester))
+			 
+			 )
+GROUP BY 
+       rs.LUNDBECK_ID
+,      rs.DATE_KEY
+,      mb.MARKET_BASKET_NAME 
+,      mb.MARKET_BASKET_GROUP
+,      ifnull(pg.BRAND_LU_PRODUCT_FLAG, 'N') 
+,      ifnull(pg.BRAND_LU_GENERIC_FLAG, 'Y') 
+,      cal.sf_TRIMESTER
+;
+
+Concatenate
+
+// Abilify Matintena Non-Retail "TRx"
+
+LOAD
+       CUSTOMER_KEY
+,      AutoNumberHash128(CUSTOMER_KEY, LU_BRAND, TRIMESTER) as CustomerLUBrandTrimester
+,      LU_BRAND
+,      TRIMESTER
+,      BRAND
+,      LU_PRODUCT_FLAG
+,      GENERIC_AVAILABILITY_IND
+,      DATE_KEY
+,      "TRx"
+,      "TQty"
+;
+
+SELECT nrs.LUNDBECK_ID as CUSTOMER_KEY
+,      mb.MARKET_BASKET_NAME as LU_BRAND
+,      pg.BRAND
+,      cal.SF_TRIMESTER as TRIMESTER
+,      nrs.DATE_KEY 
+,      ifnull(pg.BRAND_LU_GENERIC_FLAG, 'Y') as GENERIC_AVAILABILITY_IND
+,      ifnull(pg.BRAND_LU_PRODUCT_FLAG, 'N') as LU_PRODUCT_FLAG
+,      SUM(nrs.NORMALIZED_TRX) as "TRx"
+,      SUM(nrs.UNITS) as "TQty"
+FROM  "LUNDBECK_DW"."ANALYTICS"."NON_RETAIL_SALES" nrs
+INNER JOIN "LUNDBECK_DW"."COMMON"."CUSTOMERS" c
+  On c.LUNDBECK_ID = nrs.LUNDBECK_ID
+INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" pg
+  ON pg.PRODUCT_GROUP_CODE = nrs.PRODUCT_GROUP_CODE
+INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" cal
+  ON cal.date_key = nrs.DATE_KEY
+INNER JOIN "LUNDBECK_DW"."COMMON"."MB_ABILIFY_MAINTENA_IC" mb
+  ON mb.product_group_code = nrs.PRODUCT_GROUP_CODE
+WHERE ifnull(c.DATA_STEWARDSHIP_EXCLUSION_FLAG, 'N') <> 'Y'
+AND  ifnull(c.LU_NO_CONTACT_FLAG, 'N') <> 'Y'
+AND ( IFNULL(c.ABILIFY_MAINTENA_RETAIL_HCO_EXCL_IND, 'N') <> 'Y' )
+AND  mb.MARKET_BASKET_NAME = 'ABILIFY MAINTENA'
+     AND  cal.SF_RELATIVE_TRIMESTER IN ($(vGoalSFTrimester)-2,$(vGoalSFTrimester)-1, $(vGoalSFTrimester))
+
+AND  EXISTS (SELECT sc.LUNDBECK_ID
+             FROM   "LUNDBECK_DW"."ANALYTICS"."SPLIT_CREDITS" sc
+			 INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" sc_pg
+			   On sc_pg.BRAND = sc.PRODUCT_GROUP_NAME
+			 INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" sc_cal
+               ON  sc.PERFORMANCE_PERIOD = sc_cal.SF_TRIMESTER
+			 WHERE sc.LUNDBECK_ID = nrs.LUNDBECK_ID
+			 AND  sc_pg.BRAND = 'ABILIFY MAINTENA'
+			 AND  sc_cal.SF_RELATIVE_TRIMESTER IN ($(vGoalSFTrimester)-2,$(vGoalSFTrimester)-1, $(vGoalSFTrimester))
+			 
+			 ) 
+     
+GROUP BY
+      nrs.LUNDBECK_ID
+,      mb.MARKET_BASKET_NAME 
+,      pg.BRAND
+,      cal.SF_TRIMESTER
+,      nrs.DATE_KEY
+,      ifnull(pg.BRAND_LU_GENERIC_FLAG, 'Y') 
+,      ifnull(pg.BRAND_LU_PRODUCT_FLAG, 'N') 
+;
+
+Concatenate
+
+// Abilify ASIMTUFII Non-Retail "TRx"
+
+LOAD
+       CUSTOMER_KEY
+,      AutoNumberHash128(CUSTOMER_KEY, LU_BRAND, TRIMESTER) as CustomerLUBrandTrimester
+,      LU_BRAND
+,      TRIMESTER
+,      BRAND
+,      LU_PRODUCT_FLAG
+,      GENERIC_AVAILABILITY_IND
+,      DATE_KEY
+,      "TRx"
+,      "TQty"
+;
+
+SELECT nrs.LUNDBECK_ID as CUSTOMER_KEY
+,      mb.MARKET_BASKET_NAME as LU_BRAND
+,      pg.BRAND
+,      cal.SF_TRIMESTER as TRIMESTER
+,      nrs.DATE_KEY 
+,      ifnull(pg.BRAND_LU_GENERIC_FLAG, 'Y') as GENERIC_AVAILABILITY_IND
+,      ifnull(pg.BRAND_LU_PRODUCT_FLAG, 'N') as LU_PRODUCT_FLAG
+,      SUM(nrs.NORMALIZED_TRX) as "TRx"
+,      SUM(nrs.UNITS) as "TQty"
+FROM  "LUNDBECK_DW"."ANALYTICS"."NON_RETAIL_SALES" nrs
+INNER JOIN "LUNDBECK_DW"."COMMON"."CUSTOMERS" c
+  On c.LUNDBECK_ID = nrs.LUNDBECK_ID
+INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" pg
+  ON pg.PRODUCT_GROUP_CODE = nrs.PRODUCT_GROUP_CODE
+INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" cal
+  ON cal.date_key = nrs.DATE_KEY
+INNER JOIN "LUNDBECK_DW"."COMMON"."MB_ABILIFY_ASIMTUFII_IC" mb
+  ON mb.product_group_code = nrs.PRODUCT_GROUP_CODE
+WHERE ifnull(c.DATA_STEWARDSHIP_EXCLUSION_FLAG, 'N') <> 'Y'
+AND  ifnull(c.LU_NO_CONTACT_FLAG, 'N') <> 'Y'
+	 AND  mb.MARKET_BASKET_NAME = 'ABILIFY ASIMTUFII'
+     AND ( IFNULL(c.ABILIFY_MAINTENA_RETAIL_HCO_EXCL_IND, 'N') <> 'Y')
+     AND  cal.SF_RELATIVE_TRIMESTER  BETWEEN $(vGoalSFTrimester)-1  and $(vGoalSFTrimester)
+
+AND  EXISTS (SELECT sc.LUNDBECK_ID
+             FROM   "LUNDBECK_DW"."ANALYTICS"."SPLIT_CREDITS" sc
+			 INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" sc_pg
+			   On sc_pg.BRAND = sc.PRODUCT_GROUP_NAME
+			 INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" sc_cal
+               ON  sc.PERFORMANCE_PERIOD = sc_cal.SF_TRIMESTER
+			 WHERE sc.LUNDBECK_ID = nrs.LUNDBECK_ID
+			 AND  sc_pg.BRAND = 'ABILIFY ASIMTUFII'
+			 AND  sc_cal.SF_RELATIVE_TRIMESTER  BETWEEN $(vGoalSFTrimester)-1  and $(vGoalSFTrimester)
+			 
+			 ) 
+       
+GROUP BY
+      nrs.LUNDBECK_ID
+,      mb.MARKET_BASKET_NAME 
+,      pg.BRAND
+,      cal.SF_TRIMESTER
+,      nrs.DATE_KEY
+,      ifnull(pg.BRAND_LU_GENERIC_FLAG, 'Y') 
+,      ifnull(pg.BRAND_LU_PRODUCT_FLAG, 'N') 
+;
+
+
+//madhur
+// Concatenate
+// // Trintellix Non-Retail Rx
+// LOAD
+//        CUSTOMER_KEY
+// ,      AutoNumberHash128(CUSTOMER_KEY, LU_BRAND, TRIMESTER) as CustomerLUBrandTrimester
+// ,      LU_BRAND
+// ,      TRIMESTER
+// ,      BRAND
+// ,      LU_PRODUCT_FLAG
+// ,      GENERIC_AVAILABILITY_IND
+// ,      DATE_KEY
+// ,      "TRx"
+// ;
+
+// SELECT nrs.LUNDBECK_ID AS CUSTOMER_KEY
+// ,      mb.MARKET_BASKET_NAME as LU_BRAND
+// ,      pg.BRAND
+// ,      cal.SF_TRIMESTER as TRIMESTER
+// ,      nrs.DATE_KEY 
+// ,      ifnull(pg.BRAND_LU_GENERIC_FLAG, 'Y') as GENERIC_AVAILABILITY_IND
+// ,      ifnull(pg.BRAND_LU_PRODUCT_FLAG, 'N') as LU_PRODUCT_FLAG
+// ,      SUM(nrs.NORMALIZED_TRX) as "TRx"
+// FROM   "LUNDBECK_DW"."ANALYTICS"."NON_RETAIL_SALES" nrs
+// INNER JOIN "LUNDBECK_DW"."COMMON"."CUSTOMERS" c
+//   On c.LUNDBECK_ID = nrs.LUNDBECK_ID
+// INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" pg
+//   ON pg.PRODUCT_GROUP_CODE = nrs.PRODUCT_GROUP_CODE
+// INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" cal
+//   ON cal.date_key = nrs.DATE_KEY
+// INNER JOIN "LUNDBECK_DW"."COMMON"."MB_TRINTELLIX_IC" mb
+//   ON mb.product_group_code = nrs.PRODUCT_GROUP_CODE
+// WHERE ifnull(c.DATA_STEWARDSHIP_EXCLUSION_FLAG, 'N') <> 'Y'
+// AND  ifnull(c.LU_NO_CONTACT_FLAG, 'N') <> 'Y'
+//   AND (ifnull(TRINTELLIX_EXCLUSION_IND, 'N') <> 'Y')
+//     AND  mb.MARKET_BASKET_NAME = 'TRINTELLIX'
+// 	 AND  cal.SF_RELATIVE_TRIMESTER  BETWEEN $(vGoalSFTrimester)-1  and $(vGoalSFTrimester)
+ 
+// AND  EXISTS (SELECT sc.LUNDBECK_ID
+//              FROM   "LUNDBECK_DW"."ANALYTICS"."SPLIT_CREDITS" sc
+// 			 INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" sc_pg
+// 			   On sc_pg.BRAND = sc.PRODUCT_GROUP_NAME
+// 			 INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" sc_cal
+//                ON  sc.PERFORMANCE_PERIOD = sc_cal.SF_TRIMESTER
+// 			 WHERE sc.LUNDBECK_ID = nrs.LUNDBECK_ID
+// 			 AND  sc_pg.BRAND = 'TRINTELLIX'
+// 			 AND  sc_cal.SF_RELATIVE_TRIMESTER  BETWEEN $(vGoalSFTrimester)-1  and $(vGoalSFTrimester)
+			 
+// 			 ) 
+
+// GROUP BY
+//       nrs.LUNDBECK_ID
+// ,      mb.MARKET_BASKET_NAME 
+// ,      pg.BRAND
+// ,      cal.SF_TRIMESTER
+// ,      nrs.DATE_KEY
+// ,      ifnull(pg.BRAND_LU_GENERIC_FLAG, 'Y') 
+// ,      ifnull(pg.BRAND_LU_PRODUCT_FLAG, 'N') 
+// ;
+
+Concatenate
+
+
+// Rexulti Non-Retail
+
+LOAD
+       CUSTOMER_KEY
+,      AutoNumberHash128(CUSTOMER_KEY, LU_BRAND, TRIMESTER) as CustomerLUBrandTrimester
+,      LU_BRAND
+,      TRIMESTER
+,      BRAND
+,      LU_PRODUCT_FLAG
+,      GENERIC_AVAILABILITY_IND
+,      DATE_KEY
+,      "TRx"
+;
+
+SELECT nrs.LUNDBECK_ID AS CUSTOMER_KEY
+,      mb.MARKET_BASKET_NAME as LU_BRAND
+,      pg.BRAND
+,      cal.SF_TRIMESTER as TRIMESTER
+,      nrs.DATE_KEY 
+,      ifnull(pg.BRAND_LU_GENERIC_FLAG, 'Y') as GENERIC_AVAILABILITY_IND
+,      ifnull(pg.BRAND_LU_PRODUCT_FLAG, 'N') as LU_PRODUCT_FLAG
+,      SUM(nrs.NORMALIZED_TRX) as "TRx"
+FROM   "LUNDBECK_DW"."ANALYTICS"."NON_RETAIL_SALES" nrs
+INNER JOIN "LUNDBECK_DW"."COMMON"."CUSTOMERS" c
+  On c.LUNDBECK_ID = nrs.LUNDBECK_ID
+INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" pg
+  ON pg.PRODUCT_GROUP_CODE = nrs.PRODUCT_GROUP_CODE
+INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" cal
+  ON cal.date_key = nrs.DATE_KEY
+INNER JOIN "LUNDBECK_DW"."COMMON"."MB_REXULTI_IC" mb
+  ON mb.product_group_code = nrs.PRODUCT_GROUP_CODE
+WHERE ifnull(c.DATA_STEWARDSHIP_EXCLUSION_FLAG, 'N') <> 'Y'
+AND (IFNULL(REXULTI_RETAIL_HCO_SCZ_EXCL_IND, 'N') <> 'Y'
+       OR IFNULL(REXULTI_RETAIL_HCO_MDD_EXCL_IND, 'N') <> 'Y' )
+AND  ifnull(c.LU_NO_CONTACT_FLAG, 'N') <> 'Y'       
+AND  mb.MARKET_BASKET_NAME = 'REXULTI'
+AND  cal.SF_RELATIVE_TRIMESTER  BETWEEN $(vGoalSFTrimester)-1  and $(vGoalSFTrimester)
+
+AND  EXISTS (SELECT sc.LUNDBECK_ID
+             FROM   "LUNDBECK_DW"."ANALYTICS"."SPLIT_CREDITS" sc
+			 INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" sc_pg
+			   On sc_pg.BRAND = sc.PRODUCT_GROUP_NAME
+			 INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" sc_cal
+               ON  sc.PERFORMANCE_PERIOD = sc_cal.SF_TRIMESTER
+			 WHERE sc.LUNDBECK_ID = nrs.LUNDBECK_ID
+			 AND  sc_pg.BRAND = 'REXULTI'
+			 AND  sc_cal.SF_RELATIVE_TRIMESTER  BETWEEN $(vGoalSFTrimester)-1  and $(vGoalSFTrimester)
+			 
+			 ) 
+  
+GROUP BY
+      nrs.LUNDBECK_ID
+,      mb.MARKET_BASKET_NAME 
+,      pg.BRAND
+,      cal.SF_TRIMESTER
+,      nrs.DATE_KEY
+,      ifnull(pg.BRAND_LU_GENERIC_FLAG, 'Y') 
+,      ifnull(pg.BRAND_LU_PRODUCT_FLAG, 'N') 
+;
+
+// Rexulti AADAD Non-Retail
+
+LOAD
+       CUSTOMER_KEY
+,      AutoNumberHash128(CUSTOMER_KEY, LU_BRAND, TRIMESTER) as CustomerLUBrandTrimester
+,      LU_BRAND
+,      TRIMESTER
+,      BRAND
+,      LU_PRODUCT_FLAG
+,      GENERIC_AVAILABILITY_IND
+,      DATE_KEY
+,      "TRx"
+;
+
+SELECT nrs.LUNDBECK_ID AS CUSTOMER_KEY
+,      mb.MARKET_BASKET_NAME as LU_BRAND
+,      pg.BRAND
+,      cal.SF_TRIMESTER as TRIMESTER
+,      nrs.DATE_KEY 
+,      ifnull(pg.BRAND_LU_GENERIC_FLAG, 'Y') as GENERIC_AVAILABILITY_IND
+,      ifnull(pg.BRAND_LU_PRODUCT_FLAG, 'N') as LU_PRODUCT_FLAG
+,      SUM(nrs.NORMALIZED_TRX) as "TRx"
+FROM   "LUNDBECK_DW"."ANALYTICS"."NON_RETAIL_SALES" nrs
+INNER JOIN "LUNDBECK_DW"."COMMON"."CUSTOMERS" c
+  On c.LUNDBECK_ID = nrs.LUNDBECK_ID
+INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" pg
+  ON pg.PRODUCT_GROUP_CODE = nrs.PRODUCT_GROUP_CODE
+INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" cal
+  ON cal.date_key = nrs.DATE_KEY
+INNER JOIN "LUNDBECK_DW"."COMMON"."MB_REXULTI_AAD_IC" mb
+  ON mb.product_group_code = nrs.PRODUCT_GROUP_CODE
+WHERE ifnull(c.DATA_STEWARDSHIP_EXCLUSION_FLAG, 'N') <> 'Y'
+AND ( (IFNULL(REXULTI_RETAIL_HCO_AAD_EXCL_IND, 'N') <> 'Y' 
+AND IFNULL(REXULTI_RETAIL_HCO_MDD_EXCL_IND, 'N') <> 'N' 
+AND IFNULL(REXULTI_RETAIL_HCO_SCZ_EXCL_IND, 'N') <> 'N')  )
+AND  ifnull(c.LU_NO_CONTACT_FLAG, 'N') <> 'Y'
+ AND  mb.MARKET_BASKET_NAME = 'REXULTI AADAD'
+    AND  cal.SF_RELATIVE_TRIMESTER  BETWEEN $(vGoalSFTrimester)-1  and $(vGoalSFTrimester)
+
+AND  EXISTS (SELECT sc.LUNDBECK_ID
+             FROM   "LUNDBECK_DW"."ANALYTICS"."SPLIT_CREDITS" sc
+			 INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" sc_pg
+			   On sc_pg.BRAND = sc.PRODUCT_GROUP_NAME
+			 INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" sc_cal
+               ON  sc.PERFORMANCE_PERIOD = sc_cal.SF_TRIMESTER
+			 WHERE sc.LUNDBECK_ID = nrs.LUNDBECK_ID
+			 AND  sc.PRODUCT_GROUP_NAME = 'REXULTI AADAD'
+			 AND  sc_cal.SF_RELATIVE_TRIMESTER  BETWEEN $(vGoalSFTrimester)-1  and $(vGoalSFTrimester)
+			 
+			 ) 
+
+GROUP BY
+      nrs.LUNDBECK_ID
+,      mb.MARKET_BASKET_NAME 
+,      pg.BRAND
+,      cal.SF_TRIMESTER
+,      nrs.DATE_KEY
+,      ifnull(pg.BRAND_LU_GENERIC_FLAG, 'Y') 
+,      ifnull(pg.BRAND_LU_PRODUCT_FLAG, 'N') 
+;
+Concatenate
+
+LOAD
+       CUSTOMER_KEY
+,      AutoNumberHash128(CUSTOMER_KEY, LU_BRAND, TRIMESTER) as CustomerLUBrandTrimester
+,      LU_BRAND
+,      TRIMESTER
+,      BRAND
+,      LU_PRODUCT_FLAG
+,      GENERIC_AVAILABILITY_IND
+,      DATE_KEY
+,      "TRx"
+;
+
+SELECT DISTINCT
+       sc.LUNDBECK_ID AS CUSTOMER_KEY
+,      pg.BRAND as LU_BRAND
+,      sc.PERFORMANCE_PERIOD as TRIMESTER
+,      mb.MARKET_BASKET_GROUP as BRAND
+,      pgb.BRAND_LU_PRODUCT_FLAG as LU_PRODUCT_FLAG
+,      pgb.BRAND_LU_GENERIC_FLAG as GENERIC_AVAILABILITY_IND
+,      cal.DATE_WEEK_END_KEY as DATE_KEY
+,      0 as "TRx"
+FROM  "LUNDBECK_DW"."ANALYTICS"."SPLIT_CREDITS" sc
+INNER JOIN "LUNDBECK_DW"."COMMON"."CUSTOMERS" c
+  On c.LUNDBECK_ID = sc.LUNDBECK_ID
+INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" cal
+  ON  sc.PERFORMANCE_PERIOD = cal.SF_TRIMESTER
+INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" pg
+			   On pg.BRAND = sc.PRODUCT_GROUP_NAME
+CROSS JOIN "LUNDBECK_DW"."COMMON"."MB_ABILIFY_MAINTENA_IC" mb
+INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" pgb
+  ON pgb.PRODUCT_GROUP_CODE = mb.PRODUCT_GROUP_CODE
+WHERE sc.PERFORMANCE_PERIOD IN (SELECT cal.SF_TRIMESTER
+                       FROM  "LUNDBECK_DW"."COMMON"."CALENDAR" cal
+                     WHERE cal.SF_RELATIVE_TRIMESTER IN ($(vGoalSFTrimester)-1,$(vGoalSFTrimester)))
+  
+  AND  ifnull(c.DATA_STEWARDSHIP_EXCLUSION_FLAG, 'N') = 'N'
+  AND  ifnull(c.LU_NO_CONTACT_FLAG, 'N') <> 'Y'
+  AND   pg.brand IN ('ABILIFY MAINTENA')
+  AND  cal.date_key <= $(vCurrentDataWeekCalKey)
+
+UNION 
+
+SELECT DISTINCT
+       sc.LUNDBECK_ID AS CUSTOMER_KEY
+,      pg.BRAND as LU_BRAND
+,      sc.PERFORMANCE_PERIOD as TRIMESTER
+,      mb.MARKET_BASKET_GROUP as BRAND
+,      pgb.BRAND_LU_PRODUCT_FLAG as LU_PRODUCT_FLAG
+,      pgb.BRAND_LU_GENERIC_FLAG as GENERIC_AVAILABILITY_IND
+,      cal.DATE_WEEK_END_KEY as DATE_KEY
+,      0 as "TRx"
+FROM  "LUNDBECK_DW"."ANALYTICS"."SPLIT_CREDITS" sc
+INNER JOIN "LUNDBECK_DW"."COMMON"."CUSTOMERS" c
+  On c.LUNDBECK_ID = sc.LUNDBECK_ID
+INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" cal
+  ON  sc.PERFORMANCE_PERIOD = cal.SF_TRIMESTER
+INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" pg
+			   On pg.BRAND = sc.PRODUCT_GROUP_NAME
+CROSS JOIN "LUNDBECK_DW"."COMMON"."MB_ABILIFY_ASIMTUFII_IC" mb
+INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" pgb
+  ON pgb.PRODUCT_GROUP_CODE = mb.PRODUCT_GROUP_CODE
+WHERE sc.PERFORMANCE_PERIOD IN (SELECT cal.SF_TRIMESTER
+                       FROM  "LUNDBECK_DW"."COMMON"."CALENDAR" cal
+                     WHERE cal.SF_RELATIVE_TRIMESTER IN ($(vGoalSFTrimester)-1,$(vGoalSFTrimester)))
+  
+  AND  ifnull(c.DATA_STEWARDSHIP_EXCLUSION_FLAG, 'N') = 'N'
+  AND  ifnull(c.LU_NO_CONTACT_FLAG, 'N') <> 'Y'
+  AND   pg.brand IN ('ABILIFY ASIMTUFII')
+  AND  cal.date_key <= $(vCurrentDataWeekCalKey)
+  
+//madhur
+// UNION
+
+// SELECT DISTINCT
+//        sc.LUNDBECK_ID AS CUSTOMER_KEY
+// ,      pg.BRAND as LU_BRAND
+// ,      sc.PERFORMANCE_PERIOD as TRIMESTER
+// ,      mb.MARKET_BASKET_GROUP as BRAND
+// ,      pgb.BRAND_LU_PRODUCT_FLAG as LU_PRODUCT_FLAG
+// ,      pgb.BRAND_LU_GENERIC_FLAG as GENERIC_AVAILABILITY_IND
+// ,      cal.DATE_WEEK_END_KEY as DATE_KEY
+// ,      0 as "TRx"
+// FROM  "LUNDBECK_DW"."ANALYTICS"."SPLIT_CREDITS" sc
+// INNER JOIN "LUNDBECK_DW"."COMMON"."CUSTOMERS" c
+//   On c.LUNDBECK_ID = sc.LUNDBECK_ID
+// INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" cal
+//   ON  sc.PERFORMANCE_PERIOD = cal.SF_TRIMESTER
+// INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" pg
+// 			   On pg.BRAND = sc.PRODUCT_GROUP_NAME
+// CROSS JOIN "LUNDBECK_DW"."COMMON"."MB_TRINTELLIX_IC" mb
+// INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" pgb
+//   ON pgb.PRODUCT_GROUP_CODE = mb.PRODUCT_GROUP_CODE
+// WHERE sc.PERFORMANCE_PERIOD IN (SELECT cal.SF_TRIMESTER
+//                        FROM  "LUNDBECK_DW"."COMMON"."CALENDAR" cal
+//                      WHERE cal.SF_RELATIVE_TRIMESTER IN ($(vGoalSFTrimester)-1,$(vGoalSFTrimester)))
+  
+//   AND  ifnull(c.DATA_STEWARDSHIP_EXCLUSION_FLAG, 'N') = 'N'
+//   AND  ifnull(c.LU_NO_CONTACT_FLAG, 'N') <> 'Y'
+//   AND   pg.brand IN ('TRINTELLIX')
+//   AND  cal.date_key <= $(vCurrentDataWeekCalKey)
+  
+UNION
+
+SELECT DISTINCT
+       sc.LUNDBECK_ID AS CUSTOMER_KEY
+,      pg.BRAND as LU_BRAND
+,      sc.PERFORMANCE_PERIOD as TRIMESTER
+,      mb.MARKET_BASKET_GROUP as BRAND
+,      pgb.BRAND_LU_PRODUCT_FLAG as LU_PRODUCT_FLAG
+,      pgb.BRAND_LU_GENERIC_FLAG as GENERIC_AVAILABILITY_IND
+,      cal.DATE_WEEK_END_KEY as DATE_KEY
+,      0 as "TRx"
+FROM  "LUNDBECK_DW"."ANALYTICS"."SPLIT_CREDITS" sc
+INNER JOIN "LUNDBECK_DW"."COMMON"."CUSTOMERS" c
+  On c.LUNDBECK_ID = sc.LUNDBECK_ID
+INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" cal
+  ON  sc.PERFORMANCE_PERIOD = cal.SF_TRIMESTER
+INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" pg
+			   On pg.BRAND = sc.PRODUCT_GROUP_NAME
+CROSS JOIN "LUNDBECK_DW"."COMMON"."MB_REXULTI_IC" mb
+INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" pgb
+  ON pgb.PRODUCT_GROUP_CODE = mb.PRODUCT_GROUP_CODE
+WHERE sc.PERFORMANCE_PERIOD IN (SELECT cal.SF_TRIMESTER
+                       FROM  "LUNDBECK_DW"."COMMON"."CALENDAR" cal
+                     WHERE cal.SF_RELATIVE_TRIMESTER IN ($(vGoalSFTrimester)-1,$(vGoalSFTrimester)))
+  
+  AND  ifnull(c.DATA_STEWARDSHIP_EXCLUSION_FLAG, 'N') = 'N'
+  AND  ifnull(c.LU_NO_CONTACT_FLAG, 'N') <> 'Y'
+  AND   pg.brand IN ('REXULTI')
+  AND  cal.date_key <= $(vCurrentDataWeekCalKey)
+  
+UNION
+
+SELECT DISTINCT
+       sc.LUNDBECK_ID AS CUSTOMER_KEY
+,      pg.BRAND as LU_BRAND
+,      sc.PERFORMANCE_PERIOD as TRIMESTER
+,      mb.MARKET_BASKET_GROUP as BRAND
+,      pgb.BRAND_LU_PRODUCT_FLAG as LU_PRODUCT_FLAG
+,      pgb.BRAND_LU_GENERIC_FLAG as GENERIC_AVAILABILITY_IND
+,      cal.DATE_WEEK_END_KEY as DATE_KEY
+,      0 as "TRx"
+FROM  "LUNDBECK_DW"."ANALYTICS"."SPLIT_CREDITS" sc
+INNER JOIN "LUNDBECK_DW"."COMMON"."CUSTOMERS" c
+  On c.LUNDBECK_ID = sc.LUNDBECK_ID
+INNER JOIN "LUNDBECK_DW"."COMMON"."CALENDAR" cal
+  ON  sc.PERFORMANCE_PERIOD = cal.SF_TRIMESTER
+INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" pg
+			   On pg.BRAND = sc.PRODUCT_GROUP_NAME
+CROSS JOIN "LUNDBECK_DW"."COMMON"."MB_REXULTI_AAD_IC" mb
+INNER JOIN "LUNDBECK_DW"."COMMON"."PRODUCTS" pgb
+  ON pgb.PRODUCT_GROUP_CODE = mb.PRODUCT_GROUP_CODE
+WHERE sc.PERFORMANCE_PERIOD IN (SELECT cal.SF_TRIMESTER
+                       FROM  "LUNDBECK_DW"."COMMON"."CALENDAR" cal
+                     WHERE cal.SF_RELATIVE_TRIMESTER IN ($(vGoalSFTrimester)-1,$(vGoalSFTrimester)))
+  
+  AND  ifnull(c.DATA_STEWARDSHIP_EXCLUSION_FLAG, 'N') = 'N'
+  AND  ifnull(c.LU_NO_CONTACT_FLAG, 'N') <> 'Y'
+  AND   pg.PRODUCT_GROUP_NAME IN ('REXULTI AADAD')
+  AND  cal.date_key <= $(vCurrentDataWeekCalKey)  
+;
+
+STORE PSY_RX_SPLI_CREDIT_RX INTO $(QVDLocation)Facts/SALES_PSY_SPLIT_CREDIT$(vSpace)$(vSF).qvd (qvd);
+DROP TABLE PSY_RX_SPLI_CREDIT_RX;
