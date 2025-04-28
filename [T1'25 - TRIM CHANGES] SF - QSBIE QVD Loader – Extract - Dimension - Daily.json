@@ -16,5 +16,7 @@ VARIABLES
 {"qName":"vSpace","qDefinition":"_DEV","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"4bc1b9f8-3bb2-435a-b826-7911d51485b4","qType":"variable"},"qData":[],"qIsScriptCreated":true}
 {"qName":"vSF","qDefinition":"_SF","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"9d6a33d4-c9a9-4211-b2e0-507e58445f4c","qType":"variable"},"qData":[],"qIsScriptCreated":true}
 {"qName":"vQSBIE_TransformQVD_Fact","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/QlikSense BI Evolution\/QVDs\/Transform\/Facts","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"c7646845-441a-4ab6-8607-d7ea85688dba","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"v_LuUS_DATA_Sales_IC","qDefinition":"lib:\/\/LuUS_DATA_Sales_IC:DataFiles","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"778cf494-6693-4d52-b8e4-9bc80c2d59ea","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"v_LuUS_DATA_Sales_IC_SharePoint","qDefinition":"lib:\/\/LuUS_DATA:LuUS_SharePoint\/Shared Documents\/Qlik Sense Data Files\/Qlik Sense Sales IC","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"d1df176e-9364-41a7-b8ac-2f8c6bed0332","qType":"variable"},"qData":[],"qIsScriptCreated":true}
 
 FIELDS
