@@ -1,0 +1,1258 @@
+///$tab Main
+SET ThousandSep=',';
+SET DecimalSep='.';
+SET MoneyThousandSep=',';
+SET MoneyDecimalSep='.';
+SET NumFormat='';
+SET MoneyFormat='#.##0,00 kr.;-#.##0,00 kr.';
+SET TimeFormat='hh.mm.ss';
+SET DateFormat='MM/DD/YYYY';
+SET TimestampFormat='MM/DD/YYYY hh.mm.ss[.fff]';
+SET FirstWeekDay=0;
+SET BrokenWeeks=0;
+SET ReferenceDay=4;
+SET FirstMonthOfYear=1;
+SET CollationLocale='en-US';
+SET CreateSearchIndexOnReload=1;
+SET MonthNames='Jan;Feb;Mar;Apr;May;Jun;Jul;Aug;Sep;Oct;Nov;Dec';
+SET LongMonthNames='January;February;March;April;May;June;July;August;September;October;November;December'; 
+SET DayNames='Mon;Tue;Wed;Thu;Fri;Sat;Sun';
+SET LongDayNames='Monday;Tuesday;Wednesday;Thursday;Friday;Saturday;Sunday';
+SET NumericalAbbreviation='3:k;6:M;9:G;12:T;15:P;18:E;21:Z;24:Y;-3:m;-6:μ;-9:n;-12:p;-15:f;-18:a;-21:z;-24:y';
+
+LIB CONNECT TO 'LuUS_DATA:SNOWFLAKE_LuUS_BI_Reader';
+
+$(Must_Include=[lib://LuUS_DATA:LuUS_SharePoint/Shared Documents/Qlik Sense Data Files/Include/Qlik Cloud/FolderConnections.txt]); 
+
+vQVDPathFact = 'lib://LuUS_DATA:DataFiles/Production/QlikSense BI Evolution/QVDs/Extract/Facts/Vyepti/HQ';
+vQVDPathDim = 'lib://LuUS_DATA:DataFiles/Production/QlikSense BI Evolution/QVDs/Extract/Dimensions/Vyepti/HQ';
+
+
+
+
+///$tab Variable
+LET vSpace = if(upper(GetSysAttr('spaceType'))='SHARED' or GetSysAttr('spaceType')='','_DEV');
+Trace '$(vSpace)';
+
+LET vSF = '_SF';
+Trace '$(vSF)';
+
+
+
+vToday = num(Today());
+vTodayDate = Today();
+let vTodayDate_1 = DATE(DATE#(Today(), 'MM/DD/YYYY'), 'YYYYMMDD');
+vCompMonthTemp = DATE(MONTHEND(AddMonths(DATE(DATE#('$(vTodayDate_1)', 'YYYYMMDD'), 'MM/DD/YYYY'), -1)), 'YYYYMMDD');
+
+
+
+
+let vMaxCompletedMonth = $(vCompMonthTemp);
+vPrevious1CompletedMonth = DATE(MONTHEND(AddMonths(DATE(DATE#('$(vMaxCompletedMonth)', 'YYYYMMDD'), 'MM/DD/YYYY'), -1)), 'YYYYMMDD');
+v2ndPreviousCompletedMonth = DATE(MONTHEND(AddMonths(DATE(DATE#('$(vMaxCompletedMonth)', 'YYYYMMDD'), 'MM/DD/YYYY'), -2)), 'YYYYMMDD');
+Trace 'Max Completed Month : $(vMaxCompletedMonth)';
+TRACE '$(vPrevious1CompletedMonth)';
+TRACE '$(v2ndPreviousCompletedMonth)';
+
+
+
+LET vNewVINS = '''VIVO INFUSION'', ''SOLEO HEALTH'', ''TWELVESTONE'', ''INFUSION FOR HEALTH''';
+Trace $(vNewVINS);
+
+LET vExistingVINS = '''OPTION CARE'', ''PARAGON'' , ''IVX HEALTH'',  ''VITAL CARE''';
+Trace $(vExistingVINS);
+
+LET vAllVINS = '''PARAGON'', ''IVX HEALTH'', ''OPTION CARE'', ''VITAL CARE'', ''VIVO INFUSION'', ''SOLEO HEALTH'', ''TWELVESTONE'', ''INFUSION FOR HEALTH''';
+Trace $(vAllVINS);
+
+// LET vNewVINMinDate = '20240101'; 
+///$tab Max Date
+SnapshotWeeklyMaxDate:
+Load
+	max(ENROLLMENT_DATE_KEY)					as MaxDateKey
+FROM [$(vQVDPathFact)/VYEPTI_FACT_PATIENT_SNAPSHOT_HQ$(vSpace)$(vSF).qvd]
+(qvd);
+
+vSnapshotMaxDate = peek('MaxDateKey');
+Trace 'Snapshot Max date : $(vSnapshotMaxDate)';
+
+
+Drop Table SnapshotWeeklyMaxDate;
+
+
+LET vToday=Date(Today(),'YYYYMMDD');
+
+TempDate:
+LOAD  Distinct FieldHoliday
+FROM [$(vQVDPathDim)/DIM_FRS_HOLIDAY$(vSpace)$(vSF).qvd](qvd);
+
+LET vUSFederalHolidayList=Peek('FieldHoliday'); 
+///$tab SIP Executive
+NoCONCATENATE
+FINAL_FACT:
+LOAD
+    DATE(DATE#(DATE_KEY,'YYYYMMDD') , 'YYYYMMDD')AS DATE_KEY,
+    DATE(DATE#(DATE_KEY,'YYYYMMDD') , 'YYYYMMDD') as SNAPSHOT_MONTH_DATE_KEY,
+    SHIPMENT_OCCOURENCE,
+    SF3_TERRITORY_KEY AS TERRITORY_KEY,
+    PATIENT_ID,
+    PATIENT_KEY, //PRAW
+    PATIENT_KEY AS "PATIENT KEY",//SHUBHAM
+  	CUSTOMER_KEY,
+    PLAN_KEY,
+    "Norm. Units"									as UNITS,
+	DUAL(PATIENT_SOURCE, PICK(MATCH(PATIENT_SOURCE, $(vAllVINS)),1,2,3,4,5,6,7,8)) as "Specialty Pharmacy",
+    IF(MATCH(PATIENT_SOURCE, $(vExistingVINS)), PATIENT_SOURCE) AS EXISTING_VINS,
+    IF(MATCH(PATIENT_SOURCE, $(vNewVINS)), PATIENT_SOURCE) AS NEW_VINS,
+    IF(MATCH(PATIENT_SOURCE, $(vExistingVINS)), 'Existing VIN', If(match(PATIENT_SOURCE, $(vNewVINS)),'New VIN')) AS [VIN Category],
+    SHIPMENTS_INFUSIONS								as "Shipments Infusions",
+    DOSE											as "Dose Mix",
+    SHIPMENTS										as Shipments,
+    'Patient Sales'									as GrainFlag,
+    If(IsNull(NEW_UNITS_FLAG),'Refill','New') 		as "New vs Refill",
+	dual(PATIENT_STATUS,match(PATIENT_STATUS, 'ACTIVE', 'DISCONTINUED', 'CANCELED', 'PENDING')) as "Patient Status",
+    BENEFIT_TYPE AS "Benefit Type"
+FROM [$(vQVDPathFact)/VYEPTI_FACT_ASOC_DISPENSE_HQ$(vSpace)$(vSF).qvd]
+(qvd) where 
+     IF(MATCH(PATIENT_SOURCE, $(vNewVINS) ), DATE_KEY >= '20240101', DATE_KEY >=20200101)
+     AND  DATE_KEY <= '$(vMaxCompletedMonth)';
+
+
+Concatenate(FINAL_FACT)
+LOAD
+    DATE(DATE#(DATE_KEY,'YYYYMMDD') , 'YYYYMMDD') AS DATE_KEY,
+    DATE(DATE#(SC_REFERRAL_DATE_KEY,'YYYYMMDD') , 'YYYYMMDD')   as REFERRAL_DATE_KEY, 
+    DUAL(PATIENT_SOURCE_1, PICK(MATCH(PATIENT_SOURCE_1, $(vAllVINS)),1,2,3,4,5,6,7,8)) as "Specialty Pharmacy",
+    IF(MATCH(PATIENT_SOURCE_1, $(vExistingVINS)), PATIENT_SOURCE_1) AS EXISTING_VINS,
+    IF(MATCH(PATIENT_SOURCE_1, $(vNewVINS)), PATIENT_SOURCE_1) AS NEW_VINS,
+    IF(MATCH(PATIENT_SOURCE_1, $(vExistingVINS)), 'Existing VIN', If(match(PATIENT_SOURCE_1, $(vNewVINS)),'New VIN')) AS [VIN Category],
+    PATIENT_ID,
+    CUSTOMER_KEY,
+	dual(PATIENT_STATUS,match(PATIENT_STATUS, 'ACTIVE', 'DISCONTINUED', 'CANCELED', 'PENDING')) as "Patient Status",
+	'Weekly Snapshot'																			as GrainFlag,
+    DATE(DATE#(FIRST_PAID_SHIPMENT_DATE_KEY,'YYYYMMDD') , 'YYYYMMDD') AS FIRST_PAID_SHIPMENT_DATE_KEY ,
+    PATIENT_STATUS_DETAIL																		as "Status Detail",
+    Coalesce(SP_PATIENT_RX_STATUS, 'OTHER')                                            		    as "Patient Sub Status",
+    BENEFIT_TYPE																				as "Benefit Type",
+    PLAN_KEY,
+// 	HOME_INFUSION_ENRL_IND,//SHUBHAM 
+//  	HOME_INFUSION_CURRENT_IND,//SHUBHAM
+    PATIENT_SOURCE_1 as SPECIALTY_PHARMACY,
+    SOURCE_PATIENT_ID
+FROM [$(vQVDPathFact)/VYEPTI_FACT_PATIENT_SIP_SNAPSHOT_WEEKLY_HQ$(vSpace)$(vSF).qvd]
+(qvd)
+ where  DATE_KEY <= '$(vMaxCompletedMonth)';
+
+Concatenate(FINAL_FACT)
+LOAD
+    DATE(DATE#(DATE_KEY,'YYYYMMDD') , 'YYYYMMDD') 		as SNAPSHOT_MONTH_DATE_KEY,
+    DATE(DATE#(SC_REFERRAL_DATE_KEY,'YYYYMMDD') , 'YYYYMMDD')   as REFERRAL_DATE_KEY,    
+     DUAL(PATIENT_SOURCE_1, PICK(MATCH(PATIENT_SOURCE_1, $(vAllVINS)),1,2,3,4,5,6,7,8)) as "Specialty Pharmacy",
+    IF(MATCH(PATIENT_SOURCE_1, $(vExistingVINS)), PATIENT_SOURCE_1) AS EXISTING_VINS,
+    IF(MATCH(PATIENT_SOURCE_1, $(vNewVINS)), PATIENT_SOURCE_1) AS NEW_VINS,
+    IF(MATCH(PATIENT_SOURCE_1, $(vExistingVINS)), 'Existing VIN', If(match(PATIENT_SOURCE_1, $(vNewVINS)),'New VIN')) AS [VIN Category],
+    PATIENT_ID,
+    CUSTOMER_KEY,
+	dual(PATIENT_STATUS,match(PATIENT_STATUS, 'ACTIVE', 'DISCONTINUED', 'CANCELED', 'PENDING')) as "Patient Status",
+	'Monthly Snapshot'																			as GrainFlag,
+     DATE(DATE#(FIRST_PAID_SHIPMENT_DATE_KEY,'YYYYMMDD') , 'YYYYMMDD') AS FIRST_PAID_SHIPMENT_DATE_KEY ,
+    PATIENT_STATUS_DETAIL																		as "Status Detail",
+    Coalesce(SP_PATIENT_RX_STATUS, 'OTHER')                                            		    as "Patient Sub Status",
+    BENEFIT_TYPE																				as "Benefit Type",
+    PLAN_KEY,
+// 	HOME_INFUSION_ENRL_IND,//SHUBHAM 
+//  	HOME_INFUSION_CURRENT_IND,//SHUBHAM
+    PATIENT_SOURCE_1 as SPECIALTY_PHARMACY,
+    SOURCE_PATIENT_ID
+FROM [$(vQVDPathFact)/VYEPTI_FACT_PATIENT_SIP_SNAPSHOT_MONTHLY_HQ$(vSpace)$(vSF).qvd]
+(qvd)
+ where  DATE_KEY <= '$(vMaxCompletedMonth)';
+
+NoConcatenate
+Temp:
+LOAD
+    DATE(DATE#(STATUS_CHG_DATE_KEY,'YYYYMMDD'),'YYYYMMDD') 								as DATE_KEY,
+    If(PATIENT_STATUS='CANCELED',date(date#(STATUS_CHG_DATE_KEY,'YYYYMMDD'),'MM/DD/YYYY'),Null()) as "Date Canceled",
+    If(PATIENT_STATUS='DISCONTINUED',date(date#(STATUS_CHG_DATE_KEY,'YYYYMMDD'),'MM/DD/YYYY'),Null()) as "Date Discontinued",
+    DATE(DATE#(ENROLLMENT_DATE_KEY,'YYYYMMDD'),'YYYYMMDD') AS ENROLLMENT_DATE_KEY,
+    DATE(DATE#(SHIPPED_DATE_KEY,'YYYYMMDD'),'YYYYMMDD')AS SHIPPED_DATE_KEY,
+    PATIENT_ID,
+    PATIENT_KEY,
+    CUSTOMER_KEY,
+    Coalesce(SP_PATIENT_RX_STATUS, 'OTHER')                               as "Patient Sub Status",
+    PATIENT_STATUS_DETAIL							as "Status Detail",
+    PATIENT_SOURCE AS SPECIALTY_PHARMACY,
+    PATIENT_SOURCE,
+    SOURCE_PATIENT_ID,
+    NetWorkDays(Date(Date#(REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#(FIRST_PAID_SHIPMENT_DATE_KEY,'YYYYMMDD')),$(vUSFederalHolidayList))-1	as "Prev Time to First Fill (in Days)",
+    PAYER_ID										as "Payer ID",
+    PAYER_TYPE										as "Payer Type",      
+    'Patient Snapshot'								as GrainFlag,
+    BENEFIT_TYPE													as "Benefit Type",
+    //Added 12 March by Abhinav LB-1588
+    DAYS_TO_CANCELLED,
+    DAYS_TO_DISCONTINUED,
+    PLAN_KEY,
+    Date(Date#(SHIPPED_DATE_KEY,'YYYYMMDD'),'MM/DD/YYYY')			as "Last Shipment Date",
+    DATE(DATE#(PA_EFF_DATE_KEY,'YYYYMMDD'),'MM/DD/YYYY')            as [PA Effective Date],
+    DATE(DATE#(PA_EXP_DATE_KEY,'YYYYMMDD'),'MM/DD/YYYY')            as [PA Expiry Date],
+    FAS_TERRITORY_KEY as FRS_TERRITORY_KEY,
+    SF3_TERRITORY_KEY as TERRITORY_KEY,
+    SC_REFERRAL_DATE_KEY,
+//     HOME_INFUSION_ENRL_IND,
+//     HOME_INFUSION_CURRENT_IND,
+//     IF(SPECIALTY_PHARMACY =  'WALGREENS', SPECIALTY_PHARMACY,IF(HOME_INFUSION_ENRL_IND = 'Y', 'ORSINI HI', 'ORSINI NON-HI')) as SPECIALTY_PHARMACY1,
+    HOME_INFUSION_DATE_KEY,
+    HIPAA_AUTH_RCVD_FLAG as "HIPPA Flag"
+    
+FROM [$(vQVDPathFact)/VYEPTI_FACT_PATIENT_SIP_SNAPSHOT_HQ$(vSpace)$(vSF).qvd]
+(qvd)
+where 
+IF(MATCH(PATIENT_SOURCE, $(vNewVINS) ), ENROLLMENT_DATE_KEY >= '20240101', ENROLLMENT_DATE_KEY >=20200101)
+AND 
+// DATE(DATE#(ENROLLMENT_DATE_KEY,'YYYYMMDD') , 'YYYYMMDD') <= '$(vMaxCompletedMonth)'
+ENROLLMENT_DATE_KEY <= '$(vMaxCompletedMonth)'
+;
+
+
+
+ Left Join(Temp)
+ Load 
+ Date(Date#(REFERRAL_DATE_KEY,'YYYYMMDD'),'YYYYMMDD') AS REFERRAL_DATE_KEY,
+ PATIENT_SOURCE,
+ PATIENT_ID,
+ [Patient Status],
+ DATE(DATE#(FIRST_PAID_SHIPMENT_DATE_KEY, 'YYYYMMDD'),'YYYYMMDD') AS FIRST_PAID_SHIPMENT_DATE_KEY,
+ DATE(DATE#(FIRST_PAID_SHIPMENT_DATE_KEY, 'YYYYMMDD'),'YYYYMMDD') as SNAPSHOT_FIRST_PAID_SHIPMENT_DATE_KEY
+ FROM [$(vQVDPathFact)/VYEPTI_FACT_PATIENT_SIP_SNAPSHOT_FISRT_SHIPMENT$(vSpace)$(vSF).qvd](qvd)
+ where REFERRAL_DATE_KEY <= '$(vMaxCompletedMonth)';
+
+Concatenate(FINAL_FACT)
+LOAD  DATE_KEY,
+    ENROLLMENT_DATE_KEY,
+    SNAPSHOT_FIRST_PAID_SHIPMENT_DATE_KEY,
+    SHIPPED_DATE_KEY,
+    "Date Canceled",
+    "Date Discontinued",
+    PATIENT_ID,
+    PATIENT_KEY,
+    CUSTOMER_KEY,
+    dual([Patient Status],match([Patient Status], 'ACTIVE', 'DISCONTINUED', 'CANCELED', 'PENDING')) as "Patient Status",
+    "Status Detail",
+    DUAL(PATIENT_SOURCE, PICK(MATCH(PATIENT_SOURCE, $(vAllVINS)),1,2,3,4,5,6,7,8)) as "Specialty Pharmacy",
+    IF(MATCH(PATIENT_SOURCE, $(vExistingVINS)), PATIENT_SOURCE) AS EXISTING_VINS,
+    IF(MATCH(PATIENT_SOURCE, $(vNewVINS)), PATIENT_SOURCE) AS NEW_VINS,
+    IF(MATCH(PATIENT_SOURCE, $(vExistingVINS)), 'Existing VIN', If(match(PATIENT_SOURCE, $(vNewVINS)),'New VIN')) AS [VIN Category],
+    SOURCE_PATIENT_ID,
+    PATIENT_KEY&SPECIALTY_PHARMACY                  as "Patient Unique Key",
+    If(NetWorkDays(Date(Date#(REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#(FIRST_PAID_SHIPMENT_DATE_KEY,'YYYYMMDD')),$(vUSFederalHolidayList))-1> 56,'57+',
+    	If(NetWorkDays(Date(Date#(REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#(FIRST_PAID_SHIPMENT_DATE_KEY,'YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 50,'50-56',
+        	If(NetWorkDays(Date(Date#(REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#(FIRST_PAID_SHIPMENT_DATE_KEY,'YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 43,'43-49',
+            	If(NetWorkDays(Date(Date#(REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#(FIRST_PAID_SHIPMENT_DATE_KEY,'YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 36,'36-42',
+                	If(NetWorkDays(Date(Date#(REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#(FIRST_PAID_SHIPMENT_DATE_KEY,'YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 29,'29-35',
+                    	If(NetWorkDays(Date(Date#(REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#(FIRST_PAID_SHIPMENT_DATE_KEY,'YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 22,'22-28',
+                        	If(NetWorkDays(Date(Date#(REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#(FIRST_PAID_SHIPMENT_DATE_KEY,'YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 15,'15-21',
+                            	If(NetWorkDays(Date(Date#(REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#(FIRST_PAID_SHIPMENT_DATE_KEY,'YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 8,'8-14',
+                                	If(NetWorkDays(Date(Date#(REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#(FIRST_PAID_SHIPMENT_DATE_KEY,'YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 1,'1-7'
+                            			)
+                                   )
+                                )
+                            )
+                         )
+                      )
+                  )
+               )
+            )                                          													as "Time to First Fill (in Days) Bucket",
+         If(NetWorkDays(date(Date#(SC_REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#('$(vSnapshotMaxDate)','YYYYMMDD')),$(vUSFederalHolidayList))-1 > 84,'84+',
+If(NetWorkDays(date(Date#(SC_REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#('$(vSnapshotMaxDate)','YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 78,'78-84',
+          If(NetWorkDays(date(Date#(SC_REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#('$(vSnapshotMaxDate)','YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 71,'71-77',
+           	If(NetWorkDays(date(Date#(SC_REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#('$(vSnapshotMaxDate)','YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 64,'64-70',
+              If(NetWorkDays(date(Date#(SC_REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#('$(vSnapshotMaxDate)','YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 57,'57-63',
+               	If(NetWorkDays(date(Date#(SC_REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#('$(vSnapshotMaxDate)','YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 50, '50-56',
+			      If(NetWorkDays(date(Date#(SC_REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#('$(vSnapshotMaxDate)','YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 43, '43-49',
+                   	If(NetWorkDays(date(Date#(SC_REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#('$(vSnapshotMaxDate)','YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 36, '36-42',
+                      If(NetWorkDays(date(Date#(SC_REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#('$(vSnapshotMaxDate)','YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 29, '29-35',
+                        If(NetWorkDays(date(Date#(SC_REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#('$(vSnapshotMaxDate)','YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 22, '22-28',
+                          If(NetWorkDays(date(Date#(SC_REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#('$(vSnapshotMaxDate)','YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 15, '15-21',
+                          	If(NetWorkDays(date(Date#(SC_REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#('$(vSnapshotMaxDate)','YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 8, '8-14',
+                              If(NetWorkDays(date(Date#(SC_REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#('$(vSnapshotMaxDate)','YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 1, '1-7'
+                              	)
+                               )
+                             )
+                           )
+                         )
+                       )
+                     )
+                   )
+                 )
+               )
+              )
+             )
+           )																								as "Shipment Pending Days Bucket",
+    If((NetWorkDays(date(Date#(SC_REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#('$(vSnapshotMaxDate)','YYYYMMDD')),$(vUSFederalHolidayList))-1)>=1,
+    		(NetWorkDays(date(Date#(SC_REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#('$(vSnapshotMaxDate)','YYYYMMDD')),$(vUSFederalHolidayList))-1))    as "Shipment Pending Days",
+
+    
+    
+    If(NetWorkDays(date(Date#(ENROLLMENT_DATE_KEY,'YYYYMMDD')),Date(Date#(FIRST_PAID_SHIPMENT_DATE_KEY,'YYYYMMDD')),$(vUSFederalHolidayList))-1	 > 90,'>=91',
+        	If(NetWorkDays(date(Date#(ENROLLMENT_DATE_KEY,'YYYYMMDD')),Date(Date#(FIRST_PAID_SHIPMENT_DATE_KEY,'YYYYMMDD')),$(vUSFederalHolidayList))-1	 > 60,'61-90',
+                	If(NetWorkDays(date(Date#(ENROLLMENT_DATE_KEY,'YYYYMMDD')),Date(Date#(FIRST_PAID_SHIPMENT_DATE_KEY,'YYYYMMDD')),$(vUSFederalHolidayList))-1	 > 30,'31-60',
+                        	If(NetWorkDays(date(Date#(ENROLLMENT_DATE_KEY,'YYYYMMDD')),Date(Date#(FIRST_PAID_SHIPMENT_DATE_KEY,'YYYYMMDD')),$(vUSFederalHolidayList))-1	 >= 0,'0-30'
+                               )
+                    	)
+            	)
+    	)																									as "Days to First RX Bucket",
+        
+    
+    
+    
+    If(NetWorkDays(date(Date#(ENROLLMENT_DATE_KEY,'YYYYMMDD')),Date(Date#('$(vSnapshotMaxDate)','YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 56,'57+',
+            	If(NetWorkDays(date(Date#(ENROLLMENT_DATE_KEY,'YYYYMMDD')),Date(Date#('$(vSnapshotMaxDate)','YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 50,'50-56',
+                    	If(NetWorkDays(date(Date#(ENROLLMENT_DATE_KEY,'YYYYMMDD')),Date(Date#('$(vSnapshotMaxDate)','YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 43,'43-49',
+                            	If(NetWorkDays(date(Date#(ENROLLMENT_DATE_KEY,'YYYYMMDD')),Date(Date#('$(vSnapshotMaxDate)','YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 36,'36-42',
+                                    	If(NetWorkDays(date(Date#(ENROLLMENT_DATE_KEY,'YYYYMMDD')),Date(Date#('$(vSnapshotMaxDate)','YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 29,'29-35',
+                                            	If(NetWorkDays(date(Date#(ENROLLMENT_DATE_KEY,'YYYYMMDD')),Date(Date#('$(vSnapshotMaxDate)','YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 22, '22-28',
+													If(NetWorkDays(date(Date#(ENROLLMENT_DATE_KEY,'YYYYMMDD')),Date(Date#('$(vSnapshotMaxDate)','YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 15, '15-21',
+                                                    	If(NetWorkDays(date(Date#(ENROLLMENT_DATE_KEY,'YYYYMMDD')),Date(Date#('$(vSnapshotMaxDate)','YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 8, '8-14',
+                                                        	If(NetWorkDays(date(Date#(ENROLLMENT_DATE_KEY,'YYYYMMDD')),Date(Date#('$(vSnapshotMaxDate)','YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 1, '1-7'
+                                                    			)
+                                                           )
+                                                      )
+                                                    )
+                                             )
+                                      )
+                              )
+                  		)
+          )																											as "Days Pending Bucket",
+   
+   NetWorkDays(date(Date#(ENROLLMENT_DATE_KEY,'YYYYMMDD')),Date(Date#(FIRST_PAID_SHIPMENT_DATE_KEY,'YYYYMMDD')),$(vUSFederalHolidayList))-1		as "Days to First Rx",     
+          
+    If(NetWorkDays(date(Date#(ENROLLMENT_DATE_KEY,'YYYYMMDD')),Date(Date#('$(vSnapshotMaxDate)','YYYYMMDD')),$(vUSFederalHolidayList))-1>=1,
+    			NetWorkDays(date(Date#(ENROLLMENT_DATE_KEY,'YYYYMMDD')),Date(Date#('$(vSnapshotMaxDate)','YYYYMMDD')),$(vUSFederalHolidayList))-1)		as "Days Pending",
+    
+    NetWorkDays(Date(Date#(REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#(FIRST_PAID_SHIPMENT_DATE_KEY,'YYYYMMDD')),$(vUSFederalHolidayList))-1	as "Time to First Fill (in Days)",
+    REFERRAL_DATE_KEY,
+    FIRST_PAID_SHIPMENT_DATE_KEY,
+    "Payer ID",
+    "Payer Type",     
+    'Patient Snapshot'								as GrainFlag,
+    "Benefit Type",
+    DAYS_TO_CANCELLED as [Days To Cancelled],
+    DAYS_TO_DISCONTINUED as [Days To Discontinued],
+    PLAN_KEY,
+    "Patient Sub Status",
+    "Last Shipment Date",
+    [PA Effective Date],
+    [PA Expiry Date],
+    FRS_TERRITORY_KEY,
+    TERRITORY_KEY,
+//     HOME_INFUSION_ENRL_IND,
+//     HOME_INFUSION_CURRENT_IND,
+    HOME_INFUSION_DATE_KEY,
+    "HIPPA Flag"
+    Resident Temp;
+
+Drop Table Temp;
+
+Concatenate(FINAL_FACT)
+LOAD
+    DATE(DATE#(STATUS_CHG_DATE_KEY,'YYYYMMDD'),'YYYYMMDD')								as DATE_KEY,
+    DATE(DATE#(SHIPPED_DATE_KEY,'YYYYMMDD'),'YYYYMMDD') AS SHIPPED_DATE_KEY,
+    PATIENT_ID,
+    CUSTOMER_KEY,
+    //PATIENT_STATUS									as "Patient Status",
+    dual(PATIENT_STATUS,match(PATIENT_STATUS, 'ACTIVE', 'DISCONTINUED', 'CANCELED', 'PENDING')) as "Patient Status",
+    
+    PATIENT_STATUS_DETAIL							as "Status Detail",
+    DUAL(SPECIALTY_PHARMACY, PICK(MATCH(SPECIALTY_PHARMACY, $(vAllVINS)),1,2,3,4,5,6,7,8)) as "Specialty Pharmacy",
+    IF(MATCH(SPECIALTY_PHARMACY, $(vExistingVINS)), SPECIALTY_PHARMACY) AS EXISTING_VINS,
+    IF(MATCH(SPECIALTY_PHARMACY, $(vNewVINS)), SPECIALTY_PHARMACY) AS NEW_VINS,
+    IF(MATCH(SPECIALTY_PHARMACY, $(vExistingVINS)), 'Existing VIN', If(match(SPECIALTY_PHARMACY, $(vNewVINS)),'New VIN')) AS [VIN Category],
+    SOURCE_PATIENT_ID,
+    CANCELLED_DATE_KEY,
+    Dual(If(NetWorkDays(Date(Date#(REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#(CANCELLED_DATE_KEY,'YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 43,'43 +',
+            	If(NetWorkDays(Date(Date#(REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#(CANCELLED_DATE_KEY,'YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 36,'36-42',
+                	If(NetWorkDays(Date(Date#(REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#(CANCELLED_DATE_KEY,'YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 29,'29-35',
+                    	If(NetWorkDays(Date(Date#(REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#(CANCELLED_DATE_KEY,'YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 22,'22-28',
+                        	If(NetWorkDays(Date(Date#(REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#(CANCELLED_DATE_KEY,'YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 15,'15-21',
+                            	If(NetWorkDays(Date(Date#(REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#(CANCELLED_DATE_KEY,'YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 8,'8-14',
+                                	If(NetWorkDays(Date(Date#(REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#(CANCELLED_DATE_KEY,'YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 1,'1-7'
+                            			)
+                                   )
+                                )
+                            )
+                         )
+                      )
+            ) ,//                                  													    as "Time to Cancelled (in Days) Bucket",
+    
+    If(NetWorkDays(Date(Date#(REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#(CANCELLED_DATE_KEY,'YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 43,43,
+            	If(NetWorkDays(Date(Date#(REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#(CANCELLED_DATE_KEY,'YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 36,36,
+                	If(NetWorkDays(Date(Date#(REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#(CANCELLED_DATE_KEY,'YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 29,29,
+                    	If(NetWorkDays(Date(Date#(REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#(CANCELLED_DATE_KEY,'YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 22,22,
+                        	If(NetWorkDays(Date(Date#(REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#(CANCELLED_DATE_KEY,'YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 15,15,
+                            	If(NetWorkDays(Date(Date#(REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#(CANCELLED_DATE_KEY,'YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 8,8,
+                                	If(NetWorkDays(Date(Date#(REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#(CANCELLED_DATE_KEY,'YYYYMMDD')),$(vUSFederalHolidayList))-1 >= 1,1
+                            			)
+                                   )
+                                )
+                            )
+                         )
+                      )
+            )   )     as  "Time to Cancelled (in Days) Bucket",   //                        													    as "Time to Cancelled (in Days) Sort Order",
+    
+    NetWorkDays(Date(Date#(REFERRAL_DATE_KEY,'YYYYMMDD')),Date(Date#(CANCELLED_DATE_KEY,'YYYYMMDD')),$(vUSFederalHolidayList))-1	as "Time to Cancelled (in Days)",
+    REFERRAL_DATE_KEY,   
+    PAYER_ID										as "Payer ID",
+    PAYER_TYPE										as "Payer Type",
+    PLAN_KEY										as "Plan Key",     
+    'Cancelled Patient Snapshot'					as GrainFlag,
+// 	HOME_INFUSION_ENRL_IND,
+//     HOME_INFUSION_CURRENT_IND,
+   SPECIALTY_PHARMACY;
+//     IF(SPECIALTY_PHARMACY =  'WALGREENS', SPECIALTY_PHARMACY,IF(HOME_INFUSION_ENRL_IND = 'Y', 'ORSINI HI', 'ORSINI NON-HI')) as SPECIALTY_PHARMACY;
+Load *,
+     PATIENT_SOURCE AS SPECIALTY_PHARMACY,
+	 STATUS_CHG_DATE_KEY as CANCELLED_DATE_KEY
+FROM [$(vQVDPathFact)/VYEPTI_FACT_PATIENT_SIP_SNAPSHOT_HQ$(vSpace)$(vSF).qvd]
+(qvd) where UPPER(PATIENT_STATUS)='CANCELED'
+and ENROLLMENT_DATE_KEY >= '20200101' and ENROLLMENT_DATE_KEY <= '$(vMaxCompletedMonth)';
+
+Concatenate(FINAL_FACT)
+Load
+CUSTOMER_KEY,
+PRODUCT_GROUP_KEY,
+DAYS_SUPPLIED,
+PATIENT_ID,
+PATIENT_ID AS PATIENT_KEY, //PRAW
+DATE(DATE#(ACTIVE_STATUS_DATE_KEY,'YYYYMMDD'),'YYYYMMDD') AS ACTIVE_STATUS_DATE_KEY,
+DATE(DATE#(SHIPPED_DATE_KEY,'YYYYMMDD'),'YYYYMMDD') AS SHIPPED_DATE_KEY,
+DATE(DATE#(REFERRAL_DATE_KEY,'YYYYMMDD'),'YYYYMMDD')AS REFERRAL_DATE_KEY,
+DATE(DATE#(ENROLLMENT_DATE_KEY,'YYYYMMDD'),'YYYYMMDD')AS ENROLLMENT_DATE_KEY,
+FAS_TERRITORY_KEY as FRS_TERRITORY_KEY,
+    DUAL(PATIENT_SOURCE, PICK(MATCH(PATIENT_SOURCE, $(vAllVINS)),1,2,3,4,5,6,7,8)) as "Specialty Pharmacy",
+    IF(MATCH(PATIENT_SOURCE, $(vExistingVINS)), PATIENT_SOURCE) AS EXISTING_VINS,
+    IF(MATCH(PATIENT_SOURCE, $(vNewVINS)), PATIENT_SOURCE) AS NEW_VINS,
+    IF(MATCH(PATIENT_SOURCE, $(vExistingVINS)), 'Existing VIN', If(match(PATIENT_SOURCE, $(vNewVINS)),'New VIN')) AS [VIN Category],
+BENEFIT_TYPE AS [Benefit Type],
+DATE(DATE#(ENROLLMENT_DATE_KEY,'YYYYMMDD'),'YYYYMMDD') AS DATE_KEY,
+DATE(DATE#(STATUS_CHNG_DATE_KEY,'YYYYMMDD'),'YYYYMMDD') AS STATUS_CHNG_DATE_KEY,
+QTY_DISPENSED,
+PA_EFF_DATE_KEY,
+PA_EXP_DATE_KEY,
+PATIENT_STATUS,
+SP_CONVERSION_FLAG,
+ENROLLMENT_FACILITY_KEY,
+'SP_CONVERSION' as GrainFlag
+FROM [$(vQVDPathFact)/VYEPTI_FACT_ASOC_DISPENSE_CONVERSION_HQ$(vSpace)$(vSF).qvd](QVD)
+where ENROLLMENT_DATE_KEY <= '$(vMaxCompletedMonth)';;
+
+
+Concatenate(FINAL_FACT)
+LOAD 
+ACCOUNT_KEY,
+PARENT_ACCOUNT_KEY,
+PRODUCT_GROUP_KEY,
+SHIP_FROM_CUSTOMER_KEY,
+SF3_TERRITORY_KEY,
+UNITS,
+DATE(DATE#(DATE_KEY, 'YYYYMMDD'),'YYYYMMDD') AS DATE_KEY,
+SALE_TYPE, 
+ASOC_GROUP, 
+CUSTOMER_KEY,
+NORMALIZED_TRX,
+'ACCOUNT_SALES' AS GrainFlag,
+DUAL(IF(MATCH(ASOC_GROUP, $(vAllVINS)), ASOC_GROUP),
+	PICK(MATCH(IF(MATCH(ASOC_GROUP, $(vAllVINS)), ASOC_GROUP), 
+    					$(vAllVINS)),1,2,3,4,5,6,7,8)) as "Specialty Pharmacy",
+ IF(MATCH(ASOC_GROUP, $(vExistingVINS)), ASOC_GROUP) AS EXISTING_VINS,
+    IF(MATCH(ASOC_GROUP, $(vNewVINS)), ASOC_GROUP) AS NEW_VINS, 
+IF(MATCH(ASOC_GROUP, $(vExistingVINS)), 'Existing VIN', If(match(ASOC_GROUP,$(vNewVINS)),'New VIN')) AS [VIN Category],
+IF(MATCH(ASOC_GROUP, $(vAllVINS)), 'SIP Network Share', 'Non-SIP Network Share') as [Network Share]
+FROM [$(vQVDPathFact)/FACT_ACCOUNT_SALES_SIP$(vSpace)$(vSF).qvd](QVD)
+where DATE_KEY <= '$(vMaxCompletedMonth)'
+;
+
+
+///$tab SF:Adherence
+NoConcatenate
+ADHERENCE:
+SELECT 
+'ADHERENCE' as "GrainFlag",
+A.PATIENT_KEY as "PATIENT KEY",
+A.DISPENSE_DATE_KEY AS DATE_KEY,
+'SIP' AS SPECIALTY_PHARMACY,
+A.FILL_NUMBER,
+A.DISPENSE_DATE_KEY AS PREV_DISPENSE_DATE_KEY,
+IFF(B.DISPENSE_DATE_KEY IS NULL, '$(vToday)', B.DISPENSE_DATE_KEY) AS NEXT_DISPENSE_DATE_KEY,
+IFF(B.FILL_NUMBER IS NULL, NULL, DATEDIFF(day, (DATE(A.DISPENSE_DATE_KEY,'YYYYMMDD')), 
+					(DATE(B.DISPENSE_DATE_KEY,'YYYYMMDD')))) AS DAYS_BETWEEN_SHIPMENT,
+IFF(B.FILL_NUMBER IS NULL,'NOT_ADHERENT',
+IFF(DATEDIFF(day, (DATE(A.DISPENSE_DATE_KEY,'YYYYMMDD')), (DATE(B.DISPENSE_DATE_KEY, 'YYYYMMDD'))) > 120, 'NOT_ADHERENT','ADHERENT'
+			)) AS ADHERENT_NON_ADHERENT,
+DATEDIFF(day, DATE( A.DISPENSE_DATE_KEY, 'YYYYMMDD'), '$(vToday)') AS DAYS_SINCE_SHIPMENT
+
+FROM (
+SELECT  
+F.PATIENT_ID as PATIENT_KEY, 
+F.REFERRAL_DATE_KEY,
+F.DISPENSE_DATE_KEY,
+F.PATIENT_SOURCE AS SPECIALTY_PHARMACY,
+FILL_NUMBER
+FROM LUNDBECK_DW.ANALYTICS.ASOC_DISPENSE F
+INNER JOIN LUNDBECK_DW.COMMON.PRODUCTS PG ON PG.PRODUCT_GROUP_CODE = F.PRODUCT_GROUP_CODE
+WHERE
+BRAND = 'VYEPTI'
+AND FILL_NUMBER = '1'
+// AND DISPENSE_DATE_KEY >= '20230401'
+// AND DISPENSE_DATE_KEY <= '20230631'
+) A
+LEFT JOIN
+(
+SELECT  
+F.PATIENT_ID as PATIENT_KEY, 
+F.REFERRAL_DATE_KEY,
+F.DISPENSE_DATE_KEY,
+F.PATIENT_SOURCE AS SPECIALTY_PHARMACY,
+FILL_NUMBER
+FROM LUNDBECK_DW.ANALYTICS.ASOC_DISPENSE F
+INNER JOIN LUNDBECK_DW.COMMON.PRODUCTS PG ON PG.PRODUCT_GROUP_CODE = F.PRODUCT_GROUP_CODE
+WHERE
+BRAND = 'VYEPTI'
+AND FILL_NUMBER = '2'
+) B ON A.PATIENT_KEY = B.PATIENT_KEY AND A.FILL_NUMBER + 1 = B.FILL_NUMBER
+;
+
+
+CONCATENATE(ADHERENCE)
+
+
+SELECT 
+'ADHERENCE' as "GrainFlag",
+A.PATIENT_KEY as "PATIENT KEY",
+A.DISPENSE_DATE_KEY AS DATE_KEY,
+'PARAGON' AS SPECIALTY_PHARMACY,
+A.FILL_NUMBER,
+A.DISPENSE_DATE_KEY AS PREV_DISPENSE_DATE_KEY,
+IFF(B.DISPENSE_DATE_KEY IS NULL, '$(vToday)', B.DISPENSE_DATE_KEY) AS NEXT_DISPENSE_DATE_KEY,
+IFF(B.FILL_NUMBER IS NULL,NULL,
+DATEDIFF(day, (DATE( A.DISPENSE_DATE_KEY, 'YYYYMMDD')),(DATE(B.DISPENSE_DATE_KEY,'YYYYMMDD')))
+) AS DAYS_BETWEEN_SHIPMENT,
+IFF(B.FILL_NUMBER IS NULL,'NOT_ADHERENT',
+IFF(DATEDIFF(day, (DATE( A.DISPENSE_DATE_KEY, 'YYYYMMDD')),(DATE(B.DISPENSE_DATE_KEY, 'YYYYMMDD'))) > 120,'NOT_ADHERENT','ADHERENT'
+)) AS ADHERENT_NON_ADHERENT,
+DATEDIFF(day, (DATE(A.DISPENSE_DATE_KEY, 'YYYYMMDD')), '$(vToday)') AS DAYS_SINCE_SHIPMENT
+
+FROM (
+SELECT  
+F.PATIENT_ID as PATIENT_KEY, 
+F.REFERRAL_DATE_KEY,
+F.DISPENSE_DATE_KEY,
+F.PATIENT_SOURCE AS SPECIALTY_PHARMACY,
+FILL_NUMBER
+FROM LUNDBECK_DW.ANALYTICS.ASOC_DISPENSE F
+INNER JOIN LUNDBECK_DW.COMMON.PRODUCTS PG ON PG.PRODUCT_GROUP_CODE = F.PRODUCT_GROUP_CODE
+WHERE
+BRAND = 'VYEPTI'
+AND REPLACE(PATIENT_SOURCE, ' ', '') = 'PARAGON'
+AND FILL_NUMBER = '1'
+// AND DISPENSE_DATE_KEY >= '20230401'
+// AND DISPENSE_DATE_KEY <= '20230631'
+) A
+LEFT JOIN
+(
+SELECT  
+F.PATIENT_ID as PATIENT_KEY, 
+F.REFERRAL_DATE_KEY,
+F.DISPENSE_DATE_KEY,
+F.PATIENT_SOURCE AS SPECIALTY_PHARMACY,
+FILL_NUMBER
+FROM LUNDBECK_DW.ANALYTICS.ASOC_DISPENSE F
+INNER JOIN LUNDBECK_DW.COMMON.PRODUCTS PG ON PG.PRODUCT_GROUP_CODE = F.PRODUCT_GROUP_CODE
+WHERE
+BRAND = 'VYEPTI'
+AND FILL_NUMBER = '2'
+) B ON A.PATIENT_KEY = B.PATIENT_KEY AND A.FILL_NUMBER + 1 = B.FILL_NUMBER
+;
+
+CONCATENATE(ADHERENCE)
+
+
+SELECT 
+'ADHERENCE' as "GrainFlag",
+A.PATIENT_KEY as "PATIENT KEY",
+A.DISPENSE_DATE_KEY AS DATE_KEY,
+'OPTION CARE' AS SPECIALTY_PHARMACY,
+A.FILL_NUMBER,
+A.DISPENSE_DATE_KEY AS PREV_DISPENSE_DATE_KEY,
+IFF(B.DISPENSE_DATE_KEY IS NULL, '$(vToday)', B.DISPENSE_DATE_KEY) AS NEXT_DISPENSE_DATE_KEY,
+IFF(B.FILL_NUMBER IS NULL,NULL,
+DATEDIFF(day, (DATE(A.DISPENSE_DATE_KEY, 'YYYYMMDD')),(DATE(B.DISPENSE_DATE_KEY, 'YYYYMMDD')))
+) AS DAYS_BETWEEN_SHIPMENT,
+IFF(B.FILL_NUMBER IS NULL,'NOT_ADHERENT',
+IFF(DATEDIFF(day, (DATE( A.DISPENSE_DATE_KEY, 'YYYYMMDD')),(DATE( B.DISPENSE_DATE_KEY, 'YYYYMMDD'))) > 120,'NOT_ADHERENT','ADHERENT'
+)) AS ADHERENT_NON_ADHERENT,
+DATEDIFF(day, (DATE( A.DISPENSE_DATE_KEY, 'YYYYMMDD')), '$(vToday)') AS DAYS_SINCE_SHIPMENT
+FROM (
+SELECT  
+F.PATIENT_ID as PATIENT_KEY, 
+F.REFERRAL_DATE_KEY,
+F.DISPENSE_DATE_KEY,
+F.PATIENT_SOURCE AS SPECIALTY_PHARMACY,
+FILL_NUMBER
+FROM LUNDBECK_DW.ANALYTICS.ASOC_DISPENSE F
+INNER JOIN LUNDBECK_DW.COMMON.PRODUCTS PG ON PG.PRODUCT_GROUP_CODE = F.PRODUCT_GROUP_CODE
+WHERE
+BRAND = 'VYEPTI'
+AND REPLACE(PATIENT_SOURCE, ' ', '') = 'OPTIONCARE'
+AND FILL_NUMBER = '1'
+// AND DISPENSE_DATE_KEY >= '20230401'
+// AND DISPENSE_DATE_KEY <= '20230631'
+) A
+LEFT JOIN
+(
+SELECT  
+F.PATIENT_ID as PATIENT_KEY, 
+F.REFERRAL_DATE_KEY,
+F.DISPENSE_DATE_KEY,
+F.PATIENT_SOURCE AS SPECIALTY_PHARMACY,
+FILL_NUMBER
+FROM LUNDBECK_DW.ANALYTICS.ASOC_DISPENSE F
+INNER JOIN LUNDBECK_DW.COMMON.PRODUCTS PG ON PG.PRODUCT_GROUP_CODE = F.PRODUCT_GROUP_CODE
+WHERE
+BRAND = 'VYEPTI'
+AND FILL_NUMBER = '2'
+) B ON A.PATIENT_KEY = B.PATIENT_KEY AND A.FILL_NUMBER + 1 = B.FILL_NUMBER
+;
+
+
+CONCATENATE(ADHERENCE)
+
+
+SELECT 
+'ADHERENCE' as "GrainFlag",
+A.PATIENT_KEY as "PATIENT KEY",
+A.DISPENSE_DATE_KEY AS DATE_KEY,
+'VITAL CARE' AS SPECIALTY_PHARMACY,
+A.FILL_NUMBER,
+A.DISPENSE_DATE_KEY AS PREV_DISPENSE_DATE_KEY,
+IFF(B.DISPENSE_DATE_KEY IS NULL, '$(vToday)', B.DISPENSE_DATE_KEY) AS NEXT_DISPENSE_DATE_KEY,
+IFF(B.FILL_NUMBER IS NULL,NULL,
+DATEDIFF(day, (DATE(A.DISPENSE_DATE_KEY,'YYYYMMDD')),(DATE( B.DISPENSE_DATE_KEY, 'YYYYMMDD')))
+) AS DAYS_BETWEEN_SHIPMENT,
+IFF(B.FILL_NUMBER IS NULL,'NOT_ADHERENT',
+IFF(DATEDIFF(day, (DATE( A.DISPENSE_DATE_KEY, 'YYYYMMDD')),(DATE( B.DISPENSE_DATE_KEY, 'YYYYMMDD'))) > 120,'NOT_ADHERENT','ADHERENT'
+)) AS ADHERENT_NON_ADHERENT,
+DATEDIFF(day, (DATE( A.DISPENSE_DATE_KEY, 'YYYYMMDD')), '$(vToday)') AS DAYS_SINCE_SHIPMENT
+
+
+FROM (
+SELECT  
+F.PATIENT_ID as PATIENT_KEY, 
+F.REFERRAL_DATE_KEY,
+F.DISPENSE_DATE_KEY,
+F.PATIENT_SOURCE AS SPECIALTY_PHARMACY,
+FILL_NUMBER
+FROM LUNDBECK_DW.ANALYTICS.ASOC_DISPENSE F
+INNER JOIN LUNDBECK_DW.COMMON.PRODUCTS PG ON PG.PRODUCT_GROUP_CODE = F.PRODUCT_GROUP_CODE
+WHERE
+BRAND = 'VYEPTI'
+AND REPLACE(PATIENT_SOURCE, ' ', '') = 'VITALCARE'
+AND FILL_NUMBER = '1'
+// AND DISPENSE_DATE_KEY >= '20230401'
+// AND DISPENSE_DATE_KEY <= '20230631'
+) A
+LEFT JOIN
+(
+SELECT  
+F.PATIENT_ID as PATIENT_KEY, 
+F.REFERRAL_DATE_KEY,
+F.DISPENSE_DATE_KEY,
+F.PATIENT_SOURCE AS SPECIALTY_PHARMACY,
+FILL_NUMBER
+FROM LUNDBECK_DW.ANALYTICS.ASOC_DISPENSE F
+INNER JOIN LUNDBECK_DW.COMMON.PRODUCTS PG ON PG.PRODUCT_GROUP_CODE = F.PRODUCT_GROUP_CODE
+WHERE
+BRAND = 'VYEPTI'
+AND FILL_NUMBER = '2'
+) B ON A.PATIENT_KEY = B.PATIENT_KEY AND A.FILL_NUMBER + 1 = B.FILL_NUMBER
+;
+
+
+
+CONCATENATE(ADHERENCE)
+
+
+SELECT 
+'ADHERENCE' as "GrainFlag",
+A.PATIENT_KEY as "PATIENT KEY",
+A.DISPENSE_DATE_KEY AS DATE_KEY,
+'IVX HEALTH' AS SPECIALTY_PHARMACY,
+A.FILL_NUMBER,
+A.DISPENSE_DATE_KEY AS PREV_DISPENSE_DATE_KEY,
+iff(B.DISPENSE_DATE_KEY IS NULL, '$(vToday)', B.DISPENSE_DATE_KEY) AS NEXT_DISPENSE_DATE_KEY,
+iff(B.FILL_NUMBER IS NULL,NULL,
+DATEDIFF(day, DATE( A.DISPENSE_DATE_KEY, 'YYYYMMDD'),DATE( B.DISPENSE_DATE_KEY, 'YYYYMMDD'))) AS DAYS_BETWEEN_SHIPMENT,
+iff(B.FILL_NUMBER IS NULL,'NOT_ADHERENT',
+iff(DATEDIFF(day, DATE( A.DISPENSE_DATE_KEY, 'YYYYMMDD'),DATE( B.DISPENSE_DATE_KEY, 'YYYYMMDD')) > 120,'NOT_ADHERENT','ADHERENT'
+)) AS ADHERENT_NON_ADHERENT,
+DATEDIFF(day, (DATE( A.DISPENSE_DATE_KEY, 'YYYYMMDD')), '$(vToday)') AS DAYS_SINCE_SHIPMENT
+
+FROM (
+SELECT  
+F.PATIENT_ID AS PATIENT_KEY, 
+F.REFERRAL_DATE_KEY,
+F.DISPENSE_DATE_KEY,
+F.PATIENT_SOURCE AS SPECIALTY_PHARMACY,
+FILL_NUMBER
+FROM LUNDBECK_DW.ANALYTICS.ASOC_DISPENSE F
+INNER JOIN LUNDBECK_DW.COMMON.PRODUCTS PG ON PG.PRODUCT_GROUP_CODE = F.PRODUCT_GROUP_CODE
+WHERE
+BRAND = 'VYEPTI'
+AND REPLACE(PATIENT_SOURCE, ' ', '') = 'IVXHEALTH'
+AND FILL_NUMBER = '1'
+// AND DISPENSE_DATE_KEY >= '20230401'
+// AND DISPENSE_DATE_KEY <= '20230631'
+) A
+LEFT JOIN
+(
+SELECT  
+F.PATIENT_ID as PATIENT_KEY, 
+F.REFERRAL_DATE_KEY,
+F.DISPENSE_DATE_KEY,
+F.PATIENT_SOURCE AS SPECIALTY_PHARMACY,
+FILL_NUMBER
+FROM LUNDBECK_DW.ANALYTICS.ASOC_DISPENSE F
+INNER JOIN LUNDBECK_DW.COMMON.PRODUCTS PG ON PG.PRODUCT_GROUP_CODE = F.PRODUCT_GROUP_CODE
+WHERE
+BRAND = 'VYEPTI'
+AND FILL_NUMBER = '2'
+) B ON A.PATIENT_KEY = B.PATIENT_KEY AND A.FILL_NUMBER + 1 = B.FILL_NUMBER
+;
+
+
+
+
+
+CONCATENATE(ADHERENCE)
+
+
+SELECT 
+'ADHERENCE' as "GrainFlag",
+A.PATIENT_KEY as "PATIENT KEY",
+A.DISPENSE_DATE_KEY AS DATE_KEY,
+'TWELVESTONE' AS SPECIALTY_PHARMACY,
+A.FILL_NUMBER,
+A.DISPENSE_DATE_KEY AS PREV_DISPENSE_DATE_KEY,
+IFF(B.DISPENSE_DATE_KEY IS NULL, '$(vToday)', B.DISPENSE_DATE_KEY) AS NEXT_DISPENSE_DATE_KEY,
+IFF(B.FILL_NUMBER IS NULL,NULL,
+DATEDIFF(day, (DATE( A.DISPENSE_DATE_KEY, 'YYYYMMDD')),(DATE(B.DISPENSE_DATE_KEY,'YYYYMMDD')))
+) AS DAYS_BETWEEN_SHIPMENT,
+IFF(B.FILL_NUMBER IS NULL,'NOT_ADHERENT',
+IFF(DATEDIFF(day, (DATE( A.DISPENSE_DATE_KEY, 'YYYYMMDD')),(DATE(B.DISPENSE_DATE_KEY, 'YYYYMMDD'))) > 120,'NOT_ADHERENT','ADHERENT'
+)) AS ADHERENT_NON_ADHERENT,
+DATEDIFF(day, (DATE(A.DISPENSE_DATE_KEY, 'YYYYMMDD')), '$(vToday)') AS DAYS_SINCE_SHIPMENT
+
+FROM (
+SELECT  
+F.PATIENT_ID as PATIENT_KEY, 
+F.REFERRAL_DATE_KEY,
+F.DISPENSE_DATE_KEY,
+F.PATIENT_SOURCE AS SPECIALTY_PHARMACY,
+FILL_NUMBER
+FROM LUNDBECK_DW.ANALYTICS.ASOC_DISPENSE F
+INNER JOIN LUNDBECK_DW.COMMON.PRODUCTS PG ON PG.PRODUCT_GROUP_CODE = F.PRODUCT_GROUP_CODE
+WHERE
+BRAND = 'VYEPTI'
+AND REPLACE(PATIENT_SOURCE, ' ', '') = 'TWELVESTONE'
+AND FILL_NUMBER = '1'
+// AND DISPENSE_DATE_KEY >= '20230401'
+// AND DISPENSE_DATE_KEY <= '20230631'
+) A
+LEFT JOIN
+(
+SELECT  
+F.PATIENT_ID as PATIENT_KEY, 
+F.REFERRAL_DATE_KEY,
+F.DISPENSE_DATE_KEY,
+F.PATIENT_SOURCE AS SPECIALTY_PHARMACY,
+FILL_NUMBER
+FROM LUNDBECK_DW.ANALYTICS.ASOC_DISPENSE F
+INNER JOIN LUNDBECK_DW.COMMON.PRODUCTS PG ON PG.PRODUCT_GROUP_CODE = F.PRODUCT_GROUP_CODE
+WHERE
+BRAND = 'VYEPTI'
+AND FILL_NUMBER = '2'
+) B ON A.PATIENT_KEY = B.PATIENT_KEY AND A.FILL_NUMBER + 1 = B.FILL_NUMBER
+;
+
+
+
+CONCATENATE(ADHERENCE)
+
+
+SELECT 
+'ADHERENCE' as "GrainFlag",
+A.PATIENT_KEY as "PATIENT KEY",
+A.DISPENSE_DATE_KEY AS DATE_KEY,
+'SOLEO HEALTH' AS SPECIALTY_PHARMACY,
+A.FILL_NUMBER,
+A.DISPENSE_DATE_KEY AS PREV_DISPENSE_DATE_KEY,
+IFF(B.DISPENSE_DATE_KEY IS NULL, '$(vToday)', B.DISPENSE_DATE_KEY) AS NEXT_DISPENSE_DATE_KEY,
+IFF(B.FILL_NUMBER IS NULL,NULL,
+DATEDIFF(day, (DATE(A.DISPENSE_DATE_KEY,'YYYYMMDD')),(DATE( B.DISPENSE_DATE_KEY, 'YYYYMMDD')))
+) AS DAYS_BETWEEN_SHIPMENT,
+IFF(B.FILL_NUMBER IS NULL,'NOT_ADHERENT',
+IFF(DATEDIFF(day, (DATE( A.DISPENSE_DATE_KEY, 'YYYYMMDD')),(DATE( B.DISPENSE_DATE_KEY, 'YYYYMMDD'))) > 120,'NOT_ADHERENT','ADHERENT'
+)) AS ADHERENT_NON_ADHERENT,
+DATEDIFF(day, (DATE( A.DISPENSE_DATE_KEY, 'YYYYMMDD')), '$(vToday)') AS DAYS_SINCE_SHIPMENT
+
+
+FROM (
+SELECT  
+F.PATIENT_ID as PATIENT_KEY, 
+F.REFERRAL_DATE_KEY,
+F.DISPENSE_DATE_KEY,
+F.PATIENT_SOURCE AS SPECIALTY_PHARMACY,
+FILL_NUMBER
+FROM LUNDBECK_DW.ANALYTICS.ASOC_DISPENSE F
+INNER JOIN LUNDBECK_DW.COMMON.PRODUCTS PG ON PG.PRODUCT_GROUP_CODE = F.PRODUCT_GROUP_CODE
+WHERE
+BRAND = 'VYEPTI'
+AND REPLACE(PATIENT_SOURCE, ' ', '') = 'SOLEOHEALTH'
+AND FILL_NUMBER = '1'
+// AND DISPENSE_DATE_KEY >= '20230401'
+// AND DISPENSE_DATE_KEY <= '20230631'
+) A
+LEFT JOIN
+(
+SELECT  
+F.PATIENT_ID as PATIENT_KEY, 
+F.REFERRAL_DATE_KEY,
+F.DISPENSE_DATE_KEY,
+F.PATIENT_SOURCE AS SPECIALTY_PHARMACY,
+FILL_NUMBER
+FROM LUNDBECK_DW.ANALYTICS.ASOC_DISPENSE F
+INNER JOIN LUNDBECK_DW.COMMON.PRODUCTS PG ON PG.PRODUCT_GROUP_CODE = F.PRODUCT_GROUP_CODE
+WHERE
+BRAND = 'VYEPTI'
+AND FILL_NUMBER = '2'
+) B ON A.PATIENT_KEY = B.PATIENT_KEY AND A.FILL_NUMBER + 1 = B.FILL_NUMBER
+;
+
+
+CONCATENATE(ADHERENCE)
+
+
+SELECT 
+'ADHERENCE' as "GrainFlag",
+A.PATIENT_KEY as "PATIENT KEY",
+A.DISPENSE_DATE_KEY AS DATE_KEY,
+'INFUSION FOR HEALTH' AS SPECIALTY_PHARMACY,
+A.FILL_NUMBER,
+A.DISPENSE_DATE_KEY AS PREV_DISPENSE_DATE_KEY,
+IFF(B.DISPENSE_DATE_KEY IS NULL, '$(vToday)', B.DISPENSE_DATE_KEY) AS NEXT_DISPENSE_DATE_KEY,
+IFF(B.FILL_NUMBER IS NULL,NULL,
+DATEDIFF(day, (DATE(A.DISPENSE_DATE_KEY,'YYYYMMDD')),(DATE( B.DISPENSE_DATE_KEY, 'YYYYMMDD')))
+) AS DAYS_BETWEEN_SHIPMENT,
+IFF(B.FILL_NUMBER IS NULL,'NOT_ADHERENT',
+IFF(DATEDIFF(day, (DATE( A.DISPENSE_DATE_KEY, 'YYYYMMDD')),(DATE( B.DISPENSE_DATE_KEY, 'YYYYMMDD'))) > 120,'NOT_ADHERENT','ADHERENT'
+)) AS ADHERENT_NON_ADHERENT,
+DATEDIFF(day, (DATE( A.DISPENSE_DATE_KEY, 'YYYYMMDD')), '$(vToday)') AS DAYS_SINCE_SHIPMENT
+
+
+FROM (
+SELECT  
+F.PATIENT_ID as PATIENT_KEY, 
+F.REFERRAL_DATE_KEY,
+F.DISPENSE_DATE_KEY,
+F.PATIENT_SOURCE AS SPECIALTY_PHARMACY,
+FILL_NUMBER
+FROM LUNDBECK_DW.ANALYTICS.ASOC_DISPENSE F
+INNER JOIN LUNDBECK_DW.COMMON.PRODUCTS PG ON PG.PRODUCT_GROUP_CODE = F.PRODUCT_GROUP_CODE
+WHERE
+BRAND = 'VYEPTI'
+AND REPLACE(PATIENT_SOURCE, ' ', '') = 'INFUSIONFORHEALTH'
+AND FILL_NUMBER = '1'
+// AND DISPENSE_DATE_KEY >= '20230401'
+// AND DISPENSE_DATE_KEY <= '20230631'
+) A
+LEFT JOIN
+(
+SELECT  
+F.PATIENT_ID as PATIENT_KEY, 
+F.REFERRAL_DATE_KEY,
+F.DISPENSE_DATE_KEY,
+F.PATIENT_SOURCE AS SPECIALTY_PHARMACY,
+FILL_NUMBER
+FROM LUNDBECK_DW.ANALYTICS.ASOC_DISPENSE F
+INNER JOIN LUNDBECK_DW.COMMON.PRODUCTS PG ON PG.PRODUCT_GROUP_CODE = F.PRODUCT_GROUP_CODE
+WHERE
+BRAND = 'VYEPTI'
+AND FILL_NUMBER = '2'
+) B ON A.PATIENT_KEY = B.PATIENT_KEY AND A.FILL_NUMBER + 1 = B.FILL_NUMBER
+;
+
+
+CONCATENATE(ADHERENCE)
+
+
+SELECT 
+'ADHERENCE' as "GrainFlag",
+A.PATIENT_KEY as "PATIENT KEY",
+A.DISPENSE_DATE_KEY AS DATE_KEY,
+'VIVO INFUSION' AS SPECIALTY_PHARMACY,
+A.FILL_NUMBER,
+A.DISPENSE_DATE_KEY AS PREV_DISPENSE_DATE_KEY,
+IFF(B.DISPENSE_DATE_KEY IS NULL, '$(vToday)', B.DISPENSE_DATE_KEY) AS NEXT_DISPENSE_DATE_KEY,
+IFF(B.FILL_NUMBER IS NULL,NULL,
+DATEDIFF(day, (DATE(A.DISPENSE_DATE_KEY,'YYYYMMDD')),(DATE( B.DISPENSE_DATE_KEY, 'YYYYMMDD')))
+) AS DAYS_BETWEEN_SHIPMENT,
+IFF(B.FILL_NUMBER IS NULL,'NOT_ADHERENT',
+IFF(DATEDIFF(day, (DATE( A.DISPENSE_DATE_KEY, 'YYYYMMDD')),(DATE( B.DISPENSE_DATE_KEY, 'YYYYMMDD'))) > 120,'NOT_ADHERENT','ADHERENT'
+)) AS ADHERENT_NON_ADHERENT,
+DATEDIFF(day, (DATE( A.DISPENSE_DATE_KEY, 'YYYYMMDD')), '$(vToday)') AS DAYS_SINCE_SHIPMENT
+
+
+FROM (
+SELECT  
+F.PATIENT_ID as PATIENT_KEY, 
+F.REFERRAL_DATE_KEY,
+F.DISPENSE_DATE_KEY,
+F.PATIENT_SOURCE AS SPECIALTY_PHARMACY,
+FILL_NUMBER
+FROM LUNDBECK_DW.ANALYTICS.ASOC_DISPENSE F
+INNER JOIN LUNDBECK_DW.COMMON.PRODUCTS PG ON PG.PRODUCT_GROUP_CODE = F.PRODUCT_GROUP_CODE
+WHERE
+BRAND = 'VYEPTI'
+AND REPLACE(PATIENT_SOURCE, ' ', '') = 'VIVOINFUSION'
+AND FILL_NUMBER = '1'
+// AND DISPENSE_DATE_KEY >= '20230401'
+// AND DISPENSE_DATE_KEY <= '20230631'
+) A
+LEFT JOIN
+(
+SELECT  
+F.PATIENT_ID as PATIENT_KEY, 
+F.REFERRAL_DATE_KEY,
+F.DISPENSE_DATE_KEY,
+F.PATIENT_SOURCE AS SPECIALTY_PHARMACY,
+FILL_NUMBER
+FROM LUNDBECK_DW.ANALYTICS.ASOC_DISPENSE F
+INNER JOIN LUNDBECK_DW.COMMON.PRODUCTS PG ON PG.PRODUCT_GROUP_CODE = F.PRODUCT_GROUP_CODE
+WHERE
+BRAND = 'VYEPTI'
+AND FILL_NUMBER = '2'
+) B ON A.PATIENT_KEY = B.PATIENT_KEY AND A.FILL_NUMBER + 1 = B.FILL_NUMBER
+;
+
+
+
+
+CONCATENATE(FINAL_FACT)
+LOAD 
+"GrainFlag",
+"PATIENT KEY",
+DATE(DATE#(DATE_KEY,'YYYYMMDD'),'YYYYMMDD') AS DATE_KEY,
+SPECIALTY_PHARMACY,
+IF(MATCH(SPECIALTY_PHARMACY, $(vExistingVINS)), SPECIALTY_PHARMACY) AS EXISTING_VINS,
+    IF(MATCH(SPECIALTY_PHARMACY, $(vNewVINS)), SPECIALTY_PHARMACY) AS NEW_VINS,
+    IF(MATCH(SPECIALTY_PHARMACY, $(vExistingVINS)), 'Existing VIN', If(match(SPECIALTY_PHARMACY,$(vNewVINS)),'New VIN')) AS [VIN Category],
+DUAL(SPECIALTY_PHARMACY, PICK(MATCH(SPECIALTY_PHARMACY, $(vAllVINS),'SIP'),1,2,3,4,5,6,7,8,9)) as "Specialty Pharmacy",
+FILL_NUMBER,
+PREV_DISPENSE_DATE_KEY,
+NEXT_DISPENSE_DATE_KEY,
+DAYS_BETWEEN_SHIPMENT,
+ADHERENT_NON_ADHERENT,
+DAYS_SINCE_SHIPMENT
+RESIDENT ADHERENCE
+WHERE DATE_KEY <= '$(vMaxCompletedMonth)';
+
+DROP TABLE ADHERENCE;
+
+///$tab Persistency
+Concatenate(FINAL_FACT)
+Load PATIENT_KEY AS [PATIENT KEY],
+'PERSISTENCY' as GrainFlag,
+FIRST_BRAND_DATE,
+SPECIALTY_PHARMACY,
+IF(MATCH(SPECIALTY_PHARMACY, $(vExistingVINS)), SPECIALTY_PHARMACY) AS EXISTING_VINS,
+    IF(MATCH(SPECIALTY_PHARMACY, $(vNewVINS)), SPECIALTY_PHARMACY) AS NEW_VINS,
+    IF(MATCH(SPECIALTY_PHARMACY, $(vExistingVINS)), 'Existing VIN', If(match(SPECIALTY_PHARMACY,$(vNewVINS)),'New VIN')) AS [VIN Category],
+DUAL(SPECIALTY_PHARMACY, PICK(MATCH(SPECIALTY_PHARMACY, $(vAllVINS)),1,2,3,4,5,6,7,8)) as "Specialty Pharmacy",
+DATE(DATE#(FIRST_BRAND_DATE, 'YYYYMMDD'),'YYYYMDD') AS DATE_KEY,
+MONTH
+FROM [$(vQVDPathFact)/VYEPTI_FACT_ASOC_PERSISTENCY_HQ$(vSpace)$(vSF).qvd](QVD)
+WHERE FIRST_BRAND_DATE <= '$(vMaxCompletedMonth)';
+
+// DROP FIELD PATIENT_KEY FROM FINAL_FACT;
+
+ 
+STORE FINAL_FACT into [$(vQVDPathFact)/VYEPTI_FACT_ASOC_DISPENSE_HQ_MONTHLY$(vSpace)$(vSF).qvd](Qvd);
+
+CALNEDAR:
+LOAD
+DATE(DATE#(DATE_KEY, 'YYYYMMDD'),'YYYYMDD') AS DATE_KEY, CALENDAR_YEAR_QUARTER,CALENDAR_YEAR_MONTH ;
+SQL select DATE_KEY, CALENDAR_YEAR_QUARTER, CALENDAR_YEAR_MONTH
+FROM LUNDBECK_DW.COMMON.CALENDAR;
+
+///$tab Exit Script
+Exit Script;
+///$tab Adherence
+// Concatenate(FINAL_FACT)
+// SELECT 
+// 'ADHERENCE' as GrainFlag,
+// A.PATIENT_KEY as "PATIENT KEY",
+// A.DISPENSE_DATE_KEY AS DATE_KEY,
+// 'SIP' AS SPECIALTY_PHARMACY,
+// A.FILL_NUMBER,
+// A.DISPENSE_DATE_KEY AS PREV_DISPENSE_DATE_KEY,
+// IIF(B.DISPENSE_DATE_KEY IS NULL, '$(vTodayDate_1)', B.DISPENSE_DATE_KEY) AS NEXT_DISPENSE_DATE_KEY,
+// IIF(B.FILL_NUMBER IS NULL,NULL,
+// DATEDIFF(day, (Convert(varchar, A.DISPENSE_DATE_KEY, 112)),(Convert(varchar, B.DISPENSE_DATE_KEY, 112)))
+// ) AS DAYS_BETWEEN_SHIPMENT,
+// IIF(B.FILL_NUMBER IS NULL,'NOT_ADHERENT',
+// IIF(DATEDIFF(day, (Convert(varchar, A.DISPENSE_DATE_KEY, 112)),(Convert(varchar, B.DISPENSE_DATE_KEY, 112))) > 120,'NOT_ADHERENT','ADHERENT'
+// )) AS ADHERENT_NON_ADHERENT,
+// DATEDIFF(day, (Convert(varchar, A.DISPENSE_DATE_KEY, 112)), '$(vTodayDate_1)') AS DAYS_SINCE_SHIPMENT
+
+
+// FROM (
+// SELECT  
+// F.PATIENT_KEY, 
+// F.REFERRAL_DATE_KEY,
+// F.DISPENSE_DATE_KEY,
+// F.PATIENT_SOURCE AS SPECIALTY_PHARMACY,
+// FILL_NUMBER
+// FROM LUINC.FACT_ASOC_DISPENSE F
+// INNER JOIN LUINC.DIM_PRODUCT_GROUP PG ON PG.PRODUCT_GROUP_KEY = F.PRODUCT_GROUP_KEY
+// WHERE
+// BRAND = 'VYEPTI'
+// AND FILL_NUMBER = '1'
+// // AND DISPENSE_DATE_KEY >= '20230401'
+// // AND DISPENSE_DATE_KEY <= '20230631'
+// ) A
+// LEFT JOIN
+// (
+// SELECT  
+// F.PATIENT_KEY, 
+// F.REFERRAL_DATE_KEY,
+// F.DISPENSE_DATE_KEY,
+// F.PATIENT_SOURCE AS SPECIALTY_PHARMACY,
+// FILL_NUMBER
+// FROM LUINC.FACT_ASOC_DISPENSE F
+// INNER JOIN LUINC.DIM_PRODUCT_GROUP PG ON PG.PRODUCT_GROUP_KEY = F.PRODUCT_GROUP_KEY
+// WHERE
+// BRAND = 'VYEPTI'
+// AND FILL_NUMBER = '2'
+// ) B ON A.PATIENT_KEY = B.PATIENT_KEY AND A.FILL_NUMBER + 1 = B.FILL_NUMBER
+// ;
+
+
+// CONCATENATE(FINAL_FACT)
+
+
+// SELECT 
+// 'ADHERENCE' as GrainFlag,
+// A.PATIENT_KEY as "PATIENT KEY",
+// A.DISPENSE_DATE_KEY AS DATE_KEY,
+// 'PARAGON' AS SPECIALTY_PHARMACY,
+// A.FILL_NUMBER,
+// A.DISPENSE_DATE_KEY AS PREV_DISPENSE_DATE_KEY,
+// IIF(B.DISPENSE_DATE_KEY IS NULL, '$(vTodayDate_1)', B.DISPENSE_DATE_KEY) AS NEXT_DISPENSE_DATE_KEY,
+// IIF(B.FILL_NUMBER IS NULL,NULL,
+// DATEDIFF(day, (Convert(varchar, A.DISPENSE_DATE_KEY, 112)),(Convert(varchar, B.DISPENSE_DATE_KEY, 112)))
+// ) AS DAYS_BETWEEN_SHIPMENT,
+// IIF(B.FILL_NUMBER IS NULL,'NOT_ADHERENT',
+// IIF(DATEDIFF(day, (Convert(varchar, A.DISPENSE_DATE_KEY, 112)),(Convert(varchar, B.DISPENSE_DATE_KEY, 112))) > 120,'NOT_ADHERENT','ADHERENT'
+// )) AS ADHERENT_NON_ADHERENT,
+// DATEDIFF(day, (Convert(varchar, A.DISPENSE_DATE_KEY, 112)), '$(vTodayDate_1)') AS DAYS_SINCE_SHIPMENT
+
+
+// FROM (
+// SELECT  
+// F.PATIENT_KEY, 
+// F.REFERRAL_DATE_KEY,
+// F.DISPENSE_DATE_KEY,
+// F.PATIENT_SOURCE AS SPECIALTY_PHARMACY,
+// FILL_NUMBER
+// FROM LUINC.FACT_ASOC_DISPENSE F
+// INNER JOIN LUINC.DIM_PRODUCT_GROUP PG ON PG.PRODUCT_GROUP_KEY = F.PRODUCT_GROUP_KEY
+// WHERE
+// BRAND = 'VYEPTI'
+// AND REPLACE(PATIENT_SOURCE, ' ', '') = 'PARAGON'
+// AND FILL_NUMBER = '1'
+// // AND DISPENSE_DATE_KEY >= '20230401'
+// // AND DISPENSE_DATE_KEY <= '20230631'
+// ) A
+// LEFT JOIN
+// (
+// SELECT  
+// F.PATIENT_KEY, 
+// F.REFERRAL_DATE_KEY,
+// F.DISPENSE_DATE_KEY,
+// F.PATIENT_SOURCE AS SPECIALTY_PHARMACY,
+// FILL_NUMBER
+// FROM LUINC.FACT_ASOC_DISPENSE F
+// INNER JOIN LUINC.DIM_PRODUCT_GROUP PG ON PG.PRODUCT_GROUP_KEY = F.PRODUCT_GROUP_KEY
+// WHERE
+// BRAND = 'VYEPTI'
+// AND FILL_NUMBER = '2'
+// ) B ON A.PATIENT_KEY = B.PATIENT_KEY AND A.FILL_NUMBER + 1 = B.FILL_NUMBER
+// ;
+
+// CONCATENATE(FINAL_FACT)
+
+
+// SELECT 
+// 'ADHERENCE' as GrainFlag,
+// A.PATIENT_KEY as "PATIENT KEY",
+// A.DISPENSE_DATE_KEY AS DATE_KEY,
+// 'OPTIONCARE' AS SPECIALTY_PHARMACY,
+// A.FILL_NUMBER,
+// A.DISPENSE_DATE_KEY AS PREV_DISPENSE_DATE_KEY,
+// IIF(B.DISPENSE_DATE_KEY IS NULL, '$(vTodayDate_1)', B.DISPENSE_DATE_KEY) AS NEXT_DISPENSE_DATE_KEY,
+// IIF(B.FILL_NUMBER IS NULL,NULL,
+// DATEDIFF(day, (Convert(varchar, A.DISPENSE_DATE_KEY, 112)),(Convert(varchar, B.DISPENSE_DATE_KEY, 112)))
+// ) AS DAYS_BETWEEN_SHIPMENT,
+// IIF(B.FILL_NUMBER IS NULL,'NOT_ADHERENT',
+// IIF(DATEDIFF(day, (Convert(varchar, A.DISPENSE_DATE_KEY, 112)),(Convert(varchar, B.DISPENSE_DATE_KEY, 112))) > 120,'NOT_ADHERENT','ADHERENT'
+// )) AS ADHERENT_NON_ADHERENT,
+// DATEDIFF(day, (Convert(varchar, A.DISPENSE_DATE_KEY, 112)), '$(vTodayDate_1)') AS DAYS_SINCE_SHIPMENT
+
+
+// FROM (
+// SELECT  
+// F.PATIENT_KEY, 
+// F.REFERRAL_DATE_KEY,
+// F.DISPENSE_DATE_KEY,
+// F.PATIENT_SOURCE AS SPECIALTY_PHARMACY,
+// FILL_NUMBER
+// FROM LUINC.FACT_ASOC_DISPENSE F
+// INNER JOIN LUINC.DIM_PRODUCT_GROUP PG ON PG.PRODUCT_GROUP_KEY = F.PRODUCT_GROUP_KEY
+// WHERE
+// BRAND = 'VYEPTI'
+// AND REPLACE(PATIENT_SOURCE, ' ', '') = 'OPTIONCARE'
+// AND FILL_NUMBER = '1'
+// // AND DISPENSE_DATE_KEY >= '20230401'
+// // AND DISPENSE_DATE_KEY <= '20230631'
+// ) A
+// LEFT JOIN
+// (
+// SELECT  
+// F.PATIENT_KEY, 
+// F.REFERRAL_DATE_KEY,
+// F.DISPENSE_DATE_KEY,
+// F.PATIENT_SOURCE AS SPECIALTY_PHARMACY,
+// FILL_NUMBER
+// FROM LUINC.FACT_ASOC_DISPENSE F
+// INNER JOIN LUINC.DIM_PRODUCT_GROUP PG ON PG.PRODUCT_GROUP_KEY = F.PRODUCT_GROUP_KEY
+// WHERE
+// BRAND = 'VYEPTI'
+// AND FILL_NUMBER = '2'
+// ) B ON A.PATIENT_KEY = B.PATIENT_KEY AND A.FILL_NUMBER + 1 = B.FILL_NUMBER
+// ;
+
+
+// CONCATENATE(FINAL_FACT)
+
+
+// SELECT 
+// 'ADHERENCE' as GrainFlag,
+// A.PATIENT_KEY as "PATIENT KEY",
+// A.DISPENSE_DATE_KEY AS DATE_KEY,
+// 'VITALCARE' AS SPECIALTY_PHARMACY,
+// A.FILL_NUMBER,
+// A.DISPENSE_DATE_KEY AS PREV_DISPENSE_DATE_KEY,
+// IIF(B.DISPENSE_DATE_KEY IS NULL, '$(vTodayDate_1)', B.DISPENSE_DATE_KEY) AS NEXT_DISPENSE_DATE_KEY,
+// IIF(B.FILL_NUMBER IS NULL,NULL,
+// DATEDIFF(day, (Convert(varchar, A.DISPENSE_DATE_KEY, 112)),(Convert(varchar, B.DISPENSE_DATE_KEY, 112)))
+// ) AS DAYS_BETWEEN_SHIPMENT,
+// IIF(B.FILL_NUMBER IS NULL,'NOT_ADHERENT',
+// IIF(DATEDIFF(day, (Convert(varchar, A.DISPENSE_DATE_KEY, 112)),(Convert(varchar, B.DISPENSE_DATE_KEY, 112))) > 120,'NOT_ADHERENT','ADHERENT'
+// )) AS ADHERENT_NON_ADHERENT,
+// DATEDIFF(day, (Convert(varchar, A.DISPENSE_DATE_KEY, 112)), '$(vTodayDate_1)') AS DAYS_SINCE_SHIPMENT
+
+
+// FROM (
+// SELECT  
+// F.PATIENT_KEY, 
+// F.REFERRAL_DATE_KEY,
+// F.DISPENSE_DATE_KEY,
+// F.PATIENT_SOURCE AS SPECIALTY_PHARMACY,
+// FILL_NUMBER
+// FROM LUINC.FACT_ASOC_DISPENSE F
+// INNER JOIN LUINC.DIM_PRODUCT_GROUP PG ON PG.PRODUCT_GROUP_KEY = F.PRODUCT_GROUP_KEY
+// WHERE
+// BRAND = 'VYEPTI'
+// AND REPLACE(PATIENT_SOURCE, ' ', '') = 'VITALCARE'
+// AND FILL_NUMBER = '1'
+// // AND DISPENSE_DATE_KEY >= '20230401'
+// // AND DISPENSE_DATE_KEY <= '20230631'
+// ) A
+// LEFT JOIN
+// (
+// SELECT  
+// F.PATIENT_KEY, 
+// F.REFERRAL_DATE_KEY,
+// F.DISPENSE_DATE_KEY,
+// F.PATIENT_SOURCE AS SPECIALTY_PHARMACY,
+// FILL_NUMBER
+// FROM LUINC.FACT_ASOC_DISPENSE F
+// INNER JOIN LUINC.DIM_PRODUCT_GROUP PG ON PG.PRODUCT_GROUP_KEY = F.PRODUCT_GROUP_KEY
+// WHERE
+// BRAND = 'VYEPTI'
+// AND FILL_NUMBER = '2'
+// ) B ON A.PATIENT_KEY = B.PATIENT_KEY AND A.FILL_NUMBER + 1 = B.FILL_NUMBER
+// ;
+
+
+// CONCATENATE(FINAL_FACT)
+
+
+// SELECT 
+// 'ADHERENCE' as GrainFlag,
+// A.PATIENT_KEY as "PATIENT KEY",
+// A.DISPENSE_DATE_KEY AS DATE_KEY,
+// 'IVXHEALTH' AS SPECIALTY_PHARMACY,
+// A.FILL_NUMBER,
+// A.DISPENSE_DATE_KEY AS PREV_DISPENSE_DATE_KEY,
+// IIF(B.DISPENSE_DATE_KEY IS NULL, '$(vTodayDate_1)', B.DISPENSE_DATE_KEY) AS NEXT_DISPENSE_DATE_KEY,
+// IIF(B.FILL_NUMBER IS NULL,NULL,
+// DATEDIFF(day, (Convert(varchar, A.DISPENSE_DATE_KEY, 112)),(Convert(varchar, B.DISPENSE_DATE_KEY, 112)))
+// ) AS DAYS_BETWEEN_SHIPMENT,
+// IIF(B.FILL_NUMBER IS NULL,'NOT_ADHERENT',
+// IIF(DATEDIFF(day, (Convert(varchar, A.DISPENSE_DATE_KEY, 112)),(Convert(varchar, B.DISPENSE_DATE_KEY, 112))) > 120,'NOT_ADHERENT','ADHERENT'
+// )) AS ADHERENT_NON_ADHERENT,
+// DATEDIFF(day, (Convert(varchar, A.DISPENSE_DATE_KEY, 112)), '$(vTodayDate_1)') AS DAYS_SINCE_SHIPMENT
+
+
+// FROM (
+// SELECT  
+// F.PATIENT_KEY, 
+// F.REFERRAL_DATE_KEY,
+// F.DISPENSE_DATE_KEY,
+// F.PATIENT_SOURCE AS SPECIALTY_PHARMACY,
+// FILL_NUMBER
+// FROM LUINC.FACT_ASOC_DISPENSE F
+// INNER JOIN LUINC.DIM_PRODUCT_GROUP PG ON PG.PRODUCT_GROUP_KEY = F.PRODUCT_GROUP_KEY
+// WHERE
+// BRAND = 'VYEPTI'
+// AND REPLACE(PATIENT_SOURCE, ' ', '') = 'IVXHEALTH'
+// AND FILL_NUMBER = '1'
+// // AND DISPENSE_DATE_KEY >= '20230401'
+// // AND DISPENSE_DATE_KEY <= '20230631'
+// ) A
+// LEFT JOIN
+// (
+// SELECT  
+// F.PATIENT_KEY, 
+// F.REFERRAL_DATE_KEY,
+// F.DISPENSE_DATE_KEY,
+// F.PATIENT_SOURCE AS SPECIALTY_PHARMACY,
+// FILL_NUMBER
+// FROM LUINC.FACT_ASOC_DISPENSE F
+// INNER JOIN LUINC.DIM_PRODUCT_GROUP PG ON PG.PRODUCT_GROUP_KEY = F.PRODUCT_GROUP_KEY
+// WHERE
+// BRAND = 'VYEPTI'
+// AND FILL_NUMBER = '2'
+// ) B ON A.PATIENT_KEY = B.PATIENT_KEY AND A.FILL_NUMBER + 1 = B.FILL_NUMBER
+// ;
