@@ -1,0 +1,665 @@
+///$tab Main
+// SET ThousandSep=',';
+// SET DecimalSep='.';
+// SET MoneyThousandSep=',';
+// SET MoneyDecimalSep='.';
+// SET NumFormat='';
+// SET MoneyFormat='#.##0,00 kr.;-#.##0,00 kr.';
+// SET TimeFormat='hh.mm.ss';
+// SET DateFormat='DD/MM/YYYY';
+// SET TimestampFormat='DD/MM/YYYY hh.mm.ss[.fff]';
+// SET FirstWeekDay=0;
+// SET BrokenWeeks=0;
+// SET ReferenceDay=4;
+// SET FirstMonthOfYear=1;
+// SET CollationLocale='en-US';
+// SET CreateSearchIndexOnReload=1;
+// SET MonthNames='Jan;Feb;Mar;Apr;May;Jun;Jul;Aug;Sep;Oct;Nov;Dec';
+// SET LongMonthNames='January;February;March;April;May;June;July;August;September;October;November;December'; 
+// SET DayNames='Mon;Tue;Wed;Thu;Fri;Sat;Sun';
+// SET LongDayNames='Monday;Tuesday;Wednesday;Thursday;Friday;Saturday;Sunday';
+// SET NumericalAbbreviation='3:k;6:M;9:G;12:T;15:P;18:E;21:Z;24:Y;-3:m;-6:μ;-9:n;-12:p;-15:f;-18:a;-21:z;-24:y';
+
+SET ThousandSep=',';
+SET DecimalSep='.';
+SET MoneyThousandSep=',';
+SET MoneyDecimalSep='.';
+SET NumFormat='';
+SET MoneyFormat='#.##0,00 kr.;-#.##0,00 kr.';
+SET TimeFormat='hh.mm.ss';
+SET DateFormat='MM/DD/YYYY';
+SET TimestampFormat='MM/DD/YYYY h:mm:ss[.fff] TT';
+SET FirstWeekDay=0;
+SET BrokenWeeks=0;
+SET ReferenceDay=4;
+SET FirstMonthOfYear=1;
+SET CollationLocale='en-US';
+SET CreateSearchIndexOnReload=1;
+SET MonthNames='Jan;Feb;Mar;Apr;May;Jun;Jul;Aug;Sep;Oct;Nov;Dec';
+SET LongMonthNames='January;February;March;April;May;June;July;August;September;October;November;December';
+SET DayNames='Mon;Tue;Wed;Thu;Fri;Sat;Sun';
+SET LongDayNames='Monday;Tuesday;Wednesday;Thursday;Friday;Saturday;Sunday';
+SET NumericalAbbreviation='3:k;6:M;9:G;12:T;15:P;18:E;21:Z;24:Y;-3:m;-6:μ;-9:n;-12:p;-15:f;-18:a;-21:z;-24:y';
+
+
+$(Must_Include='lib://LuUS_DATA:LuUS_SharePoint/Shared Documents/Qlik Sense Data Files/Include/Qlik Cloud/FolderConnections.txt');
+
+LIB CONNECT TO 'LuUS_DATA:MSSQL_LuUS_DW_2.0';
+// LIB CONNECT TO 'LuUS_DATA:vAZ_MSSQL_LuUS_DW_2.0';
+
+LET StartDate =Date( YearStart(Today(),-2),'YYYYMMDD');
+
+ 
+///$tab Modified Tables
+//////////////////////loop Ends/////////////// below code is added to replace CALENDAR_YEAR_TRIMESTER by SF_TRIMESTER// 
+//in all self serve application CALENDAR_YEAR_TRIMESTER is used which reulsts in the wrong result, so change is made in extractor instead of changing the data model of all application.
+
+
+NoConcatenate
+DimTable:
+LOAD
+	DATE_KEY as DATE_KEY,
+    DATE(DATE_FULL, 'yyyy-MM-dd') AS DATE_FULL,
+    DATE_NAME,
+    DATE_NAME_LONG,
+    DAY_OF_WEEK,
+    DAY_OF_WEEK_LONG_NAME,
+    DAY_OF_WEEK_SHORT_NAME,
+    DAY_OF_MONTH,
+    DAY_OF_YEAR,
+    FLAG_HOLIDAY,
+    FLAG_WEEKDAY,
+    FLAG_LAST_DAY_IN_MONTH,
+    WEEK_OF_MONTH,
+    WEEK_OF_YEAR,
+    DATE(DATE_WEEK_START, 'yyyy-MM-dd') AS DATE_WEEK_START,
+    DATE_WEEK_START_KEY,
+    DATE(DATE_WEEK_END, 'yyyy-MM-dd') AS DATE_WEEK_END,
+    DATE_WEEK_END_KEY,
+    SPLIT_WEEK_KEY,
+    SF_TRIMESTER,
+    SF_QUARTER,
+    SF_YEAR,
+    SF_TRIMESTER_WEEK,
+    SF_WEEK_OF_YEAR,
+    SF_RELATIVE_TRIMESTER,
+    SF_RELATIVE_WEEK,
+    MONTH_OF_YEAR,
+    MONTH_OF_YEAR_LONG_NAME,
+    MONTH_OF_YEAR_SHORT_NAME,
+    MONTH_ABBREV_YEAR,
+    CALENDAR_QUARTER,
+    CALENDAR_TRIMESTER,
+    CALENDAR_YEAR,
+    NUM#(CALENDAR_YEAR_MONTH) AS CALENDAR_YEAR_MONTH,
+    CALENDAR_YEAR_QUARTER,
+    SF_TRIMESTER as CALENDAR_YEAR_TRIMESTER,
+    FISCAL_MONTH_OF_YEAR,
+    FISCAL_QUARTER,
+    FISCAL_YEAR,
+    FISCAL_YEAR_MONTH,
+    FISCAL_YEAR_QUARTER,
+    DST_STD_TIME_ZONE,
+    DW_DATE_LOADED,
+    DW_USER_LOADED,
+    DW_DATA_LINEAGE,
+    DW_JOB_LOADED,
+    DW_DATE_UPDATED;
+SQL Select 
+    DATE_KEY,
+    DATE_FULL,
+    DATE_NAME,
+    DATE_NAME_LONG,
+    DAY_OF_WEEK,
+    DAY_OF_WEEK_LONG_NAME,
+    DAY_OF_WEEK_SHORT_NAME,
+    DAY_OF_MONTH,
+    DAY_OF_YEAR,
+    FLAG_HOLIDAY,
+    FLAG_WEEKDAY,
+    FLAG_LAST_DAY_IN_MONTH,
+    WEEK_OF_MONTH,
+    WEEK_OF_YEAR,
+    DATE_WEEK_START,
+    DATE_WEEK_START_KEY,
+    DATE_WEEK_END,
+    DATE_WEEK_END_KEY,
+    SPLIT_WEEK_KEY,
+    SF_TRIMESTER,
+    SF_QUARTER,
+    SF_YEAR,
+    SF_TRIMESTER_WEEK,
+    SF_WEEK_OF_YEAR,
+    SF_RELATIVE_TRIMESTER,
+    SF_RELATIVE_WEEK,
+    MONTH_OF_YEAR,
+    MONTH_OF_YEAR_LONG_NAME,
+    MONTH_OF_YEAR_SHORT_NAME,
+    MONTH_ABBREV_YEAR,
+    CALENDAR_QUARTER,
+    CALENDAR_TRIMESTER,
+    CALENDAR_YEAR,
+    CONVERT(INT,CALENDAR_YEAR_MONTH) as CALENDAR_YEAR_MONTH,
+    CALENDAR_YEAR_QUARTER,
+    SF_TRIMESTER as CALENDAR_YEAR_TRIMESTER,
+    FISCAL_MONTH_OF_YEAR,
+    FISCAL_QUARTER,
+    FISCAL_YEAR,
+    FISCAL_YEAR_MONTH,
+    FISCAL_YEAR_QUARTER,
+    DST_STD_TIME_ZONE,
+    DW_DATE_LOADED,
+    DW_USER_LOADED,
+    DW_DATA_LINEAGE,
+    DW_JOB_LOADED,
+    DW_DATE_UPDATED
+FROM LUINC.DIM_CLNDR;
+
+
+STORE DimTable into [$(vQSBIE_ExtractQVD_Dimension)/DIM_CLNDR.qvd](qvd);
+
+Drop Table DimTable;
+
+//////////////////////////Included by shwetha to avoid displaying Epti Territory. Once we update the applications's filter(FRANCHISE='NRO'), remove below code
+NoConcatenate
+Dim_Territory:
+Load *,
+upper(ACCT_MGR_FULL_NAME) as ACCT_MGR_FULL_NAME1;
+SQL Select *
+From LUINC.DIM_TERRITORY;
+
+Drop Field ACCT_MGR_FULL_NAME;
+Rename Field ACCT_MGR_FULL_NAME1 to ACCT_MGR_FULL_NAME;
+
+Store Dim_Territory into [$(vQSBIE_ExtractQVD_Dimension)/DIM_TERRITORY.qvd](qvd);
+
+Drop Table Dim_Territory;
+
+
+
+NoConcatenate
+DIM_PATIENT:
+SQL Select * from LUINC.DIM_PATIENT WHERE SOURCE IN ('MANUAL', 'NORTHERA', 'VANDERBILT');
+
+Store DIM_PATIENT into [$(vQSBIE_ExtractQVD_Dimension)/DIM_PATIENT.qvd](qvd);
+
+Drop Table DIM_PATIENT;
+
+
+// NoConcatenate
+// DimTable:
+// SQL Select 
+//     DATE_KEY,
+//     DATE_FULL,
+//     DATE_NAME,
+//     DATE_NAME_LONG,
+//     DAY_OF_WEEK,
+//     DAY_OF_WEEK_LONG_NAME,
+//     DAY_OF_WEEK_SHORT_NAME,
+//     DAY_OF_MONTH,
+//     DAY_OF_YEAR,
+//     FLAG_HOLIDAY,
+//     FLAG_WEEKDAY,
+//     FLAG_LAST_DAY_IN_MONTH,
+//     WEEK_OF_MONTH,
+//     WEEK_OF_YEAR,
+//     DATE_WEEK_START,
+//     DATE_WEEK_START_KEY,
+//     DATE_WEEK_END,
+//     DATE_WEEK_END_KEY,
+//     SPLIT_WEEK_KEY,
+//     SF_TRIMESTER,
+//     SF_QUARTER,
+//     SF_YEAR,
+//     SF_TRIMESTER_WEEK,
+//     SF_WEEK_OF_YEAR,
+//     SF_RELATIVE_TRIMESTER,
+//     SF_RELATIVE_WEEK,
+//     MONTH_OF_YEAR,
+//     MONTH_OF_YEAR_LONG_NAME,
+//     MONTH_OF_YEAR_SHORT_NAME,
+//     MONTH_ABBREV_YEAR,
+//     CALENDAR_QUARTER,
+//     CALENDAR_TRIMESTER,
+//     CALENDAR_YEAR,
+//     CALENDAR_YEAR_MONTH,
+//     CALENDAR_YEAR_QUARTER,
+//     SF_TRIMESTER as CALENDAR_YEAR_TRIMESTER,
+//     FISCAL_MONTH_OF_YEAR,
+//     FISCAL_QUARTER,
+//     FISCAL_YEAR,
+//     FISCAL_YEAR_MONTH,
+//     FISCAL_YEAR_QUARTER,
+//     DST_STD_TIME_ZONE,
+//     DW_DATE_LOADED,
+//     DW_USER_LOADED,
+//     DW_DATA_LINEAGE,
+//     DW_JOB_LOADED,
+//     DW_DATE_UPDATED
+// FROM LUINC.DIM_CLNDR;
+///$tab Developer Note
+/*
+Version Control: V1.0
+Date: 03/25/2019
+Summary: Raw Data Extract from database tables
+Developer: Shwetha Aruna
+*/
+
+///$tab ASOC
+NoConcatenate
+  [Asoc]:
+SELECT 
+      D.SOA_ASOC AS "SOA ASOC",
+      D.SOA_CITY AS "SOA City",
+      D.SOA_STATE AS "SOA State",
+      D.SOA_KEY
+FROM LUINC.DIM_VYEPTI_SOA D;
+
+store  [Asoc] into [$(vQSBIE_ExtractQVD_Dimension)/DIM_VYEPTI_SOA.qvd](Qvd);
+
+DROP TABLE [Asoc];
+
+///$tab Dimension Load
+NoConcatenate
+TABLELIST:
+LOAD
+    SNo,
+    Table,
+    Run
+FROM [$(vQSBIE_OfflineFiles)/ExcelFiles/Dimension Table List.xlsx]
+(ooxml, embedded labels, table is Sheet1)
+where not(Match(Table,'DIM_PATIENT','DIM_CLNDR'));
+
+LET vTotalTable=NoOfRows('TABLELIST');
+
+for i=1 to $(vTotalTable)
+
+LET vTableName=FieldValue('Table',$(i));
+
+Trace $(vTableName);
+
+NoConcatenate
+DimTable:
+SQL select * 
+from LUINC.$(vTableName);
+
+STORE DimTable into [$(vQSBIE_ExtractQVD_Dimension)/$(vTableName).qvd](qvd);
+
+Drop Table DimTable;
+
+next
+
+
+///$tab Call Plan Flag - Qlik Cloud
+// We move the select statement to the top, and remove the with clauses, by inserting them directly, and joining together one by one.
+
+Call_Plan_Flag:
+SQL SELECT DISTINCT
+    U.CUSTOMER_KEY,
+    U.TERRITORY_KEY,
+    CALL_PLAN_DATE_KEY,
+    Lu_Call_Plan_Target_Abilify_Maintena,
+    Lu_Call_Plan_Target_Rexulti,
+    Lu_P1_Call_Plan_Target_Rexulti,
+    Lu_Call_Plan_Target_Trintellix,
+    Lu_Call_Plan_Target_Northera,
+    Lu_Call_Plan_Target_Vyepti,
+    Lu_Call_Plan_Target_Abilify_LAI_Franchise,
+    Lu_Call_Plan_Target_RexultiAADAD
+FROM (
+    SELECT DISTINCT
+        CUSTOMER_KEY,
+        TERRITORY_KEY,
+        DATE_KEY as CALL_PLAN_DATE_KEY
+    FROM LUINC.FACT_CALL_PLAN CP
+    INNER JOIN LUINC.DIM_PRODUCT_GROUP P ON P.PRODUCT_GROUP_KEY = CP.PRODUCT_GROUP_KEY
+    WHERE CP.CURRENT_IND = 'Y' AND P.PRODUCT_NAME IN ('ABILIFY MAINTENA', 'REXULTI', 'TRINTELLIX', 'NORTHERA', 'VYEPTI','ABILIFY LAI FRANCHISE')
+) U
+LEFT JOIN (
+    SELECT DISTINCT
+        CUSTOMER_KEY,
+        TERRITORY_KEY,
+        'Y' as Lu_Call_Plan_Target_Abilify_Maintena
+    FROM LUINC.FACT_CALL_PLAN CP
+    INNER JOIN LUINC.DIM_PRODUCT_GROUP P ON P.PRODUCT_GROUP_KEY = CP.PRODUCT_GROUP_KEY
+    WHERE CP.CURRENT_IND = 'Y' AND P.PRODUCT_NAME IN ('ABILIFY MAINTENA')
+) A ON A.CUSTOMER_KEY = U.CUSTOMER_KEY AND A.TERRITORY_KEY = U.TERRITORY_KEY
+LEFT JOIN (
+    SELECT DISTINCT
+        CUSTOMER_KEY,
+        TERRITORY_KEY,
+        'Y' as Lu_Call_Plan_Target_Rexulti
+    FROM LUINC.FACT_CALL_PLAN CP
+    INNER JOIN LUINC.DIM_PRODUCT_GROUP P ON P.PRODUCT_GROUP_KEY = CP.PRODUCT_GROUP_KEY
+    WHERE CP.CURRENT_IND = 'Y' AND P.PRODUCT_NAME IN ('REXULTI') and p.PRODUCT_GROUP NOT IN ('REXULTI AADAD')
+) B ON B.CUSTOMER_KEY = U.CUSTOMER_KEY AND B.TERRITORY_KEY = U.TERRITORY_KEY
+LEFT JOIN (
+    SELECT DISTINCT
+        CUSTOMER_KEY,
+        TERRITORY_KEY,
+        'Y' as Lu_P1_Call_Plan_Target_Rexulti
+    FROM LUINC.FACT_CALL_PLAN CP
+    INNER JOIN LUINC.DIM_PRODUCT_GROUP P ON P.PRODUCT_GROUP_KEY = CP.PRODUCT_GROUP_KEY
+    WHERE CP.CURRENT_IND = 'Y' AND P.PRODUCT_NAME IN ('REXULTI') and p.PRODUCT_GROUP NOT IN ('REXULTI AADAD') AND CP.DETAIL_PRIORITY = 1
+) C ON C.CUSTOMER_KEY = U.CUSTOMER_KEY AND C.TERRITORY_KEY = U.TERRITORY_KEY
+LEFT JOIN (
+    SELECT DISTINCT
+        CUSTOMER_KEY,
+        TERRITORY_KEY,
+        'Y' as Lu_Call_Plan_Target_Trintellix
+    FROM LUINC.FACT_CALL_PLAN CP
+    INNER JOIN LUINC.DIM_PRODUCT_GROUP P ON P.PRODUCT_GROUP_KEY = CP.PRODUCT_GROUP_KEY
+    WHERE CP.CURRENT_IND = 'Y' AND P.PRODUCT_NAME IN ('TRINTELLIX')
+) D ON D.CUSTOMER_KEY = U.CUSTOMER_KEY AND D.TERRITORY_KEY = U.TERRITORY_KEY
+LEFT JOIN (
+    SELECT DISTINCT
+        CUSTOMER_KEY,
+        TERRITORY_KEY,
+        'Y' as Lu_Call_Plan_Target_Northera
+    FROM LUINC.FACT_CALL_PLAN CP
+	INNER JOIN LUINC.DIM_PRODUCT_GROUP P on P.PRODUCT_GROUP_KEY = CP.PRODUCT_GROUP_KEY
+	where CP.CURRENT_IND='Y' and P.PRODUCT_NAME IN ('NORTHERA')
+) E ON E.CUSTOMER_KEY=U.CUSTOMER_KEY and E.TERRITORY_KEY=U.TERRITORY_KEY
+LEFT JOIN (
+    SELECT DISTINCT 
+    	CUSTOMER_KEY, 
+        TERRITORY_KEY, 
+        'Y' as Lu_Call_Plan_Target_Vyepti
+    FROM LUINC.FACT_CALL_PLAN CP
+    INNER JOIN LUINC.DIM_PRODUCT_GROUP P on P.PRODUCT_GROUP_KEY = CP.PRODUCT_GROUP_KEY
+    WHERE CP.CURRENT_IND='Y' AND P.PRODUCT_NAME IN ('VYEPTI')
+) F ON F.CUSTOMER_KEY=U.CUSTOMER_KEY and F.TERRITORY_KEY=U.TERRITORY_KEY
+LEFT JOIN (
+    SELECT DISTINCT
+        CUSTOMER_KEY,
+        TERRITORY_KEY,
+        'Y' as Lu_Call_Plan_Target_Abilify_LAI_Franchise
+    FROM LUINC.FACT_CALL_PLAN CP
+    INNER JOIN LUINC.DIM_PRODUCT_GROUP P ON P.PRODUCT_GROUP_KEY = CP.PRODUCT_GROUP_KEY
+    WHERE CP.CURRENT_IND = 'Y' AND P.PRODUCT_NAME IN ('ABILIFY LAI FRANCHISE')
+) G ON A.CUSTOMER_KEY = U.CUSTOMER_KEY AND A.TERRITORY_KEY = U.TERRITORY_KEY
+LEFT JOIN (
+    SELECT DISTINCT
+        CUSTOMER_KEY,
+        TERRITORY_KEY,
+        'Y' as Lu_Call_Plan_Target_RexultiAADAD
+    FROM LUINC.FACT_CALL_PLAN CP
+    INNER JOIN LUINC.DIM_PRODUCT_GROUP P ON P.PRODUCT_GROUP_KEY = CP.PRODUCT_GROUP_KEY
+    WHERE CP.CURRENT_IND = 'Y' AND P.PRODUCT_GROUP IN ('REXULTI AADAD') 
+) H ON H.CUSTOMER_KEY = U.CUSTOMER_KEY AND H.TERRITORY_KEY = U.TERRITORY_KEY
+
+;
+
+
+Store Call_Plan_Flag into [$(vQSBIE_ExtractQVD_Dimension)/DIM_CALL_PLAN_FLAGS.qvd](qvd);
+
+drop Table Call_Plan_Flag;
+///$tab Call Plan Flag
+// Call_Plan_Flag:
+// SQL With Universe as (
+// Select Distinct CUSTOMER_KEY, 
+//        TERRITORY_KEY,
+//        DATE_KEY as CALL_PLAN_DATE_KEY
+// from LUINC.FACT_CALL_PLAN CP
+// INNER JOIN LUINC.DIM_PRODUCT_GROUP P on P.PRODUCT_GROUP_KEY = CP.PRODUCT_GROUP_KEY
+// where CP.CURRENT_IND='Y' and P.PRODUCT_NAME in ('ABILIFY MAINTENA','REXULTI','TRINTELLIX','NORTHERA','VYEPTI')
+// ),
+// AM as (
+// Select Distinct CUSTOMER_KEY,
+//        TERRITORY_KEY,
+//        'Y' as Lu_Call_Plan_Target_Abilify_Maintena
+// from LUINC.FACT_CALL_PLAN CP
+// INNER JOIN LUINC.DIM_PRODUCT_GROUP P on P.PRODUCT_GROUP_KEY = CP.PRODUCT_GROUP_KEY
+// where CP.CURRENT_IND='Y' and P.PRODUCT_NAME in ('ABILIFY MAINTENA')
+// ),
+// Rex as (
+// Select Distinct CUSTOMER_KEY,
+//        TERRITORY_KEY,
+//        'Y' as Lu_Call_Plan_Target_Rexulti
+// from LUINC.FACT_CALL_PLAN CP
+// INNER JOIN LUINC.DIM_PRODUCT_GROUP P on P.PRODUCT_GROUP_KEY = CP.PRODUCT_GROUP_KEY
+// where CP.CURRENT_IND='Y' and P.PRODUCT_NAME in ('REXULTI')
+// ),
+// P1_Rex as (
+// Select Distinct CUSTOMER_KEY, 
+//        TERRITORY_KEY, 
+//        'Y' as Lu_P1_Call_Plan_Target_Rexulti
+// from LUINC.FACT_CALL_PLAN CP
+// INNER JOIN LUINC.DIM_PRODUCT_GROUP P on P.PRODUCT_GROUP_KEY = CP.PRODUCT_GROUP_KEY
+// where CP.CURRENT_IND='Y' and P.PRODUCT_NAME in ('REXULTI') and CP.DETAIL_PRIORITY=1
+// ),
+// Trin as (
+// Select Distinct CUSTOMER_KEY, 
+//        TERRITORY_KEY, 
+//        'Y' as Lu_Call_Plan_Target_Trintellix
+// from LUINC.FACT_CALL_PLAN CP
+// INNER JOIN LUINC.DIM_PRODUCT_GROUP P on P.PRODUCT_GROUP_KEY = CP.PRODUCT_GROUP_KEY
+// where CP.CURRENT_IND='Y' and P.PRODUCT_NAME in ('TRINTELLIX')
+// ),
+// Vyepti as (
+// Select Distinct CUSTOMER_KEY, 
+//        TERRITORY_KEY, 
+//        'Y' as Lu_Call_Plan_Target_Vyepti
+// from LUINC.FACT_CALL_PLAN CP
+// INNER JOIN LUINC.DIM_PRODUCT_GROUP P on P.PRODUCT_GROUP_KEY = CP.PRODUCT_GROUP_KEY
+// where CP.CURRENT_IND='Y' and P.PRODUCT_NAME in ('VYEPTI')
+// ),
+// Northera as (
+// Select Distinct CUSTOMER_KEY, 
+//        TERRITORY_KEY, 
+//        'Y' as Lu_Call_Plan_Target_Northera
+// from LUINC.FACT_CALL_PLAN CP
+// INNER JOIN LUINC.DIM_PRODUCT_GROUP P on P.PRODUCT_GROUP_KEY = CP.PRODUCT_GROUP_KEY
+// where CP.CURRENT_IND='Y' and P.PRODUCT_NAME in ('NORTHERA')
+// )
+// Select Distinct U.CUSTOMER_KEY, 
+//        U.TERRITORY_KEY, 
+//        CALL_PLAN_DATE_KEY,
+//        Lu_Call_Plan_Target_Abilify_Maintena,
+//        Lu_Call_Plan_Target_Rexulti,
+//        Lu_P1_Call_Plan_Target_Rexulti,
+//        Lu_Call_Plan_Target_Trintellix,
+//        Lu_Call_Plan_Target_Northera,
+//        Lu_Call_Plan_Target_Vyepti
+// FROM Universe U
+// LEFT JOIN AM A on A.CUSTOMER_KEY=U.CUSTOMER_KEY and A.TERRITORY_KEY=U.TERRITORY_KEY
+// LEFT JOIN Rex B on B.CUSTOMER_KEY=U.CUSTOMER_KEY and B.TERRITORY_KEY=U.TERRITORY_KEY
+// LEFT JOIN P1_Rex C on C.CUSTOMER_KEY=U.CUSTOMER_KEY and C.TERRITORY_KEY=U.TERRITORY_KEY
+// LEFT JOIN Trin D on D.CUSTOMER_KEY=U.CUSTOMER_KEY and D.TERRITORY_KEY=U.TERRITORY_KEY
+// LEFT JOIN Northera E on E.CUSTOMER_KEY=U.CUSTOMER_KEY and E.TERRITORY_KEY=U.TERRITORY_KEY
+// LEFT JOIN Vyepti F on F.CUSTOMER_KEY=U.CUSTOMER_KEY and F.TERRITORY_KEY=U.TERRITORY_KEY;
+
+// Store Call_Plan_Flag into [$(vQSBIE_ExtractQVD_Dimension)/DIM_CALL_PLAN_FLAGS.qvd](qvd);
+
+// drop Table Call_Plan_Flag;
+
+///$tab Max Call Date
+NoConcatenate
+[Call Activity]:
+SQL SELECT Max(ENTERED_DATE_KEY) as ENTERD_DATE,
+'Call Activity' as Table_Flag
+FROM LUINC.FACT_CALL_ACTIVITY;
+
+Concatenate([Call Activity])
+SQL
+select max(CALL_DATE_KEY) as ENTERD_DATE,
+'CLM Calls' as Table_Flag
+from luinc.fact_clm_calls;
+
+Store [Call Activity] into [$(vQSBIE_ExtractQVD_Dimension)/DIM_MAX_CALL_ENTERD_DATE.qvd](qvd);
+
+Drop Table [Call Activity];
+
+
+
+
+
+///$tab FPAD
+// [Last Full Week]:
+
+// LIB CONNECT TO 'LuUS_DATA:MSSQL_LuUS_DW_2.0';
+
+// SELECT DISTINCT
+//        LOAD_SUMMARY.LAST_FULL_WEEK_END_DATE as LAST_FULL_WEEK_END_DATE
+
+// 	   FROM LU_DW.LUINC.LOAD_SUMMARY LOAD_SUMMARY,
+//             LU_DW.LUINC.DIM_CLNDR DIM_CLNDR
+
+// 	   WHERE (LOAD_SUMMARY.COMPONENT_NAME = 'THR NOR DISPENSE') AND 
+//              (LOAD_SUMMARY.LAST_FULL_WEEK_END_DATE = DIM_CLNDR.DATE_WEEK_END);
+
+// Store [Last Full Week] into [$(vQSBIE_ExtractQVD_Dimension)/LOAD_SUMMARY_FPAD.qvd](qvd);
+
+// DROP TABLE [Last Full Week];
+
+
+// Added for Qlik CLoud
+[Last Full Week]:
+
+Load *,
+     Date(LAST_FULL_WEEK_END_DATE_TEMP, 'YYYY-MM-DD') as LAST_FULL_WEEK_END_DATE;
+SELECT DISTINCT
+       LOAD_SUMMARY.LAST_FULL_WEEK_END_DATE as LAST_FULL_WEEK_END_DATE_TEMP
+
+	   FROM LU_DW.LUINC.LOAD_SUMMARY LOAD_SUMMARY,
+            LU_DW.LUINC.DIM_CLNDR DIM_CLNDR
+
+	   WHERE (LOAD_SUMMARY.COMPONENT_NAME = 'CALL ACTIVITY') AND //'THR NOR DISPENSE'
+             (LOAD_SUMMARY.LAST_FULL_WEEK_END_DATE = DIM_CLNDR.DATE_WEEK_END);
+
+DROP FIELD LAST_FULL_WEEK_END_DATE_TEMP;
+Store [Last Full Week] into [$(vQSBIE_ExtractQVD_Dimension)/LOAD_SUMMARY_FPAD.qvd](qvd);
+
+DROP TABLE [Last Full Week];
+///$tab TERRITORY_SNAPSHOT
+Territory_Snap:
+Load AutoNumberHash256(DATE_KEY,TERRITORY_KEY) as TERR_DATE_KEY,
+    DATE_KEY,
+    TERRITORY_KEY,
+	If(Match(SALESFORCE_GROUP,'APEX','PINNACLE','APEX CSO','PINNACLE CSO'),'APEX/APEX CSO/PINNACLE/PINNACLE CSO',SALESFORCE_GROUP) as SALESFORCE_GROUP_SNAP,
+    'Total' as SALESFORCE_GROUP_SNAP_TTL,
+    AD_ID,
+    EFF_DATE,
+    EXP_DATE;
+SQL Select Distinct DATE_KEY, 
+	TERR_NAME, 
+    f.SALESFORCE_GROUP,
+    AD_ID, 
+    TERRITORY_KEY,
+    Convert(Char(8),EFF_DATE,112) as EFF_DATE,
+    Convert(Char(8),TERR_EXP_DATE,112) as EXP_DATE
+from  INCW3255H.LU_STAGE.LUSEC.VW_DYNAMIC_ROSTER_REPORT f
+INNER JOIN LUINC.DIM_CLNDR c on c.DATE_KEY>=Convert(Char(8),EFF_DATE,112) and c.DATE_KEY<=Convert(Char(8),EXP_DATE,112)  and DATE_KEY>=20200101
+INNER JOIN LUINC.DIM_TERRITORY t on t.TERRITORY_ID = f.TERR_ID
+Where f.SALESFORCE_GROUP in ('APEX','PINNACLE','MERIDIAN','SUMMIT','SIERRA','APEX CSO','PINNACLE CSO') 
+and Convert(Char(8),EXP_DATE,112)>=20200101
+and AD_ID in (Select DIstinct ACCT_MGR_AD_ID From LUINC.DIM_TERRITORY Where TERR_CURRENT_IND='Y');
+
+Concatenate(Territory_Snap)
+Load AutoNumberHash256(DATE_KEY,TERRITORY_KEY) as TERR_DATE_KEY,
+	DATE_KEY,
+    TERRITORY_KEY,
+	If(Match(SALESFORCE_GROUP,'APEX','PINNACLE','APEX CSO','PINNACLE CSO'),'APEX/APEX CSO/PINNACLE/PINNACLE CSO',SALESFORCE_GROUP) as SALESFORCE_GROUP_SNAP,
+    'Total' as SALESFORCE_GROUP_SNAP_TTL,
+    AD_ID,
+    EFF_DATE,
+    EXP_DATE;
+Select Distinct DATE_KEY, 
+	TERRITORY_NAME as TERR_NAME, 
+    SALESFORCE_GROUP_NAME as SALESFORCE_GROUP,
+    ACCT_MGR_AD_ID as AD_ID, 
+    TERRITORY_KEY,
+    Convert(Char(8),TERR_EFF_DATE,112) as EFF_DATE,
+    Convert(Char(8),TERR_EXP_DATE,112) as EXP_DATE
+from  LUINC.DIM_TERRITORY
+INNER JOIN LUINC.DIM_CLNDR c on c.DATE_KEY>=Convert(Char(8),TERR_EFF_DATE,112) and c.DATE_KEY<=Convert(Char(8),GETDATE(),112)  and DATE_KEY>=20200101
+Where SALESFORCE_GROUP_NAME in ('APEX','PINNACLE','MERIDIAN','SUMMIT','SIERRA','APEX CSO','PINNACLE CSO') 
+ and  TERR_CURRENT_IND='Y';
+
+Left Join(Territory_Snap)
+SQL Select Distinct
+    ACCT_MGR_AD_ID as AD_ID,
+    1 as CURRENT_IND_FLAG
+FROM LUINC.DIM_TERRITORY
+where TERR_CURRENT_IND='Y';
+
+Store Territory_Snap into [$(vQSBIE_ExtractQVD_Dimension)/TERRITORY_SNAPSHOT.qvd](qvd);
+
+DROP TABLE Territory_Snap;
+
+
+///$tab MEDISPAN_DIM_CLNDR
+NoConcatenate
+[Dim CLNDR]:
+Load
+    DATE_FROM_KEY as [Date From Key],
+    YEAR as [Starting Year],
+    Date(Date#(MONTH_YEAR,'YYYYMM'),'MMM-YY') as [Starting Month Year]
+    ,Date(Date#(DATE_FROM_KEY,'YYYYMMDD'),'MM/DD/YYYY') as [Date From Full];
+    select distinct FACT_PRICING_NDC.DATE_FROM_KEY,
+   left(FACT_PRICING_NDC.DATE_FROM_KEY,6) as MONTH_YEAR,
+   left(FACT_PRICING_NDC.DATE_FROM_KEY,4) as YEAR
+    from (LU_DW.LUINC.FACT_PRICING_NDC FACT_PRICING_NDC
+      INNER JOIN LU_DW.LUINC.DIM_PRODUCT_NDC DIM_PRODUCT_NDC
+         ON (FACT_PRICING_NDC.PRODUCT_NDC_KEY =
+             DIM_PRODUCT_NDC.PRODUCT_NDC_KEY))
+     INNER JOIN LU_DW.LUINC.DIM_PRODUCT_PACKAGING DIM_PRODUCT_PACKAGING
+        ON (FACT_PRICING_NDC.PRODUCT_PACKAGING_KEY =
+            DIM_PRODUCT_PACKAGING.PRODUCT_PACKAGING_KEY);
+            
+Store [Dim CLNDR] into [$(vQSBIE_ExtractQVD_Dimension)/MEDISPAN_DIM_CLNDR.qvd](qvd);
+
+Drop Table [Dim CLNDR];
+///$tab Control Dates
+[Control Dates]:
+LOAD    [Last Loaded Date]
+,       DATE([Last Shipped Date], 'MM/DD/YYYY') as [Last Shipped Date]
+,       [Source Name]
+,       [Source Description]
+;
+SELECT  MAX(DW_DATE_LOADED) as [Last Loaded Date]
+,       MAX(SHIPPED_DATE) as [Last Shipped Date]
+,      'STG_THR_NRO_SAB_DSP' as [Source Name]
+,       'LASH Sabril Dispenses' as [Source Description]
+FROM    DW1_DB.LU_STAGE.LUSEC.STG_THR_NRO_SAB_DSP dsp
+;
+Concatenate
+LOAD    [Last Loaded Date]
+,       DATE(DATE#([Last Shipped Date], 'YYYYMMDD'), 'MM/DD/YYYY')as [Last Shipped Date]
+,       [Source Name]
+,       [Source Description]
+;
+SELECT  MAX(DW_DATE_LOADED) as [Last Loaded Date]
+,       MAX(SHIPPED_DATE) as [Last Shipped Date]
+,      'STG_WALGREEN_SAB_REMS_DSP' as [Source Name]
+,       'Walgreens Sabril REMS Dispenses' as [Source Description]
+FROM    DW1_DB.LU_STAGE.LUINC.STG_WALGREEN_SAB_REMS_DSP dsp
+;
+Concatenate
+LOAD    [Last Loaded Date]
+,       DATE(DATE#([Last Shipped Date], 'YYYYMMDD'), 'MM/DD/YYYY') as [Last Shipped Date]
+,       [Source Name]
+,       [Source Description]
+;
+SELECT  MAX(DW_DATE_LOADED) as [Last Loaded Date]
+,       MAX(SHIPPED_DATE) as [Last Shipped Date]
+,      'STG_ACCREDO_SAB_REMS_DSP' as [Source Name]
+,       'Accredo Sabril REMS Dispenses' as [Source Description]
+FROM    DW1_DB.LU_STAGE.LUINC.STG_ACCREDO_SAB_REMS_DSP dsp
+;
+Concatenate
+LOAD    [Last Loaded Date]
+,       DATE([Last Shipped Date], 'MM/DD/YYYY') as [Last Shipped Date]
+,       [Source Name]
+,       [Source Description]
+;
+SELECT  MAX(DW_DATE_LOADED) as [Last Loaded Date]
+,       MAX(SHIPPED_DATE) as [Last Shipped Date]
+,      'STG_THR_NRO_XEN_DSP' as [Source Name]
+,      'LASH Xenazine Dispenses' as [Source Description]
+FROM    DW1_DB.LU_STAGE.LUSEC.STG_THR_NRO_XEN_DSP dsp
+;
+
+Store [Control Dates] into [$(vQSBIE_ExtractQVD_Dimension)/MAX_CONTROL_DATES.qvd](Qvd);
+
+Drop Table [Control Dates];
