@@ -1,0 +1,35 @@
+
+SHEETS
+{"qInfo":{"qId":"49a7c18f-6142-4f51-80a0-4d1ebe9d9d9f","qType":"sheet"},"qMeta":{"title":"My new sheet","description":"","createdDate":"2023-03-30T09:15:41.883Z","modifiedDate":"2023-03-30T09:15:41.883Z","published":true,"publishTime":"2023-03-16T14:38:33.122Z","approved":true,"qSize":-1,"sourceObject":"","draftObject":"","_resourcetype":"app.object","_objecttype":"sheet","id":"49a7c18f-6142-4f51-80a0-4d1ebe9d9d9f","owner":"ELLM@lundbeck.com","ownerId":"6343da9c0fabff8ea791d24a","privileges":["read","publish"]},"qData":[]}
+
+OBJECTS ON SHEETS
+
+DIMENSIONS
+
+MEASURES
+
+VARIABLES
+{"qName":"vTotalTable","qDefinition":"30","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"f8b0cc93-567e-43b1-80a7-e864cd748850","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vTableName","qDefinition":"DIM_MB_ABILIFY_ASIMTUFII_IC","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"79743247-aa90-4dc8-a051-fa034c2b8f55","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vQSBIE_TransformQVD_Fact","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/QlikSense BI Evolution\/QVDs\/Transform\/Facts","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"1e35cdba-d4c3-4926-aa74-3166e265b2e7","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vQSBIE_OfflineFiles","qDefinition":"lib:\/\/LuUS_DATA:LuUS_SharePoint\/Shared Documents\/Qlik Sense Data Files","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"30e2348a-5e59-465f-8218-e835599c448c","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"StartDate","qDefinition":"20230101","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"7df472a3-cfa4-4c68-8b18-fec988d34938","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vConfidentialMessage","qDefinition":"*Prescriber data acquired by the Lundbeck are to be treated as confidential information. Sales representatives (and other employees and agents) must not disclose those data to any party outside of the Company without the express permission of the Legal Division. In addition, sales representatives (and other employees and agents) cannot ask co-promotion colleagues to share prescriber data with them.","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"3c6bc520-d866-40f9-b66a-cbd12ea551ed","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"NumFormat","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"2685adf0-6545-4b30-a0d9-68f4fa4f5c18","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vQSBIE_ExtractQVD_Dimension","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/QlikSense BI Evolution\/QVDs\/Extract\/Dimensions","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"00e7c60e-3d22-4df9-b822-32f27bf93ebf","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vQSBIE_TransformQVD_Dimension","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/QlikSense BI Evolution\/QVDs\/Transform\/Dimensions","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"79fdba23-6956-42cb-a46b-eb84dc4b9008","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"vQSBIE_ExtractQVD_Fact","qDefinition":"lib:\/\/LuUS_DATA:DataFiles\/Production\/QlikSense BI Evolution\/QVDs\/Extract\/Facts","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"45226b3e-7ef7-4705-a40a-11f96078af8a","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"i","qDefinition":"31","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"d2544400-e770-4ef1-8571-e2a7897a89fc","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"v_LuUS_DATA_Sales_IC","qDefinition":"lib:\/\/LuUS_DATA_Sales_IC:DataFiles","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"a9dfd8cc-c295-4509-b9f0-fc739093bc06","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+{"qName":"v_LuUS_DATA_Sales_IC_SharePoint","qDefinition":"lib:\/\/LuUS_DATA:LuUS_SharePoint\/Shared Documents\/Qlik Sense Data Files\/Qlik Sense Sales IC","qMeta":{"privileges":["read","update","delete"]},"qInfo":{"qId":"b22282e4-4872-4b7c-85ee-4e7ffe8a2cb8","qType":"variable"},"qData":[],"qIsScriptCreated":true}
+
+FIELDS
+{"qIsHidden":true,"qIsSystem":true,"qName":"$Field","qCardinal":3,"qTags":["$hidden","$system","$ascii","$text","$key"],"qSrcTables":[]}
+{"qIsHidden":true,"qIsSystem":true,"qName":"$Table","qCardinal":1,"qTags":["$hidden","$system","$ascii","$text","$key"],"qSrcTables":[]}
+{"qIsHidden":true,"qIsSystem":true,"qName":"$Rows","qCardinal":1,"qTags":["$hidden","$system","$numeric","$integer"],"qSrcTables":[]}
+{"qIsHidden":true,"qIsSystem":true,"qName":"$Fields","qCardinal":1,"qTags":["$hidden","$system","$numeric","$integer"],"qSrcTables":[]}
+{"qIsHidden":true,"qIsSystem":true,"qName":"$FieldNo","qCardinal":3,"qTags":["$hidden","$system","$numeric","$integer"],"qSrcTables":[]}
+{"qIsHidden":true,"qIsSystem":true,"qName":"$Info","qCardinal":1,"qTags":["$hidden","$system","$ascii","$text"],"qSrcTables":[]}
+{"qName":"SNo","qCardinal":30,"qTags":["$numeric","$integer"],"qSrcTables":["TABLELIST"]}
+{"qName":"Table","qCardinal":30,"qTags":["$ascii","$text"],"qSrcTables":["TABLELIST"]}
+{"qName":"Run","qCardinal":2,"qTags":["$ascii","$text"],"qSrcTables":["TABLELIST"]}
